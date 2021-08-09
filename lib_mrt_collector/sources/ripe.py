@@ -8,5 +8,5 @@ class Ripe(Source):
     value = 0
 
     @staticmethod
-    def get_urls():
-        pass
+    def get_urls(dl_time):
+        return []

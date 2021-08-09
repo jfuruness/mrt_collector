@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 from multiprocessing import cpu_count
 import os
@@ -38,7 +39,11 @@ class MRTCollector:
                 "ninja"]
         helper_funcs.run_cmds(cmds)
             
-    def run(self, IPv4=True, IPv6=False, sources=Source.sources.copy()):
+    def run(self,
+            dl_time=None,
+            IPv4=True,
+            IPv6=False,
+            sources=Source.sources.copy()):
         """Downloads and parses the latest RIB dumps from sources.
 
         First all downloading is done so as to efficiently multiprocess
@@ -48,7 +53,7 @@ class MRTCollector:
         """
 
         # Gets urls of all mrt files needed
-        urls = self._get_mrt_urls(sources)
+        urls = self._get_mrt_urls(sources, dl_time)
         logging.debug(f"Total files {len(urls)}")
         # Get downloaded instances of mrt files using multithreading
         mrt_files = self._multiprocess_download(urls)
@@ -56,13 +61,19 @@ class MRTCollector:
         self._multiprocess_parse_dls(mrt_files)
         self._filter_and_clean_up_db(IPV4, IPV6)
 
-    def _get_mrt_urls(self, sources) -> list:
+    def _get_mrt_urls(self, sources, dl_time) -> list:
         """Gets caida and iso URLs, start and end should be epoch"""
 
         logging.info(f"Sources: {[x.__class__.__name__ for x in sources]}")
+        if dl_time is None:
+            dl_time = datetime.utcnow()
+            # Make twos day before at 00am so that all collectors work
+            # Some save every 2hrs. Some save every day. Some save once/day
+            dl_time = dl_time.replace(day=dl_time.day - 2, hour=0, second=0)
+
         urls = list()
         for source in sources:
-            urls.extend(source.get_urls())
+            urls.extend(source.get_urls(dl_time))
         return urls
 
     def _multiprocess_download(self, dl_threads: int, urls: list) -> list:

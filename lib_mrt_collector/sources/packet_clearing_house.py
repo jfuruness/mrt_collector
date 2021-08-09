@@ -8,5 +8,5 @@ class PacketClearingHouse(Source):
     value = 2
 
     @staticmethod
-    def get_urls():
-        pass
+    def get_urls(dl_time):
+        return []
