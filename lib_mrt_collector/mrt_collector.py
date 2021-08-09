@@ -1,5 +1,10 @@
 import logging
 from multiprocessing import cpu_count
+import os
+
+from lib_utils import helper_funcs
+
+from .sources import Source
 
 class MRTCollector:
     """This class downloads, parses, and stores MRT Rib dumps
@@ -20,9 +25,11 @@ class MRTCollector:
             return
 
         logging.warning("Installing MRT Collector deps now")
-        cmds = ["sudo apt-get install -y ninja meson",
-                "sudo apt-get install -y libbz2-dev liblzma-dev doxygen",
-                "cd tmp",
+        # Run separately to make errors easier to debug
+        cmds = ["sudo apt-get install -y ninja-build meson",
+                "sudo apt-get install -y libbz2-dev liblzma-dev doxygen"]
+        helper_funcs.run_cmds(cmds),
+        cmds = ["cd /tmp",
                 "rm -rf ubgpsuite",
                 "git clone https://git.doublefourteen.io/bgp/ubgpsuite.git",
                 "cd ubgpsuite",
@@ -31,7 +38,7 @@ class MRTCollector:
                 "ninja"]
         helper_funcs.run_cmds(cmds)
             
-    def run(self, IPv4=True, IPv6=False, sources=list(MRTSources)):
+    def run(self, IPv4=True, IPv6=False, sources=Source.sources.copy()):
         """Downloads and parses the latest RIB dumps from sources.
 
         First all downloading is done so as to efficiently multiprocess
@@ -49,40 +56,14 @@ class MRTCollector:
         self._multiprocess_parse_dls(mrt_files)
         self._filter_and_clean_up_db(IPV4, IPV6)
 
-########################
-### URL Helper Functions ###
-########################
-
-    def _get_mrt_urls(self, sources=list(MRTSources) -> list:
+    def _get_mrt_urls(self, sources) -> list:
         """Gets caida and iso URLs, start and end should be epoch"""
 
-        logging.info(f"Getting MRT urls for {[x.name for x in sources]}")
+        logging.info(f"Sources: {[x.__class__.__name__ for x in sources]}")
         urls = list()
-        if MRTSources.RIPE in sources:
-            urls += self._get_ripe_urls()
-        if MRTSources.ROUTE_VIEWS in sources:
-            urls += self._get_route_views_urls()
-        if MRTSources.PCH in sources:
-            urls += self._get_pch_urls()
+        for source in sources:
+            urls.extend(source.get_urls())
         return urls
-
-    def _get_ripe_urls(self):
-        """Gets RIPE URLs for MRT RIB dumps"""
-
-        tags = helper_funcs.get_tags(url, "a")
-        input(tags)
-
-    def _get_route_views_urls(self):
-        """Gets Route Views URLs for MRT RIB dumps"""
-
-        tags = helper_funcs.get_tags(url, "a")
-        input(tags)
-
-    def _get_pch_urls(self):
-        """Gets Packet Clearing House URLs for MRT RIB dumps"""
-
-        tags = helper_funcs.get_tags(url, "a")
-        input(tags)
 
     def _multiprocess_download(self, dl_threads: int, urls: list) -> list:
         """Downloads MRT files in parallel.
@@ -142,10 +123,3 @@ class MRTCollector:
             # VACUUM ANALYZE to clean up data and create statistics on table
             # This is needed for better index creation and queries later on
             _ann_table.cursor.execute("VACUUM ANALYZE;")
-
-    def parse_files(self, **kwargs):
-        warnings.warn(("MRT_Parser.parse_files is depreciated. "
-                       "Use MRT_Parser.run instead"),
-                      DeprecationWarning,
-                      stacklevel=2)
-        self.run(self, **kwargs)
