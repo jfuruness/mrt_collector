@@ -1,4 +1,5 @@
 from datetime import datetime
+import logging
 
 from lib_utils import helper_funcs
 
@@ -12,8 +13,10 @@ class Isolario(Source):
     value = 3
 
     @staticmethod
-    def get_urls(t: datetime):
+    def get_urls(t: datetime) -> list:
+        """Gets URLs of MRT RIB dumps for Isolario"""
 
+        logging.debug("Getting Isolario URLs")
         # Inspired by code written by Matt Jaccino originally
 
         assert t.hour % 2 == 0, "Isolario only downloads ribs every 2hrs"
