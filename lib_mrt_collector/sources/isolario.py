@@ -1,7 +1,7 @@
 from datetime import datetime
 import logging
 
-from lib_utils import helper_funcs
+from lib_utils.helper_funcs import get_hrefs
 
 from .source import Source
 
@@ -21,7 +21,6 @@ class Isolario(Source):
 
         assert t.hour % 2 == 0, "Isolario only downloads ribs every 2hrs"
         # Gets all the collectors urls
-        collectors = [Isolario.url + x["href"] for x in
-                      helper_funcs.get_tags(Isolario.url, 'a')][5:]
+        collectors = [Isolario.url + x for x in get_hrefs(Isolario.url)][5:]
 
         return [t.strftime("{x}%Y_%m/rib.%Y%m%d.%H00.bz2") for x in collectors]

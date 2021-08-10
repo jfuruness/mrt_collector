@@ -9,4 +9,5 @@ class RouteViews(Source):
 
     @staticmethod
     def get_urls(dl_time):
+        raise NotImplementedError
         return []

@@ -1,7 +1,7 @@
 from datetime import datetime
 import logging
 
-from lib_utils import helper_funcs
+from lib_utils.helper_funcs import get_hrefs, get_tags
 
 from .source import Source
 
@@ -36,12 +36,9 @@ class PCH(Source):
     def _get_collectors(collector_page_url) -> list:
         """Returns all the collector links at the following page"""
 
-        tags = helper_funcs.get_tags(collector_page_url, "a")
-        # Ik I could do this all on one line, but this is readable
-        # Remove all tags that are not links
-        tags = [x for x in tags if x.get("href") is not None]
-        # Convert to href, keep tags that are links to folders
-        links = [x["href"] for x in tags if x["href"][-1] == "/"]
+        # Get hrefs that are folders
+        links = [x for x in get_hrefs(collector_page_url) if x[-1] == "/"]
+
         filtered_links = []
         # Only save links that can be seen after this specific href
         # If this looks flimsy it's fine, we validate the number of links
@@ -58,7 +55,7 @@ class PCH(Source):
         """Validate that the proper number of collector links were found"""
 
         # Make sure the total links are equal to the filtered links
-        total_links = helper_funcs.get_tags(collector_page_url, "small")
+        total_links = get_tags(collector_page_url, "small")
         # [198 folders]
         total_links = int(total_links[0].text.split(" ")[0])
 

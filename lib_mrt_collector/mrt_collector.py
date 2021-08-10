@@ -16,13 +16,15 @@ class MRTCollector:
     fixed
     """
 
+    bgpgrep_location = "/usr/bin/bgpgrep"
+
     def __init__(self, dl_threads=cpu_count() * 4, parse_procs=cpu_count()):
         self.dl_threads = dl_threads
         self.parse_procs = parse_procs
         self._install_deps()
 
     def _install_deps(self):
-        if os.path.exists("/usr/bin/bgpgrep"):
+        if os.path.exists(self.bgpgrep_location):
             return
 
         logging.warning("Installing MRT Collector deps now")
@@ -36,7 +38,8 @@ class MRTCollector:
                 "cd ubgpsuite",
                 "meson build",
                 "cd build",
-                "ninja"]
+                "ninja",
+                f"sudo cp bgpgrep.1 {self.bgpgrep_location}"]
         helper_funcs.run_cmds(cmds)
             
     def run(self,
