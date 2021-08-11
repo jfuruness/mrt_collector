@@ -2,10 +2,15 @@ from datetime import datetime
 import logging
 from multiprocessing import cpu_count
 import os
+import re
+from urllib.parse import quote
 
-from lib_utils import helper_funcs
+from tqdm import tqdm
+
+from lib_utils import helper_funcs, file_funcs
 
 from .sources import Source
+from .tools import BGPGrep
 
 class MRTCollector:
     """This class downloads, parses, and stores MRT Rib dumps
@@ -17,36 +22,32 @@ class MRTCollector:
     """
 
     bgpgrep_location = "/usr/bin/bgpgrep"
+    # In /ssd for speed
+    base_mrt_path = "/ssd/mrts_raw"
+    base_csv_path = "/ssd/csvs"
 
-    def __init__(self, dl_threads=cpu_count() * 4, parse_procs=cpu_count()):
-        self.dl_threads = dl_threads
+    def __init__(self, dl_procs=cpu_count() * 4, parse_procs=cpu_count()):
+        self.dl_procs = dl_procs
         self.parse_procs = parse_procs
+        # Make base folders
+        for path in [self.base_mrt_path, self.base_csv_path]:
+            if not os.path.exists(path):
+                file_funcs.makedirs(path)
+        # Make currently used folders
+        now = str(datetime.now()).replace(" ", "")
+        self.mrt_path = os.path.join(self.base_mrt_path, now)
+        self.csv_path = os.path.join(self.base_csv_path, now)
+        for path in [self.mrt_path, self.csv_path]:
+            file_funcs.makedirs(path)
+        # Install dependencies
         self._install_deps()
 
-    def _install_deps(self):
-        if os.path.exists(self.bgpgrep_location):
-            return
-
-        logging.warning("Installing MRT Collector deps now")
-        # Run separately to make errors easier to debug
-        cmds = ["sudo apt-get install -y ninja-build meson",
-                "sudo apt-get install -y libbz2-dev liblzma-dev doxygen"]
-        helper_funcs.run_cmds(cmds),
-        cmds = ["cd /tmp",
-                "rm -rf ubgpsuite",
-                "git clone https://git.doublefourteen.io/bgp/ubgpsuite.git",
-                "cd ubgpsuite",
-                "meson build",
-                "cd build",
-                "ninja",
-                f"sudo cp bgpgrep.1 {self.bgpgrep_location}"]
-        helper_funcs.run_cmds(cmds)
-            
     def run(self,
             dl_time=None,
             IPv4=True,
             IPv6=False,
-            sources=Source.sources.copy()):
+            sources=Source.sources.copy(),
+            tool=BGPGrep):
         """Downloads and parses the latest RIB dumps from sources.
 
         First all downloading is done so as to efficiently multiprocess
@@ -55,14 +56,35 @@ class MRTCollector:
         In depth explanation in readme
         """
 
+        urls, mrt_paths, csv_paths = self._get_mrt_data(sources, dl_time)
+        try:
+            # Get downloaded instances of mrt files using multithreading
+            self._download(urls, mrt_paths)
+            # Parses files using multiprocessing in descending order by size
+            self._parse_to_csvs(mrt_paths, csv_paths)
+            input("Done. Press enter to iterate over csvs and split lines")
+            for fname in tqdm(csv_paths, total=len(csv_paths)):
+                with open(fname, "r") as f:
+                    for l in f:
+                        l.split("|")
+            input("Check how long it takes to iterate over CSV files")
+            input("Do post processing here")
+        # So much space, always clean up
+        finally:
+            file_funcs.delete_paths([self.mrt_path, self.csv_path])
+
+    def _get_mrt_data(self, sources: list, dl_time: datetime):
+        """Gets MRT URLs for downloading, and their associated paths"""
+
         # Gets urls of all mrt files needed
         urls = self._get_mrt_urls(sources, dl_time)
-        logging.debug(f"Total files {len(urls)}")
-        # Get downloaded instances of mrt files using multithreading
-        mrt_files = self._multiprocess_download(urls)
-        # Parses files using multiprocessing in descending order by size
-        self._multiprocess_parse_dls(mrt_files)
-        self._filter_and_clean_up_db(IPV4, IPV6)
+        # File names. Encode URL, then replace slashes
+        fnames = [quote(url).replace("/", "_") for url in urls]
+        assert len(set(fnames)) == len(fnames), "file naming scheme is wrong"
+        mrt_paths = [os.path.join(self.mrt_path, x) for x in fnames]
+        csv_paths = [os.path.join(self.csv_path, x) for x in fnames]
+
+        return urls, mrt_paths, csv_paths
 
     def _get_mrt_urls(self, sources, dl_time) -> list:
         """Gets caida and iso URLs, start and end should be epoch"""
@@ -79,61 +101,32 @@ class MRTCollector:
             urls.extend(source.get_urls(dl_time))
         return urls
 
-    def _multiprocess_download(self, dl_threads: int, urls: list) -> list:
-        """Downloads MRT files in parallel.
+    def _download(self, urls: list, paths: list) -> list:
+        """Downloads MRT files in parallel"""
 
-        In depth explanation at the top of the file, dl=download.
-        """
+        with helper_funcs.Pool(processes=self.dl_procs) as pool:
+            # Multiprocess call while displaying to a progress bar
+            list(tqdm(pool.imap(file_funcs.download_file, urls, paths),
+                      total=len(urls),
+                      desc="Downloading MRTs"))
 
-        # Creates an mrt file for each url
-        mrt_files = [MRT_File(self.path, self.csv_dir, url, i + 1)
-                     for i, url in enumerate(urls)]
+    def _parse_to_csvs(self, mrt_paths, csv_paths, tool):
+        """Processes files in parallel and inserts into db"""
 
-        with utils.progress_bar("Downloading MRTs, ", len(mrt_files)):
-            # Creates a dl pool with 4xCPUs since it is I/O based
-            with utils.Pool(dl_threads, 4, "download") as dl_pool:
+        # Make sure to install deps
+        tool.install_deps()
+        # Sort the paths to parse the largest first
+        paths = self._sorted_paths(mrt_paths)
+        with helper_funcs.Pool(processes=self.parse_procs) as pool:
+            # Multiprocess call while displaying to a progress bar
+            list(tqdm(pool.map(tool.parse, paths, csv_paths),
+                      total=len(csv_paths),
+                      desc="Parsing MRTs"))
 
-                # Download files in parallel
-                # Again verify is False because Isolario
-                dl_pool.map(lambda f: utils.download_file(
-                        f.url, f.path, f.num, len(urls),
-                        f.num/5, progress_bar=True), mrt_files, verify=False)
-        return mrt_files
+    def _sorted_paths(self, mrt_paths):
+        """Returns MRT paths in sorted order from largest to smallest"""
 
-    def _multiprocess_parse_dls(self,
-                                p_threads: int,
-                                mrt_files: list,
-                                bgpscanner: bool):
-        """Multiprocessingly(ooh cool verb, too bad it's not real)parse files.
-
-        In depth explanation at the top of the file.
-        dl=download, p=parse.
-        """
-
-        with utils.progress_bar("Parsing MRT Files,", len(mrt_files)):
-            with utils.Pool(p_threads, 1, "parsing") as p_pool:
-                # Runs the parsing of files in parallel, largest first
-                p_pool.map(lambda f: f.parse_file(bgpscanner),
-                           sorted(mrt_files, reverse=True))
-
-    def _filter_and_clean_up_db(self,
-                                IPV4: bool,
-                                IPV6: bool,
-                                delete_duplicates=False):
-        """This function filters mrt data by IPV family and cleans up db
-
-        First the database is connected. Then IPV4 and/or IPV6 data is
-        removed. Aftwards the data is vaccuumed and analyzed to get
-        statistics for the table for future queries, and a checkpoint is
-        called so as not to lose RAM.
-        """
-
-        with MRT_Announcements_Table() as _ann_table:
-            # First we filter by IPV4 and IPV6:
-            _ann_table.filter_by_IPV_family(IPV4, IPV6)
-            logging.info("vaccuming and checkpoint")
-            # A checkpoint is run here so that RAM isn't lost
-            _ann_table.cursor.execute("CHECKPOINT;")
-            # VACUUM ANALYZE to clean up data and create statistics on table
-            # This is needed for better index creation and queries later on
-            _ann_table.cursor.execute("VACUUM ANALYZE;")
+        sizes = [os.path.getsize(x) for x in mrt_paths]
+        return [x[0] for x in sorted(zip(mrt_paths, sizes),
+                                     reverse=True,
+                                     key=lambda x: x[1])]

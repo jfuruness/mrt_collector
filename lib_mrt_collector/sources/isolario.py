@@ -21,6 +21,6 @@ class Isolario(Source):
 
         assert t.hour % 2 == 0, "Isolario only downloads ribs every 2hrs"
         # Gets all the collectors urls
-        collectors = [Isolario.url + x for x in get_hrefs(Isolario.url)][5:]
+        urls = [Isolario.url + x for x in get_hrefs(Isolario.url)][5:]
 
-        return [t.strftime("{x}%Y_%m/rib.%Y%m%d.%H00.bz2") for x in collectors]
+        return [t.strftime(f"{x}%Y_%m/rib.%Y%m%d.%H00.bz2") for x in urls]
