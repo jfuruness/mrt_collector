@@ -39,8 +39,6 @@ class MRTCollector:
         self.csv_path = os.path.join(self.base_csv_path, now)
         for path in [self.mrt_path, self.csv_path]:
             file_funcs.makedirs(path)
-        # Install dependencies
-        self._install_deps()
 
     def run(self,
             dl_time=None,
@@ -61,7 +59,7 @@ class MRTCollector:
             # Get downloaded instances of mrt files using multithreading
             self._download(urls, mrt_paths)
             # Parses files using multiprocessing in descending order by size
-            self._parse_to_csvs(mrt_paths, csv_paths)
+            self._parse_to_csvs(mrt_paths, csv_paths, tool)
             input("Done. Press enter to iterate over csvs and split lines")
             for fname in tqdm(csv_paths, total=len(csv_paths)):
                 with open(fname, "r") as f:
