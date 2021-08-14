@@ -1,4 +1,4 @@
-from lib_utils import helper_funcs
+from lib_utils.helper_funcs import run_cmds
 
 from .tool import Tool
 
@@ -21,10 +21,10 @@ class BGPGrep(Tool):
                 "cd build",
                 "ninja",
                 f"sudo cp bgpgrep {BGPGrep.install_path}"]
-        helper_funcs.run_cmds(cmds)
+        run_cmds(cmds)
 
     @staticmethod
-    def parse(path, csv_path):
+    def parse(mrt):
         """Parses MRT file in path to CSV path"""
 
-        helper_funcs.run_cmds(f"{BGPGrep.install_path} -o {csv_path} {path}")
+        run_cmds(f"{BGPGrep.install_path} -o {mrt.csv_path} {mrt.mrt_path}")
