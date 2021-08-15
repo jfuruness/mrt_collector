@@ -11,11 +11,12 @@ as_set_count = 0
 class MRTFile:
     """This class contains functionality associated with MRT Files"""
 
-    def __init__(self, url, source, mrt_dir, csv_dir, parsed_dir):
+    def __init__(self, url, source, mrt_dir, csv_dir, prefix_dir, parsed_dir):
         self.url = url
         self.source = source
         self.mrt_dir = mrt_dir
         self.csv_dir = csv_dir
+        self.prefix_dir = prefix_dir
         self.parsed_dir = parsed_dir
 
     def __lt__(self, other):
@@ -41,6 +42,12 @@ class MRTFile:
         """Downloads raw MRT file"""
 
         file_funcs.download_file(self.url, self.mrt_path)
+
+    def get_prefixes(self):
+        """Gets all prefixes within the MRT files"""
+
+        bash = f'cut -d "|" -f 2 {self.csv_path} > {self.prefix_path}'
+        helper_funcs.run_cmds(bash)
 
     def parse(self, po_metadata):
         """Parses MRT file and adds metadata
@@ -98,7 +105,9 @@ class MRTFile:
             writer = csv.writer(wf, delimiter="\t")
             #writer = csv.DictWriter(wf, delimiter="\t", fieldnames=wfields, extrasaction='ignore')
             from tqdm import tqdm
-            for ann in tqdm(reader, desc=self._url_to_path()):
+            from datetime import datetime
+            start = datetime.now()
+            for ann in reader:
                 (_type,
                        prefix,
                        as_path,
@@ -149,13 +158,13 @@ class MRTFile:
                 #for k in ["type", "next_hop", "bgp_type", "peer", "asn_32b"]:
                 #    del ann[k]
                 wfields = [prefix,
-                       as_path,
-                       atomic_aggregate,
-                       aggregator,
-                       communities,
-                       timestamp,
-                       origin,
-                       collector]
+                           as_path,
+                           atomic_aggregate,
+                           aggregator,
+                           communities,
+                           timestamp,
+                           origin,
+                           collector]
 
 
                 # Adding:
@@ -169,13 +178,17 @@ class MRTFile:
                 wfields.extend(meta)
                 # Saving rows to a list then writing is slower
                 writer.writerow(wfields)
+            print((datetime.now() - start).total_seconds() / 60, "minutes", self._url_to_path())
                 
 ######################
 ### Path functions ###
 ######################
 
-    def _url_to_path(self):
-        return quote(self.url).replace("/", "_")
+    def _url_to_path(self, ext=""):
+        path = quote(self.url).replace("/", "_")
+        if ext:
+            path = path.replace(".gz", ext).replace(".bz2", ext)
+        return path
 
     @property
     def mrt_path(self):
@@ -183,15 +196,16 @@ class MRTFile:
 
     @property
     def csv_path(self):
-        path_end = self._url_to_path()
-        for ext in [".bz2", ".gz"]:
-            path_end = path_end.replace(ext, ".csv")
-        return path.join(self.csv_dir, path_end)
+        return path.join(self.csv_dir, self._url_to_path(ext=".csv"))
+
+    @property
+    def prefix_path(self):
+        return path.join(self.prefix_dir, self._url_to_path(ext=".txt"))
 
     @property
     def parsed_path(self):
-        return path.join(self.parsed_dir, self._url_to_path())
+        return path.join(self.parsed_dir, self._url_to_path(ext=".csv"))
 
     @property
     def dirs(self):
-        return [self.mrt_dir, self.csv_dir, self.parsed_dir]
+        return [self.mrt_dir, self.csv_dir, self.prefix_dir, self.parsed_dir]
