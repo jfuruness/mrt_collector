@@ -66,9 +66,13 @@ class MRTCollector:
             delete_paths([self.mrt_path])
             # Get all prefixes so you can assign prefix ids,
             # which must be done sequentially
-            prefix_ids: dict = self._get_prefix_ids(mrt_files)
+            uniq_prefixes: list = self._get_uniq_prefixes(mrt_files)
             # Parse CSVs. Must be done sequentially for block/prefix/origin id
-            self._parse_csvs(mrt_files, max_block_size, cpus=parse_cpus - 1)
+            self._parse_csvs(mrt_files,
+                             max_block_size,
+                             uniq_prefixes,
+                             cpus=parse_cpus - 1)
+            input("Do something with the files before they get cleaned up?")
         # So much space, always clean up
         finally:
             delete_paths(mrt_files[0].dirs)
@@ -126,7 +130,7 @@ class MRTCollector:
         # Sort MRT and CSV paths to parse the largest first
         mp_call(tool.parse, [sorted(mrt_files)], "Extracting", cpus=parse_cpus)
 
-    def _get_prefix_ids(self, mrt_files, parse_cpus=cpu_count()):
+    def _get_uniq_prefixes(self, mrt_files, parse_cpus=cpu_count()):
         """Gets all prefixes and assigns prefix IDs
 
         This must be done sequentially, and is done here so that other things
@@ -141,16 +145,26 @@ class MRTCollector:
         prefix_fname = "all_prefixes.txt"
         prefix_path = os.path.join(mrt_files[0].prefix_dir, prefix_fname)
         parsed_path = os.path.join(mrt_files[0].prefix_dir, "parsed.txt")
-        delete_paths(prefix_path)
+        delete_paths([prefix_path, parsed_path])
+        # awk is fastest tool for unique lines
+        # it uses a hash map while all others require sort
+        # https://unix.stackexchange.com/a/128782/477240
+        # cat is also the fastest way to combine files
+        # https://unix.stackexchange.com/a/118248/477240
         cmds = [f"cd {mrt_files[0].prefix_dir}",
                 f"cat ./* >> {prefix_fname}",
                 f"awk '!x[$0]++' {prefix_fname} > {parsed_path}"]
+        print("Extracting prefix IDs")
         run_cmds(cmds)
-        with open(parsed, "r") as f:
-            return {x.strip(): i for i, x in enumerate(f)}
+        with open(parsed_path, "r") as f:
+            return [x.strip() for x in f]
                 
 
-    def _parse_csvs(self, mrt_files, max_block_size, parse_cpus=cpu_count()-1):
+    def _parse_csvs(self,
+                    mrt_files,
+                    max_block_size,
+                    uniq_prefixes: list,
+                    parse_cpus=cpu_count()-1):
         """Parses all CSVs
 
         Note that if cpu count is more cpus than you have on the machine,
@@ -167,17 +181,9 @@ class MRTCollector:
         """
 
         roa_checker = None
-        #    mp_call(MRTFile.parse, [sorted(mrt_files), [meta_obj] * len(mrt_files)], "metadata", cpus=parse_cpus)
-        #meta_obj = manager.POMetadata(roa_checker,
-        #                              max_block_size)
-                                      #prefix_ids,
-                                      #prefix_ids_lock,
-                                      #origin_ids,
-                                      #origin_ids_lock,
-                                      #po_meta,
-                                      #po_lock)
-        from datetime import datetime
-        print(datetime.now())
-        #for mrt_file in mrt_files:#tqdm(reversed(mrt_files), total=len(mrt_files), desc="MRT meta"):
-        #     mrt_file.parse(meta_obj)
+        meta = POMetadata(uniq_prefixes, max_block_size, roa_checker)
+        mp_call(MRTFile.parse,
+                [sorted(mrt_files), [meta] * len(mrt_files)],
+                "metadata", 
+                cpus=parse_cpus)
         print(datetime.now())

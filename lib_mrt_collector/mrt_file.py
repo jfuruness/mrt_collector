@@ -46,7 +46,11 @@ class MRTFile:
     def get_prefixes(self):
         """Gets all prefixes within the MRT files"""
 
-        bash = f'cut -d "|" -f 2 {self.csv_path} > {self.prefix_path}'
+        # unique instead of awk here because it's sometimes ribs in
+        # so may prefix origin pairs are next to each other
+        # By adding uniq here. the mrt_collector._get_prefix_ids has a 3x speedup
+        # Even the bash cmd speeds up because it doesn't write as much
+        bash = f'cut -d "|" -f 2 {self.csv_path} | uniq > {self.prefix_path}'
         helper_funcs.run_cmds(bash)
 
     def parse(self, po_metadata):
