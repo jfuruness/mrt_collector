@@ -53,7 +53,7 @@ class POMetadata:
     def _get_roa_validity(self, prefix: str, origin: int):
         """returns roa validity"""
 
-        if self.roas:
+        if self.roa_checker:
             return self.roas.get_validity(ip_network(prefix), origin).value
         else:
             # NOTE: precompute the prefixes!! Only compute the origin shit!
