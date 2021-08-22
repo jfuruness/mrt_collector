@@ -27,4 +27,4 @@ class BGPGrep(Tool):
     def parse(mrt):
         """Parses MRT file in path to CSV path"""
 
-        run_cmds(f"{BGPGrep.install_path} -o {mrt.csv_path} {mrt.mrt_path}")
+        run_cmds(f"{BGPGrep.install_path} -o {mrt.dumped_path} {mrt.raw_path}")

@@ -10,16 +10,19 @@ class POMetadata:
                  "next_block_id", "max_block_size", "next_prefix_block_id",
                  "po_meta"]
 
-    def __init__(self, uniq_prefixes, max_block_size, roa_checker):
+    def __init__(self, uniq_prefixes, max_block_size, roas_path):
         self.prefix_ids = dict()
         self.po_meta = dict()
-        self.roa_checker = roa_checker
+        self.roa_checker = self._init_roas_checker(roas_path)
         self.next_prefix_id = 0
         self.next_block_id = 0
         self.max_block_size = max_block_size
         self.next_prefix_block_id = 0
         for prefix in uniq_prefixes:
             self._add_prefix(prefix)
+
+    def _init_roas_checker(self, roas_path):
+        input("read in columns dynamically, make a dict of just prefix input, etc")
  
     def get_meta(self, prefix: str, origin: int):
         """Adds a prefix if it was not already. Returns prefix metadata"""
