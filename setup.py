@@ -21,6 +21,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         'ip_address',
+        'pandas',
         'tqdm',
     ],
     classifiers=[

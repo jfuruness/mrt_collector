@@ -78,9 +78,9 @@ class MRTCollector(Base):
             delete_paths([self.raw_dir])
             # Get all prefixes so you can assign prefix ids,
             # which must be done sequentially
-            uniq_prefixes: list = self._get_uniq_prefixes(mrt_files)
+            prefix_path: list = self._get_uniq_prefixes(mrt_files)
             # Parse CSVs. Must be done sequentially for block/prefix id
-            self._parse_dumps(mrt_files, max_block_size, uniq_prefixes)
+            self._parse_dumps(mrt_files, max_block_size, prefix_path)
         # So much space, always clean up
         finally:
             _dirs = [x._dir for x in [self,
@@ -143,25 +143,24 @@ class MRTCollector(Base):
                       "Getting prefixes")
 
         prefix_fname = "all_prefixes.txt"
-        prefix_path = os.path.join(mrt_files[0].prefix_dir, prefix_fname)
-        parsed_path = os.path.join(mrt_files[0].prefix_dir, "parsed.txt")
+        prefix_path = os.path.join(self.prefix_dir, prefix_fname)
+        parsed_path = os.path.join(self.prefix_dir, "parsed.txt")
         delete_paths([prefix_path, parsed_path])
         # awk is fastest tool for unique lines
         # it uses a hash map while all others require sort
         # https://unix.stackexchange.com/a/128782/477240
         # cat is also the fastest way to combine files
         # https://unix.stackexchange.com/a/118248/477240
-        cmds = [f"cd {mrt_files[0].prefix_dir}",
+        cmds = [f"cd {self.prefix_dir}",
                 f"cat ./* >> {prefix_fname}",
                 f"awk '!x[$0]++' {prefix_fname} > {parsed_path}"]
         logging.info("Extracting prefix IDs")
         run_cmds(cmds)
-        # Return a list of prefixes
-        with open(parsed_path, "r") as f:
-            return [x.strip() for x in f]
-                
+        print(parsed_path)
+        # Returns a path here so that I can skip this function for development
+        return parsed_path
 
-    def _parse_dumps(self, mrt_files, max_block_size, uniq_prefixes: list):
+    def _parse_dumps(self, mrt_files, max_block_size, uniq_prefixes_path):
         """Parses all CSVs
 
         Note that if cpu count is = cpus than you have on the machine,
@@ -178,8 +177,39 @@ class MRTCollector(Base):
         is too slow even with sed or perl
         """
 
-        raise NotImplementedError
-        meta = POMetadata(uniq_prefixes, max_block_size, roas_path)
-        mp_call(MRTFile.parse,
-                [sorted(mrt_files), [meta] * len(mrt_files)],
-                "metadata",)
+        # Return a list of prefixes
+        # Reads them in here so I can skip the uniq prefixes func for dev
+        with open(uniq_prefixes_path, "r") as f:
+            uniq_prefixes = [x.strip() for x in f]
+        meta = POMetadata(uniq_prefixes, max_block_size, self.roa_collector.tsv_path)
+        # Later make this not hardcoded
+        # https://www.iana.org/assignments/iana-as-numbers-special-registry/iana-as-numbers-special-registry.xhtml
+        # https://www.iana.org/assignments/as-numbers/as-numbers.xhtml
+        logging.warning("Make non public asns not hardcoded")
+        non_public_asns = set([0, 112, 23456, 65535]
+                              + list(range(64496, 64511))
+                              + list(range(64512, 65534))
+                              + list(range(65536, 65551))
+                              # Unallocated
+                              + list(range(147770, 196607))
+                              + list(range(213404, 262143))
+                              + list(range(272797, 327679))
+                              + list(range(329728, 393215)))
+        max_asn = 401308
+
+        print("read caida df and pass to parse funcs. Do the same with iana")
+        #for mrt_file in sorted(mrt_files):
+        #    mrt_file.parse(meta)
+        #input("remove above after caida and iana for mp")
+        logging.info("logging about to shutdown")
+        logging.shutdown()
+        self.parse_mp(MRTFile.parse,
+                      [sorted(mrt_files),
+                       [meta] * len(mrt_files),
+                       [non_public_asns] * len(mrt_files),
+                       [max_asn] * len(mrt_files),
+                       ],
+                      "Adding metadata to MRTs")
+        input("modify parsing to write to into blocks in parsing (each thread gets own file")
+        input("concatenate all the files for each chunk into one")
+        input("optionally insert into the database lordy")

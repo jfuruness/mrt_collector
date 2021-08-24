@@ -3,6 +3,8 @@ import logging
 from os import path
 from urllib.parse import quote
 
+from ipaddress import ip_network
+
 from lib_utils import helper_funcs, file_funcs
 
 
@@ -35,8 +37,9 @@ class MRTFile:
                 other_path = getattr(other, path_attr) 
                 # If both parsed paths exist
                 if path.exists(self_path) and path.exists(other_path):
-                    # Check the file size
-                    if path.getsize(self_path) < path.getsize(other_path):
+                    # Check the file size, sort in descending order
+                    # That way largest files are done first
+                    if path.getsize(self_path) > path.getsize(other_path):
                         return True
                     else:
                         return False
@@ -58,7 +61,7 @@ class MRTFile:
         cmd = f'cut -d "|" -f 2 {self.dumped_path} | uniq > {self.prefix_path}'
         helper_funcs.run_cmds(cmd)
 
-    def parse(self, po_metadata):
+    def parse(self, po_metadata, non_public_asns: set, max_asn: int):
         """Parses MRT file and adds metadata
 
         Things I've tried to make this faster that didn't work
@@ -93,6 +96,12 @@ class MRTFile:
                  timestamp,
                  asn_32b) = ann
 
+                try:
+                    prefix_obj = ip_network(prefix)
+                # This occurs whenever host bits are set
+                except ValueError:
+                    continue
+
                 if _type != "=":
                     continue
  
@@ -109,6 +118,10 @@ class MRTFile:
                 if not as_path:
                     continue
                 _as_path = as_path.split(" ")
+                path_data = self._get_path_data(_as_path,
+                                                non_public_asns,
+                                                max_asn,
+                                                set())
                 origin = _as_path[-1]
                 collector = _as_path[0]
                 if aggregator:
@@ -121,8 +134,7 @@ class MRTFile:
                 # prefix_block_id
                 # origin_id
                 # NOTE: This is a shallow copy for speed! Do not modify!
-                meta = po_metadata.get_meta(prefix, int(origin))
- 
+                meta = po_metadata.get_meta(prefix, prefix_obj, int(origin))
                 # NOT SAVING:
                 # type of announcement
                 # next_hop - an ipaddress
@@ -132,9 +144,6 @@ class MRTFile:
                 # asn_32_bit - 1 if yes 0 if no
                 # Feel free to add these later, it won't break things
                 # Just also add them to the table
-                # Taken care of in dict reader initialize (ignore extras)
-                #for k in ["type", "next_hop", "bgp_type", "peer", "asn_32b"]:
-                #    del ann[k]
                 wfields = (prefix,
                            as_path,
                            atomic_aggregate,
@@ -143,11 +152,39 @@ class MRTFile:
                            timestamp,
                            origin,
                            collector,
+                           *path_data,
                            *meta)
-
 
                 # Saving rows to a list then writing is slower
                 writer.writerow(wfields)
+
+    def _get_path_data(self, as_path, non_public_asns, max_asn, ixps):
+        """Returns as path data"""
+
+        prepending = False
+        loop = False
+        ixp = False
+
+        as_path_set = set()
+        last_asn = None
+        last_non_ixp = None
+        for asn in as_path:
+            if last_asn == asn:
+                prepending = True
+                loop = True
+            if asn in as_path_set:
+                loop = True
+            as_path_set.add(asn)
+            last_asn = asn
+            if asn in ixps:
+                ixp = True
+            else:
+                last_non_ixp = asn
+            
+        # doesn't follow Gao rexford according to Caida
+        # Contains ASNs that Caida doesn't have (that aren't non public)
+        # path poisoning by reserved asn, non public asn, or clique being split
+        return [int(prepending), int(loop), int(ixp), int(False), int(False), int(False)]
 
     def _url_to_path(self, ext=""):
         _path = quote(self.url).replace("/", "_")
