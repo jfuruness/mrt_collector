@@ -67,7 +67,7 @@ class POMetadata:
             # Prefix metadata
             # Using tuples because managers have trouble with nested mutables
             # And they are also faster than lists (slightly)
-            meta = (*self.prefix_ids[prefix], validity.value)
+            meta = (validity.value, *self.prefix_ids[prefix])
             self.po_meta[(prefix, origin)] = meta
         
         return self.po_meta[(prefix, origin)]

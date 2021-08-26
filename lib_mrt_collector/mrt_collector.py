@@ -81,8 +81,10 @@ class MRTCollector(Base):
             prefix_path: list = self._get_uniq_prefixes(mrt_files)
             # Parse CSVs. Must be done sequentially for block/prefix id
             self._parse_dumps(mrt_files, max_block_size, prefix_path)
-        # So much space, always clean up
-        finally:
+            # Remove unnessecary dirs
+            delete_paths([self.dumped_dir, self.prefix_dir])
+        # So much space, always clean up upon error
+        except:
             _dirs = [x._dir for x in [self,
                                       self.roa_collector,
                                       self.caida_collector,
@@ -202,6 +204,9 @@ class MRTCollector(Base):
         #    mrt_file.parse(meta)
         #input("remove above after caida and iana for mp")
         logging.info("logging about to shutdown")
+        # Done here to avoid conflict when creating dirs
+        for i in range(meta.next_block_id + 1):
+            makedirs(os.path.join(self.parsed_dir, str(i)))
         logging.shutdown()
         self.parse_mp(MRTFile.parse,
                       [sorted(mrt_files),
@@ -210,6 +215,5 @@ class MRTCollector(Base):
                        [max_asn] * len(mrt_files),
                        ],
                       "Adding metadata to MRTs")
-        input("modify parsing to write to into blocks in parsing (each thread gets own file")
-        input("concatenate all the files for each chunk into one")
+        input("concatenate all the files for each chunk into one?")
         input("optionally insert into the database lordy")

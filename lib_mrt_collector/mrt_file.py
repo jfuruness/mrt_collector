@@ -22,10 +22,17 @@ class MRTFile:
 
         self.url = url
         self.source = source
+        self.parsed_dir = parsed_dir
         self.raw_path = path.join(raw_dir, self._url_to_path())
         self.dumped_path = path.join(dumped_dir, self._url_to_path(ext=".csv"))
         self.prefix_path = path.join(prefix_dir, self._url_to_path(ext=".txt"))
-        self.parsed_path = path.join(parsed_dir, self._url_to_path(ext=".tsv"))
+
+    def parsed_path(self, block_id):
+        """Returns parsed path for that specific block id"""
+
+        block_dir = path.join(self.parsed_dir, str(block_id))
+        file_funcs.makedirs(block_dir)
+        return path.join(block_dir, self._url_to_path(ext=".tsv"))
 
     def __lt__(self, other):
         """Returns the file that is smaller"""
@@ -78,89 +85,107 @@ class MRTFile:
         # PATH ATTRIBUtES:
         # AS_PATH|NEXT_HOP|ORIGIN|ATOMIC_AGGREGATE|AGGREGATOR|COMMUNITIES
 
-        with open(self.dumped_path, "r") as rf,\
-            open(self.parsed_path, "w") as wf:
-            # Initialize reader and writer
-            reader = csv.reader(rf, delimiter="|")
-            writer = csv.writer(wf, delimiter="\t")
-            for ann in reader:
-                (_type,
-                 prefix,
-                 as_path,
-                 next_hop,
-                 bgp_type,
-                 atomic_aggregate,
-                 aggregator,
-                 communities,
-                 peer,
-                 timestamp,
-                 asn_32b) = ann
+        # File that will be read from
+        rfile = open(self.dumped_path, "r")
+        # Opens all files for the block ids
+        wfiles = [open(self.parsed_path(i), "w")
+                  for i in range(po_metadata.next_block_id + 1)]
+        # CSV reader
+        reader = csv.reader(rfile, delimiter="|")
+        writers = [csv.writer(x, delimiter="\t") for x in wfiles]
+        wfields = ("prefix", "as_path", "atomic_aggregate", "aggregator",
+                   "communities", "timestamp", "origin", "collector",
+                   "prepending", "loops", "ixps", "gao_rexford", "new_asns",
+                   "path_poisoning", "roa_validity", "prefix_id", "block_id",
+                   "prefix_block_id")
+        for writer in writers:
+            writer.writerow(wfields)
 
-                try:
-                    prefix_obj = ip_network(prefix)
-                # This occurs whenever host bits are set
-                except ValueError:
-                    continue
+        for ann in reader:
+            (_type,
+             prefix,
+             as_path,
+             next_hop,
+             bgp_type,
+             atomic_aggregate,
+             aggregator,
+             communities,
+             peer,
+             timestamp,
+             asn_32b) = ann
 
-                if _type != "=":
-                    continue
- 
-                if atomic_aggregate:
-                    if atomic_aggregate != "AT":
-                        print("ann doesn't have AT for attomic aggregate")
-                        input(ann)
-                    else:
-                        atomic_aggregate = True
-                # AS set in the path
-                if "{" in as_path:
-                    continue
-                # There is no AS path
-                if not as_path:
-                    continue
-                _as_path = as_path.split(" ")
-                path_data = self._get_path_data(_as_path,
-                                                non_public_asns,
-                                                max_asn,
-                                                set())
-                origin = _as_path[-1]
-                collector = _as_path[0]
-                if aggregator:
-                    # (aggregator_asn aggregator_ip_address)
-                    aggregator = aggregator.split(" ")[0]
+            try:
+                prefix_obj = ip_network(prefix)
+            # This occurs whenever host bits are set
+            except ValueError:
+                continue
 
-                # Adding:
-                # prefix_id
-                # block_id
-                # prefix_block_id
-                # origin_id
-                # NOTE: This is a shallow copy for speed! Do not modify!
-                meta = po_metadata.get_meta(prefix, prefix_obj, int(origin))
-                # NOT SAVING:
-                # type of announcement
-                # next_hop - an ipaddress
-                # bgp_type (i vs ebgp)
-                # peer (peer-address, collector)
-                # Aggregator ip address
-                # asn_32_bit - 1 if yes 0 if no
-                # Feel free to add these later, it won't break things
-                # Just also add them to the table
-                wfields = (prefix,
-                           as_path,
-                           atomic_aggregate,
-                           aggregator,
-                           communities,
-                           timestamp,
-                           origin,
-                           collector,
-                           *path_data,
-                           *meta)
+            if _type != "=":
+                continue
 
-                # Saving rows to a list then writing is slower
-                writer.writerow(wfields)
+            if atomic_aggregate:
+                if atomic_aggregate != "AT":
+                    print("ann doesn't have AT for attomic aggregate")
+                    input(ann)
+                else:
+                    atomic_aggregate = True
+            # AS set in the path
+            if "{" in as_path:
+                continue
+            # There is no AS path
+            if not as_path:
+                continue
+            _as_path = as_path.split(" ")
+            path_data = self._get_path_data(_as_path,
+                                            non_public_asns,
+                                            max_asn,
+                                            set())
+            origin = _as_path[-1]
+            collector = _as_path[0]
+            if aggregator:
+                # (aggregator_asn aggregator_ip_address)
+                aggregator = aggregator.split(" ")[0]
+
+            # Adding:
+            # prefix_id
+            # block_id
+            # prefix_block_id
+            # origin_id
+            # NOTE: This is a shallow copy for speed! Do not modify!
+            meta = po_metadata.get_meta(prefix, prefix_obj, int(origin))
+            roa_validity, prefix_id, block_id, prefix_block_id = meta
+            # NOT SAVING:
+            # type of announcement
+            # next_hop - an ipaddress
+            # bgp_type (i vs ebgp)
+            # peer (peer-address, collector)
+            # Aggregator ip address
+            # asn_32_bit - 1 if yes 0 if no
+            # Feel free to add these later, it won't break things
+            # Just also add them to the table
+            wfields = (prefix,
+                       as_path,
+                       atomic_aggregate,
+                       aggregator,
+                       communities,
+                       timestamp,
+                       origin,
+                       collector,
+                       *path_data,
+                       roa_validity,
+                       prefix_id,
+                       block_id,
+                       prefix_block_id)
+
+            # Saving rows to a list then writing is slower
+            writers[block_id].writerow(wfields)
+        for f in wfiles + [rfile]:
+            f.close()
 
     def _get_path_data(self, as_path, non_public_asns, max_asn, ixps):
         """Returns as path data"""
 
+        # NOTE: make sure this matches the header!!
         prepending = False
         loop = False
         ixp = False
