@@ -23,16 +23,16 @@ class MRTFile:
         self.url = url
         self.source = source
         self.parsed_dir = parsed_dir
-        self.raw_path = path.join(raw_dir, self._url_to_path())
-        self.dumped_path = path.join(dumped_dir, self._url_to_path(ext=".csv"))
-        self.prefix_path = path.join(prefix_dir, self._url_to_path(ext=".txt"))
+        self.raw_path = raw_dir / self._url_to_path()
+        self.dumped_path = dumped_dir / self._url_to_path(ext=".csv")
+        self.prefix_path = prefix_dir / self._url_to_path(ext=".txt")
 
     def parsed_path(self, block_id):
         """Returns parsed path for that specific block id"""
 
-        block_dir = path.join(self.parsed_dir, str(block_id))
-        file_funcs.makedirs(block_dir)
-        return path.join(block_dir, self._url_to_path(ext=".tsv"))
+        block_dir = self.parsed_dir / str(block_id)
+        blockdir.mkdirs()
+        return block_dir / self._url_to_path(ext=".tsv")
 
     def __lt__(self, other):
         """Returns the file that is smaller"""
@@ -43,14 +43,15 @@ class MRTFile:
                 self_path = getattr(self, path_attr)
                 other_path = getattr(other, path_attr) 
                 # If both parsed paths exist
-                if path.exists(self_path) and path.exists(other_path):
+                if self_path.exists() and other_path.exists():
                     # Check the file size, sort in descending order
                     # That way largest files are done first
-                    if path.getsize(self_path) > path.getsize(other_path):
+                    # https://stackoverflow.com/a/2104107/8903959
+                    if self_path.stat().st_size > other_path.stat().st_size:
                         return True
                     else:
                         return False
-        raise NotImplementedError
+        return NotImplemented
 
 
     def download(self):
@@ -86,7 +87,7 @@ class MRTFile:
         # AS_PATH|NEXT_HOP|ORIGIN|ATOMIC_AGGREGATE|AGGREGATOR|COMMUNITIES
 
         # File that will be read from
-        rfile = open(self.dumped_path, "r")
+        rfile = self.dumped_path.open(mode="r")
         # Opens all files for the block ids
         wfiles = [open(self.parsed_path(i), "w")
                   for i in range(po_metadata.next_block_id + 1)]
@@ -170,12 +171,10 @@ class MRTFile:
                        communities,
                        timestamp,
                        origin,
-                       collector,
-                       *path_data,
-                       roa_validity,
-                       prefix_id,
-                       block_id,
-                       prefix_block_id)
+                       collector,) + path_data + (roa_validity,
+                                                  prefix_id,
+                                                  block_id,
+                                                  prefix_block_id,)
 
             # Saving rows to a list then writing is slower
             writers[block_id].writerow(wfields)
@@ -205,7 +204,7 @@ class MRTFile:
                 ixp = True
             else:
                 last_non_ixp = asn
-            
+
         # doesn't follow Gao rexford according to Caida
         # Contains ASNs that Caida doesn't have (that aren't non public)
         # path poisoning by reserved asn, non public asn, or clique being split
@@ -221,4 +220,4 @@ class MRTFile:
     def downloaded(self):
         """Returns true if the raw file was downloaded"""
 
-        return True if path.exists(self.raw_path) else False
+        return self.raw_path.exists()

@@ -1,3 +1,4 @@
+from copy import deepcopy
 from datetime import datetime
 import logging
 from multiprocessing import cpu_count
@@ -11,7 +12,7 @@ from tqdm import tqdm
 from lib_caida_collector import CaidaCollector
 from lib_roa_collector import ROACollector
 from lib_utils.base_classes import Base
-from lib_utils.file_funcs import makedirs, download_file, delete_paths
+from lib_utils.file_funcs import download_file, delete_paths
 from lib_utils.helper_funcs import mp_call, run_cmds
 
 from .mrt_file import MRTFile
@@ -31,32 +32,39 @@ class MRTCollector(Base):
 
     def __init__(self, *args, **kwargs):
         super(self.__class__, self).__init__(*args, **kwargs)
-        self.raw_dir = os.path.join(self._dir, "raw")
-        self.dumped_dir = os.path.join(self._dir, "dumped")
-        self.prefix_dir = os.path.join(self._dir, "prefix")
-        self.parsed_dir = os.path.join(self._dir, "parsed")
+        self.raw_dir = self.dir_ / "raw"
+        self.dumped_dir = self.dir_ / "dumped"
+        self.prefix_dir = self.dir_ / "prefix"
+        self.parsed_dir = self.dir_ / "parsed"
 
         for path in [self.raw_dir,
                      self.dumped_dir,
                      self.prefix_dir,
                      self.parsed_dir]:
-            makedirs(path)
+            path.mkdir(parents=True)
+
+        other_collector_kwargs = deepcopy(self.kwargs)
+        other_collector_kwargs.pop("dir_", None)
+        other_collector_kwargs.pop("base_dir", None)
+        other_collector_kwargs["base_dir"] = self.dir_
+
         # Gets ROAs
-        self.roa_collector = ROACollector(**self.kwargs)
+        self.roa_collector = ROACollector(**deepcopy(other_collector_kwargs))
         # Gets relationships
-        self.caida_collector = CaidaCollector(**self.kwargs)
+        self.caida_collector = CaidaCollector(**deepcopy(other_collector_kwargs))
         # Temporary placeholder for AS designations (reserved, private, etc)
         class IANACollector(Base):
             def __init__(*args, **kwargs):
                 pass
             def run(*args, **kwargs):
                 pass
-        self.iana_collector = IANACollector(**self.kwargs)
+        self.iana_collector = IANACollector(**deepcopy(other_collector_kwargs))
 
     def run(self,
             sources=Source.sources.copy(),
             tool=BGPGrep,
-            max_block_size=2000):
+            max_block_size=2000,
+            test=False):
         """Downloads and parses the latest RIB dumps from sources.
 
         First all downloading is done so as to efficiently multiprocess
@@ -68,7 +76,7 @@ class MRTCollector(Base):
         # Downloads all other collectors that we need to process MRTs
         self._download_collectors()
 
-        mrt_files = self._init_mrt_files(sources=sources)
+        mrt_files = self._init_mrt_files(sources=sources, test=test)
         try:
             # Get downloaded instances of mrt files
             mrt_files = self._download_mrts(mrt_files)
@@ -84,11 +92,12 @@ class MRTCollector(Base):
             # Remove unnessecary dirs
             delete_paths([self.dumped_dir, self.prefix_dir])
         # So much space, always clean up upon error
-        except:
-            _dirs = [x._dir for x in [self,
+        except Exception as e:
+            print(e)
+            _dirs = [x.dir_ for x in [self,
                                       self.roa_collector,
-                                      self.caida_collector,
-                                      self.iana_collector]]
+                                      self.caida_collector,]]
+                                      #self.iana_collector]]
             delete_paths(_dirs)
 
     def _download_collectors(self):
@@ -97,10 +106,10 @@ class MRTCollector(Base):
         # Roa validity, relationships/reserved ASNs for path poisoning
         for collector in [self.roa_collector,
                           self.caida_collector,
-                          self.caida_collector]:
+                          self.iana_collector]:
             collector.run()
 
-    def _init_mrt_files(self, sources=Source.sources.copy()):
+    def _init_mrt_files(self, sources=Source.sources.copy(), test=False):
         """Gets MRT files for downloading from URLs of sources"""
 
         logging.info(f"Sources: {[x.__class__.__name__ for x in sources]}")
@@ -116,7 +125,7 @@ class MRTCollector(Base):
             for url in source.get_urls(self.dl_time):
                 mrt_files.append(MRTFile(url, source, **path_kwargs))
 
-        return mrt_files
+        return [mrt_files[0]] if test else mrt_files
 
     def _download_mrts(self, mrt_files):
         """Downloads MRT files from URLs into paths using multiprocessing"""
@@ -144,9 +153,8 @@ class MRTCollector(Base):
                       [sorted(mrt_files)],
                       "Getting prefixes")
 
-        prefix_fname = "all_prefixes.txt"
-        prefix_path = os.path.join(self.prefix_dir, prefix_fname)
-        parsed_path = os.path.join(self.prefix_dir, "parsed.txt")
+        prefix_path = self.prefix_dir / "all_prefixes.txt"
+        parsed_path = self.prefix_dir / "parsed.txt"
         delete_paths([prefix_path, parsed_path])
         # awk is fastest tool for unique lines
         # it uses a hash map while all others require sort
@@ -206,7 +214,7 @@ class MRTCollector(Base):
         logging.info("logging about to shutdown")
         # Done here to avoid conflict when creating dirs
         for i in range(meta.next_block_id + 1):
-            makedirs(os.path.join(self.parsed_dir, str(i)))
+            (self.parsed_dir / str(i)).mkdirs()
         logging.shutdown()
         self.parse_mp(MRTFile.parse,
                       [sorted(mrt_files),
@@ -216,4 +224,4 @@ class MRTCollector(Base):
                        ],
                       "Adding metadata to MRTs")
         input("concatenate all the files for each chunk into one?")
-        input("optionally insert into the database lordy")
+        input("Add arg here to concatenate all chunks into one massive file for easy analysis")

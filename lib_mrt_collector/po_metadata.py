@@ -39,7 +39,7 @@ class POMetadata:
         df = pd.read_csv(roas_path, delimiter="\t")
         # https://stackoverflow.com/a/55557758/8903959
         for prefix, origin, max_length in tqdm(zip(df["prefix"],
-                                                   df["asn"],    
+                                                   df["asn"],
                                                    df["max_length"]),
                                                total=len(df),
                                                desc="Filling ROA trie"):
@@ -69,7 +69,7 @@ class POMetadata:
             # And they are also faster than lists (slightly)
             meta = (validity.value, *self.prefix_ids[prefix])
             self.po_meta[(prefix, origin)] = meta
-        
+
         return self.po_meta[(prefix, origin)]
 
     def _add_prefix(self, prefix: str):
@@ -81,7 +81,7 @@ class POMetadata:
         except ValueError:
             logging.warning(f"{prefix} had host bits set")
             return
- 
+
         prefix_meta = tuple([self.next_prefix_id,
                              self.next_block_id,
                              self.next_prefix_block_id])
