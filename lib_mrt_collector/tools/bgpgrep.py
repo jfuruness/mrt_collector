@@ -27,4 +27,9 @@ class BGPGrep(Tool):
     def parse(mrt):
         """Parses MRT file in path to CSV path"""
 
-        run_cmds([f"{BGPGrep.install_path} -o {mrt.dumped_path} {mrt.raw_path}"])
+        try:
+            run_cmds([f"{BGPGrep.install_path} -o {mrt.dumped_path} {mrt.raw_path}"])
+        except Exception as e:
+            print("bgpgrep had a problem:")
+            print(e)
+            print("Fix this later. Malformed attributes raise errors - we should still keep these lines. Also remove this except statement")

@@ -97,7 +97,7 @@ class MRTCollector(Base):
                                      self.roa_collector,
                                      self.caida_collector,]]
                                      #self.iana_collector]]
-            delete_paths(dirs)
+            #delete_paths(dirs)
             raise e
 
     def _download_collectors(self):
