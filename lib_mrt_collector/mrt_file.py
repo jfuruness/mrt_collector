@@ -31,7 +31,7 @@ class MRTFile:
         """Returns parsed path for that specific block id"""
 
         block_dir = self.parsed_dir / str(block_id)
-        blockdir.mkdirs()
+        block_dir.mkdir(exist_ok=True)
         return block_dir / self._url_to_path(ext=".tsv")
 
     def __lt__(self, other):
@@ -67,7 +67,7 @@ class MRTFile:
         # By adding uniq here. mrt_collector._get_prefix_ids has a 3x speedup
         # Even the bash cmd speeds up because it doesn't write as much
         cmd = f'cut -d "|" -f 2 {self.dumped_path} | uniq > {self.prefix_path}'
-        helper_funcs.run_cmds(cmd)
+        helper_funcs.run_cmds([cmd])
 
     def parse(self, po_metadata, non_public_asns: set, max_asn: int):
         """Parses MRT file and adds metadata
@@ -208,7 +208,7 @@ class MRTFile:
         # doesn't follow Gao rexford according to Caida
         # Contains ASNs that Caida doesn't have (that aren't non public)
         # path poisoning by reserved asn, non public asn, or clique being split
-        return [int(prepending), int(loop), int(ixp), int(False), int(False), int(False)]
+        return (int(prepending), int(loop), int(ixp), int(False), int(False), int(False),)
 
     def _url_to_path(self, ext=""):
         _path = quote(self.url).replace("/", "_")

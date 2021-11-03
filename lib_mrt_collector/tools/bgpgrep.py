@@ -7,7 +7,7 @@ class BGPGrep(Tool):
     """Parses MRT RIB dumps using bgpgrep"""
 
     install_path = "/usr/bin/bgpgrep"
-    apt_deps = ["ninja-build", "meson", "libbz2-dev", "liblzma-dev", "doxygen"]
+    apt_deps = ("ninja-build", "meson", "libbz2-dev", "liblzma-dev", "doxygen")
 
     @staticmethod
     def _install_deps():
@@ -27,4 +27,4 @@ class BGPGrep(Tool):
     def parse(mrt):
         """Parses MRT file in path to CSV path"""
 
-        run_cmds(f"{BGPGrep.install_path} -o {mrt.dumped_path} {mrt.raw_path}")
+        run_cmds([f"{BGPGrep.install_path} -o {mrt.dumped_path} {mrt.raw_path}"])

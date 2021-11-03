@@ -63,8 +63,7 @@ class MRTCollector(Base):
     def run(self,
             sources=Source.sources.copy(),
             tool=BGPGrep,
-            max_block_size=2000,
-            test=False):
+            max_block_size=2000):
         """Downloads and parses the latest RIB dumps from sources.
 
         First all downloading is done so as to efficiently multiprocess
@@ -73,10 +72,11 @@ class MRTCollector(Base):
         In depth explanation in readme
         """
 
+
         # Downloads all other collectors that we need to process MRTs
         self._download_collectors()
 
-        mrt_files = self._init_mrt_files(sources=sources, test=test)
+        mrt_files = self._init_mrt_files(sources=sources)
         try:
             # Get downloaded instances of mrt files
             mrt_files = self._download_mrts(mrt_files)
@@ -93,12 +93,12 @@ class MRTCollector(Base):
             delete_paths([self.dumped_dir, self.prefix_dir])
         # So much space, always clean up upon error
         except Exception as e:
-            print(e)
-            _dirs = [x.dir_ for x in [self,
-                                      self.roa_collector,
-                                      self.caida_collector,]]
-                                      #self.iana_collector]]
-            delete_paths(_dirs)
+            dirs = [x.dir_ for x in [self,
+                                     self.roa_collector,
+                                     self.caida_collector,]]
+                                     #self.iana_collector]]
+            delete_paths(dirs)
+            raise e
 
     def _download_collectors(self):
         """Runs collectors which are needed to process MRTs"""
@@ -109,7 +109,7 @@ class MRTCollector(Base):
                           self.iana_collector]:
             collector.run()
 
-    def _init_mrt_files(self, sources=Source.sources.copy(), test=False):
+    def _init_mrt_files(self, sources=Source.sources.copy()):
         """Gets MRT files for downloading from URLs of sources"""
 
         logging.info(f"Sources: {[x.__class__.__name__ for x in sources]}")
@@ -125,7 +125,7 @@ class MRTCollector(Base):
             for url in source.get_urls(self.dl_time):
                 mrt_files.append(MRTFile(url, source, **path_kwargs))
 
-        return [mrt_files[0]] if test else mrt_files
+        return mrt_files[:2] if self.debug else mrt_files
 
     def _download_mrts(self, mrt_files):
         """Downloads MRT files from URLs into paths using multiprocessing"""
@@ -162,8 +162,8 @@ class MRTCollector(Base):
         # cat is also the fastest way to combine files
         # https://unix.stackexchange.com/a/118248/477240
         cmds = [f"cd {self.prefix_dir}",
-                f"cat ./* >> {prefix_fname}",
-                f"awk '!x[$0]++' {prefix_fname} > {parsed_path}"]
+                f"cat ./* >> {prefix_path}",
+                f"awk '!x[$0]++' {prefix_path} > {parsed_path}"]
         logging.info("Extracting prefix IDs")
         run_cmds(cmds)
         print(parsed_path)
@@ -213,8 +213,10 @@ class MRTCollector(Base):
         #input("remove above after caida and iana for mp")
         logging.info("logging about to shutdown")
         # Done here to avoid conflict when creating dirs
-        for i in range(meta.next_block_id + 1):
-            (self.parsed_dir / str(i)).mkdirs()
+        # TODO: move this to use the parsed_path of MRT file
+        parse_dirs = [self.parsed_dir / str(i) for i in range(meta.next_block_id + 1)]
+        for parse_dir in parse_dirs:
+            parse_dir.mkdir()
         logging.shutdown()
         self.parse_mp(MRTFile.parse,
                       [sorted(mrt_files),
@@ -223,5 +225,8 @@ class MRTCollector(Base):
                        [max_asn] * len(mrt_files),
                        ],
                       "Adding metadata to MRTs")
-        input("concatenate all the files for each chunk into one?")
-        input("Add arg here to concatenate all chunks into one massive file for easy analysis")
+        # input("concatenate all the files for each chunk into one?")
+        # input("Write a separate func for this since you will need to run it again in a sec")
+        # head -n 1 test1.csv > combined.out && tail -n+2 -q *.csv >> combined.out
+        # input("then delete the chunk dirs")
+        # input("Add arg here to concatenate all chunks into one massive file for easy analysis")

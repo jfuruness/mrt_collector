@@ -25,6 +25,6 @@ class Tool:
             logging.warning("Installing deps now")
             # Install apt dependencies. One at a time for easy debugging
             for apt_dep in cls.apt_deps:
-                helper_funcs.run_cmds(f"sudo apt-get install -y {apt_dep}")
+                helper_funcs.run_cmds([f"sudo apt-get install -y {apt_dep}"])
             # Install tool from source
             cls._install_deps()
