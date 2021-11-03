@@ -102,7 +102,7 @@ class MRTFile:
         for writer in writers:
             writer.writerow(wfields)
 
-        for ann in reader:
+        for i, ann in enumerate(reader):
             try:
                 (_type,
                  prefix,
@@ -116,11 +116,8 @@ class MRTFile:
                  timestamp,
                  asn_32b) = ann
             except ValueError as e:
-                print(e)
-                print("raw", str(self.raw_path))
-                print("dumped", str(self.dumped_path))
-                print("url", str(self.url))
-                raise e
+                print(f"Problem with ann line {i} for {self.dumped_path}, fix later")
+                continue
 
             try:
                 prefix_obj = ip_network(prefix)
