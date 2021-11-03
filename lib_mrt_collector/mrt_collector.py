@@ -41,7 +41,7 @@ class MRTCollector(Base):
                      self.dumped_dir,
                      self.prefix_dir,
                      self.parsed_dir]:
-            path.mkdir(parents=True)
+            path.mkdir(parents=True, exist_ok=self.dir_exist_ok)
 
         other_collector_kwargs = deepcopy(self.kwargs)
         other_collector_kwargs.pop("dir_", None)
@@ -216,7 +216,7 @@ class MRTCollector(Base):
         # TODO: move this to use the parsed_path of MRT file
         parse_dirs = [self.parsed_dir / str(i) for i in range(meta.next_block_id + 1)]
         for parse_dir in parse_dirs:
-            parse_dir.mkdir()
+            parse_dir.mkdir(exist_ok=self.dir_exist_ok)
         logging.shutdown()
         self.parse_mp(MRTFile.parse,
                       [sorted(mrt_files),
