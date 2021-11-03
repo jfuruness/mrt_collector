@@ -103,17 +103,24 @@ class MRTFile:
             writer.writerow(wfields)
 
         for ann in reader:
-            (_type,
-             prefix,
-             as_path,
-             next_hop,
-             bgp_type,
-             atomic_aggregate,
-             aggregator,
-             communities,
-             peer,
-             timestamp,
-             asn_32b) = ann
+            try:
+                (_type,
+                 prefix,
+                 as_path,
+                 next_hop,
+                 bgp_type,
+                 atomic_aggregate,
+                 aggregator,
+                 communities,
+                 peer,
+                 timestamp,
+                 asn_32b) = ann
+            except ValueError as e:
+                print(e)
+                print("raw", str(self.raw_path))
+                print("dumped", str(self.dumped_path))
+                print("url", str(self.url))
+                raise e
 
             try:
                 prefix_obj = ip_network(prefix)
