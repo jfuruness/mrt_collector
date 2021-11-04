@@ -4,6 +4,7 @@ import logging
 from multiprocessing import cpu_count
 from multiprocessing.managers import BaseManager
 import os
+from pathlib import Path
 import re
 from urllib.parse import quote
 
@@ -46,19 +47,18 @@ class MRTCollector(Base):
         other_collector_kwargs = deepcopy(self.kwargs)
         other_collector_kwargs.pop("dir_", None)
         other_collector_kwargs.pop("base_dir", None)
-        other_collector_kwargs["base_dir"] = self.dir_
 
         # Gets ROAs
-        self.roa_collector = ROACollector(**deepcopy(other_collector_kwargs))
+        self.roa_collector = ROACollector(**deepcopy(other_collector_kwargs), dir_=self.dir_ / ROACollector.__name__)
         # Gets relationships
-        self.caida_collector = CaidaCollector(**deepcopy(other_collector_kwargs))
+        self.caida_collector = CaidaCollector(**deepcopy(other_collector_kwargs), dir_=self.dir_ / CaidaCollector.__name__)
         # Temporary placeholder for AS designations (reserved, private, etc)
         class IANACollector(Base):
             def __init__(*args, **kwargs):
                 pass
             def run(*args, **kwargs):
                 pass
-        self.iana_collector = IANACollector(**deepcopy(other_collector_kwargs))
+        self.iana_collector = IANACollector(**deepcopy(other_collector_kwargs), dir_=self.dir_ / IANACollector.__name__)
 
     def run(self,
             sources=Source.sources.copy(),
@@ -225,8 +225,21 @@ class MRTCollector(Base):
                        [max_asn] * len(mrt_files),
                        ],
                       "Adding metadata to MRTs")
-        # input("concatenate all the files for each chunk into one?")
-        # input("Write a separate func for this since you will need to run it again in a sec")
-        # head -n 1 test1.csv > combined.out && tail -n+2 -q *.csv >> combined.out
-        # input("then delete the chunk dirs")
-        # input("Add arg here to concatenate all chunks into one massive file for easy analysis")
+        # Concatenate all chunk dirs into 1 file per chunk
+        output_files = []
+        for parse_dir in parse_dirs:
+            output_file = Path(str(parse_dir) + ".tsv")
+            output_files.append(output_file)
+            parsed_file = next(parse_dir.iterdir())
+            cmd = (f"head -n 1 {parsed_file} > {output_file} && "
+                   f"tail -n+2 -q {parse_dir}/* >> {output_file}")
+            run_cmds([cmd])
+            delete_paths([parse_dir])
+
+        # Concatenate all chunks together
+        # Useful for statistics
+        output_file = Path(str(self.parsed_dir) + ".tsv")
+        parsed_file = next(self.parsed_dir.iterdir())
+        cmd = (f"head -n 1 {parsed_file} > {output_file} && "
+               f"tail -n+2 -q {self.parsed_dir}/* >> {output_file}")
+        run_cmds([cmd])
