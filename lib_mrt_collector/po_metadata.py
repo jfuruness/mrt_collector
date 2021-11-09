@@ -1,9 +1,12 @@
+import csv
 import logging
 from multiprocessing import Lock
 
 from ipaddress import ip_network
 import pandas as pd
 from tqdm import tqdm
+
+from lib_bgpstream_website_collector import Row
 
 from lib_roa_checker import ROAChecker, ROAValidity
 
@@ -13,11 +16,18 @@ class POMetadata:
 
     __slots__ = ["prefix_ids", "roa_checker", "next_prefix_id",
                  "next_block_id", "max_block_size", "next_prefix_block_id",
-                 "po_meta", "roa_info"]
+                 "po_meta", "roa_info", "bgpstream_po_dict", "bgpstream_origin_dict"]
 
-    def __init__(self, prefixes, max_block_size, roas_path):
+    def __init__(self,
+                 prefixes,
+                 max_block_size,
+                 roas_path,
+                 bgpstream_website_tsv_path):
         self.prefix_ids = dict()
         self.po_meta = dict()
+        bgpstream_po_dict, bgpstream_origin_dict = self.get_bgpstream_dict(bgpstream_website_tsv_path)
+        self.bgpstream_po_dict = bgpstream_po_dict
+        self.bgpstream_origin_dict = bgpstream_origin_dict
         self.roa_checker = self._init_roas_checker(roas_path)
         self.roa_info = dict()
         self.next_prefix_id = 0
@@ -51,6 +61,46 @@ class POMetadata:
             roa_checker.insert(ip_network(prefix), origin, max_length)
         return roa_checker
 
+    def get_bgpstream_dict(self, bgpstream_website_tsv_path):
+        bgpstream_po_info = dict()
+        bgpstream_origin_info = dict()
+        with open(bgpstream_website_tsv_path, mode="r") as f:
+            reader = csv.DictReader(f, delimiter="\t")
+            print("Fix leaks here")
+            for row in reader:
+                # Hijack
+                if row["hijack_detected_origin_number"] not in [None, ""]:
+                    po = (row["hijack_more_specific_prefix"],
+                          int(row["hijack_detected_origin_number"]),)
+                    bgpstream_po_info[po] = tuple(list(row.values()))
+                    po = (row["hijack_expected_prefix"],
+                          int(row["hijack_expected_origin_number"]),)
+                    bgpstream_po_info[po] = tuple(list(row.values()))
+                # Leak
+                elif row["leaked_prefix"] not in [None, ""]:
+                    po = (row["leaked_prefix"],
+                          int(row["leaker_as_number"]),)
+                    bgpstream_po_info[po] = tuple(list(row.values()))
+
+                    #po = (row["leaked_prefix"],
+                    #      int(row["leak_origin_as_number"]),)
+                    #bgpstream_po_info[po] = tuple(list(row.values()))
+                    #po = (row["leaked_prefix"],
+                    #      int(row["leaked_to_number"]),)
+                    #bgpstream_po_info[po] = tuple(list(row.values()))
+
+                elif row["outage_as_number"] not in [None, ""]:
+                    bgpstream_origin_info[int(row["outage_as_number"])] = tuple(row.values())
+        return bgpstream_po_info, bgpstream_origin_info
+
+    def _get_bgpstream_vals(self, prefix_str, prefix_obj, origin):
+        po_info = self.bgpstream_po_dict.get((prefix_str, origin))
+        if po_info is not None:
+            return po_info
+        else:
+            default = tuple([None for x in Row.columns])
+            return self.bgpstream_origin_dict.get(origin, default)
+
     def get_meta(self, prefix, prefix_obj: ip_network, origin: int):
         """Adds a prefix if it was not already. Returns prefix metadata
 
@@ -63,11 +113,11 @@ class POMetadata:
         # Prefix_ids is created upon init. Only origin is missing.
         if (prefix, origin) not in self.po_meta:
             validity = self._get_roa_validity(prefix, prefix_obj, origin)
-
+            bgpstream_vals = self._get_bgpstream_vals(prefix, prefix_obj, origin)
             # Prefix metadata
             # Using tuples because managers have trouble with nested mutables
             # And they are also faster than lists (slightly)
-            meta = (validity.value, *self.prefix_ids[prefix])
+            meta = bgpstream_vals + (validity.value,) + self.prefix_ids[prefix]
             self.po_meta[(prefix, origin)] = meta
 
         return self.po_meta[(prefix, origin)]

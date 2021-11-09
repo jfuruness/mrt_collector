@@ -5,6 +5,7 @@ from urllib.parse import quote
 
 from ipaddress import ip_network
 
+from lib_bgpstream_website_collector import Row
 from lib_utils import helper_funcs, file_funcs
 
 
@@ -94,11 +95,15 @@ class MRTFile:
         # CSV reader
         reader = csv.reader(rfile, delimiter="|")
         writers = [csv.writer(x, delimiter="\t") for x in wfiles]
+        # Things parsed in this file
         wfields = ("prefix", "as_path", "atomic_aggregate", "aggregator",
                    "communities", "timestamp", "origin", "collector",
                    "prepending", "loops", "ixps", "gao_rexford", "new_asns",
-                   "path_poisoning", "roa_validity", "prefix_id", "block_id",
-                   "prefix_block_id")
+                   "path_poisoning",)
+        # Bgpstream
+        wfields += Row.columns
+        # Roa validity and prefix meta
+        wfields += ("roa_validity", "prefix_id", "block_id", "prefix_block_id")
         for writer in writers:
             writer.writerow(wfields)
 
@@ -158,7 +163,7 @@ class MRTFile:
             # origin_id
             # NOTE: This is a shallow copy for speed! Do not modify!
             meta = po_metadata.get_meta(prefix, prefix_obj, int(origin))
-            roa_validity, prefix_id, block_id, prefix_block_id = meta
+            block_id = meta[-2]
             # NOT SAVING:
             # type of announcement
             # next_hop - an ipaddress
@@ -175,10 +180,7 @@ class MRTFile:
                        communities,
                        timestamp,
                        origin,
-                       collector,) + path_data + (roa_validity,
-                                                  prefix_id,
-                                                  block_id,
-                                                  prefix_block_id,)
+                       collector,) + path_data + meta
 
             # Saving rows to a list then writing is slower
             writers[block_id].writerow(wfields)
@@ -192,11 +194,18 @@ class MRTFile:
         prepending = False
         loop = False
         ixp = False
+        wrong_asn = False
 
         as_path_set = set()
         last_asn = None
         last_non_ixp = None
         for asn in as_path:
+            asn = int(asn)
+            if asn in non_public_asns:
+                wrong_asn = True
+            if asn > max_asn:
+                wrong_asn = True
+
             if last_asn == asn:
                 prepending = True
                 loop = True
@@ -208,6 +217,7 @@ class MRTFile:
                 ixp = True
             else:
                 last_non_ixp = asn
+
 
         # doesn't follow Gao rexford according to Caida
         # Contains ASNs that Caida doesn't have (that aren't non public)

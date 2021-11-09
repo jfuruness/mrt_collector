@@ -1,4 +1,5 @@
 from copy import deepcopy
+import csv
 from datetime import datetime
 import logging
 from multiprocessing import cpu_count
@@ -10,6 +11,7 @@ from urllib.parse import quote
 
 from tqdm import tqdm
 
+from lib_bgpstream_website_collector import BGPStreamWebsiteCollector
 from lib_caida_collector import CaidaCollector
 from lib_roa_collector import ROACollector
 from lib_utils.base_classes import Base
@@ -52,6 +54,10 @@ class MRTCollector(Base):
         self.roa_collector = ROACollector(**deepcopy(other_collector_kwargs), dir_=self.dir_ / ROACollector.__name__)
         # Gets relationships
         self.caida_collector = CaidaCollector(**deepcopy(other_collector_kwargs), dir_=self.dir_ / CaidaCollector.__name__)
+        # Gets hijacks, leaks, outage info from bgpstream.com
+        self.bgpstream_website_collector = BGPStreamWebsiteCollector(**deepcopy(other_collector_kwargs),
+                                                                     dir_=self.dir_ / BGPStreamWebsiteCollector.__name__)
+
         # Temporary placeholder for AS designations (reserved, private, etc)
         class IANACollector(Base):
             def __init__(*args, **kwargs):
@@ -95,7 +101,8 @@ class MRTCollector(Base):
         except Exception as e:
             dirs = [x.dir_ for x in [self,
                                      self.roa_collector,
-                                     self.caida_collector,]]
+                                     self.caida_collector,
+                                     self.bgpstream_website_collector,]]
                                      #self.iana_collector]]
             delete_paths(dirs)
             raise e
@@ -106,7 +113,8 @@ class MRTCollector(Base):
         # Roa validity, relationships/reserved ASNs for path poisoning
         for collector in [self.roa_collector,
                           self.caida_collector,
-                          self.iana_collector]:
+                          self.iana_collector,
+                          self.bgpstream_website_collector]:
             collector.run()
 
     def _init_mrt_files(self, sources=Source.sources.copy()):
@@ -191,7 +199,10 @@ class MRTCollector(Base):
         # Reads them in here so I can skip the uniq prefixes func for dev
         with open(uniq_prefixes_path, "r") as f:
             uniq_prefixes = [x.strip() for x in f]
-        meta = POMetadata(uniq_prefixes, max_block_size, self.roa_collector.tsv_path)
+        meta = POMetadata(uniq_prefixes,
+                          max_block_size,
+                          self.roa_collector.tsv_path,
+                          self.bgpstream_website_collector.tsv_path)
         # Later make this not hardcoded
         # https://www.iana.org/assignments/iana-as-numbers-special-registry/iana-as-numbers-special-registry.xhtml
         # https://www.iana.org/assignments/as-numbers/as-numbers.xhtml
