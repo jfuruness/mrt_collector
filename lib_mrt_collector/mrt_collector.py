@@ -69,7 +69,8 @@ class MRTCollector(Base):
     def run(self,
             sources=Source.sources.copy(),
             tool=BGPGrep,
-            max_block_size=2000):
+            max_block_size=2000,
+            local_files=None):
         """Downloads and parses the latest RIB dumps from sources.
 
         First all downloading is done so as to efficiently multiprocess
@@ -82,7 +83,8 @@ class MRTCollector(Base):
         # Downloads all other collectors that we need to process MRTs
         self._download_collectors()
 
-        mrt_files = self._init_mrt_files(sources=sources)
+        mrt_files = self._init_mrt_files(sources=sources,
+                                         local_files=local_files)
         try:
             # Get downloaded instances of mrt files
             mrt_files = self._download_mrts(mrt_files)
@@ -117,7 +119,7 @@ class MRTCollector(Base):
                           self.bgpstream_website_collector]:
             collector.run()
 
-    def _init_mrt_files(self, sources=Source.sources.copy()):
+    def _init_mrt_files(self, sources=Source.sources.copy(), local_files=None):
         """Gets MRT files for downloading from URLs of sources"""
 
         logging.info(f"Sources: {[x.__class__.__name__ for x in sources]}")
@@ -132,6 +134,10 @@ class MRTCollector(Base):
         for source in sources:
             for url in source.get_urls(self.dl_time):
                 mrt_files.append(MRTFile(url, source, **path_kwargs))
+        if local_files is not None:
+            assert isinstance(local_files, list)
+            for path in local_files:
+                mrt_files.append(MRTFile(str(path), "local_file", **path_kwargs))
 
         return mrt_files[:2] if self.debug else mrt_files
 

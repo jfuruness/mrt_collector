@@ -1,6 +1,7 @@
 import csv
 import logging
 from os import path
+from shutil import copyfile
 from urllib.parse import quote
 
 from ipaddress import ip_network
@@ -58,7 +59,11 @@ class MRTFile:
     def download(self):
         """Downloads raw MRT file"""
 
-        file_funcs.download_file(self.url, self.raw_path)
+        if self.source == "local_file":
+            print("LOCAL FILE")
+            copyfile(self.url, self.raw_path)
+        else:
+            file_funcs.download_file(self.url, self.raw_path)
 
     def get_prefixes(self):
         """Gets all prefixes within the MRT files"""
@@ -104,6 +109,7 @@ class MRTFile:
         wfields += Row.columns
         # Roa validity and prefix meta
         wfields += ("roa_validity", "prefix_id", "block_id", "prefix_block_id")
+        wfields += ("url", "source")
         for writer in writers:
             writer.writerow(wfields)
 
@@ -180,7 +186,7 @@ class MRTFile:
                        communities,
                        timestamp,
                        origin,
-                       collector,) + path_data + meta
+                       collector,) + path_data + meta + (self.url, self.source,)
 
             # Saving rows to a list then writing is slower
             writers[block_id].writerow(wfields)
