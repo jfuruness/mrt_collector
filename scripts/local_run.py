@@ -33,7 +33,7 @@ if __name__ == "__main__":
                 datetime(month=4, day=29, **kwargs),
                 datetime(month=6, day=2, **kwargs),
                 datetime(month=8, day=21, **kwargs)]
-    for dl_time in dl_times[-1:]:
+    for dl_time in dl_times:
         start = datetime.now()
         run(dl_time)
         print((datetime.now() - start).total_seconds())
