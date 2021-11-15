@@ -54,7 +54,7 @@ class POMetadata:
                 # Sometimes max length is nan
                 except ValueError:
                     max_length = None
-                roa_checker.insert(ip_network(prefix), origin, max_length)
+                roa_checker.insert(ip_network(row["prefix"]), origin, max_length)
         return roa_checker
 
     def get_bgpstream_dict(self, bgpstream_website_tsv_path):
