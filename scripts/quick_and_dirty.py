@@ -59,4 +59,13 @@ class ReportGenerator:
         return temp_stats
 
 if __name__ == "__main__":
-    ReportGenerator("/data/mrt_cache/2021_08_21/parsed.tsv").run()
+    # Loop over dates
+    # Save the date: temp_stats to YAML
+    stats = {}
+    import os
+    for fname in os.listdir("/data/mrt_cache"):
+        if "local" not in fname:
+            stats[fname] = ReportGenerator(f"/data/mrt_cache/{fname}/parsed.tsv").run()
+
+    import yaml
+    print(yaml.dump(stats))
