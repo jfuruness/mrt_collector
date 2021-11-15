@@ -3,7 +3,6 @@ import logging
 from multiprocessing import Lock
 
 from ipaddress import ip_network
-import pandas as pd
 from tqdm import tqdm
 
 from lib_bgpstream_website_collector import Row
@@ -46,19 +45,16 @@ class POMetadata:
         """
 
         roa_checker = ROAChecker()
-        df = pd.read_csv(roas_path, delimiter="\t")
-        # https://stackoverflow.com/a/55557758/8903959
-        for prefix, origin, max_length in tqdm(zip(df["prefix"],
-                                                   df["asn"],
-                                                   df["max_length"]),
-                                               total=len(df),
-                                               desc="Filling ROA trie"):
-            try:
-                max_length = int(max_length)
-            # Sometimes max length is nan
-            except ValueError:
-                max_length = None
-            roa_checker.insert(ip_network(prefix), origin, max_length)
+        with open(roas_path, mode="r") as f:
+            reader = csv.DictReader(f, delimiter="\t")
+            for row in reader:
+                origin = int(row["asn"])
+                try:
+                    max_length = int(row["max_length"])
+                # Sometimes max length is nan
+                except ValueError:
+                    max_length = None
+                roa_checker.insert(ip_network(prefix), origin, max_length)
         return roa_checker
 
     def get_bgpstream_dict(self, bgpstream_website_tsv_path):

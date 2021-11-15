@@ -17,11 +17,10 @@ setup(
     long_description_content_type="text/markdown",
     keywords=["Furuness", "BGP", "Caida", "MRT", "bgpgrep", "RIB"],
     include_package_data=True,
-    python_requires=">=3.8",
+    python_requires=">=3.7",
     packages=find_packages(),
     install_requires=[
         'ip_address',
-        'pandas',
         'tqdm',
     ],
     classifiers=[
