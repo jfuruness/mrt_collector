@@ -20,6 +20,7 @@ class ReportGenerator:
                       "lr_valid_prefixes_with_invalid_subprefix": 0,
                       "lr_invalid_subprefix_cb_prefix": 0,
                       "lr_invalid_hijack_subprefix_cb_prefix": 0,
+                      "lr_invalid_prefix_cb_valid_or_unknown_prefix": 0,
                       "total_rows": 0,
                       }
 
@@ -92,7 +93,7 @@ class ReportGenerator:
                 lr_valid_prefixes_with_invalid_subprefix = False  #
                 lr_invalid_subprefix_cb_prefix = False  #
                 lr_invalid_hijack_subprefix_cb_prefix = False  #
-
+                lr_invalid_prefix_cb_valid_or_unknown_prefix = False
 
                 superprefixes = prefix_superprefix_dict.get(row_prefix, [])
                 subprefixes = prefix_subprefix_dict.get(row_prefix, [])
@@ -108,6 +109,9 @@ class ReportGenerator:
                     for subprefix_row in subprefix_rows:
                         if subprefix_row["roa_validity"] == str(ROAValidity.INVALID.value):
                             lr_prefixes_with_invalid_subprefix = True
+
+                            if row["roa_validity"] != str(ROAValidity.INVALID.value):
+                                lr_invalid_prefix_cb_valid_or_unknown_prefix = True
                             if row["roa_validity"] == str(ROAValidity.VALID.value):
                                 lr_valid_prefixes_with_invalid_subprefix = True
 
@@ -130,6 +134,7 @@ class ReportGenerator:
                 self.stats["lr_valid_prefixes_with_invalid_subprefix"] += int(lr_valid_prefixes_with_invalid_subprefix)
                 self.stats["lr_invalid_subprefix_cb_prefix"] += int(lr_invalid_subprefix_cb_prefix)
                 self.stats["lr_invalid_hijack_subprefix_cb_prefix"] += int(lr_invalid_hijack_subprefix_cb_prefix)
+                self.stats["lr_invalid_prefix_cb_valid_or_unknown_prefix"] += int(lr_invalid_prefix_cb_valid_or_unknown_prefix)
 
                 self.stats["total_rows"] = self.stats["total_rows"] + 1
 
