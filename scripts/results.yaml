@@ -1,0 +1,71 @@
+'2021_01_22':
+  local_rib_covered_by_roa: 223722
+  local_rib_hijack: 0
+  local_rib_hijack_detected_covered_by_roa: 0
+  local_rib_hijack_detected_invalid_by_roa: 0
+  local_rib_invalid_hijack_subprefix_covered_by_prefix: 0
+  local_rib_invalid_prefix_covered_by_valid_or_unknown_prefix: 1051
+  local_rib_invalid_roa: 28177
+  local_rib_invalid_subprefix_covered_by_prefix: 28177
+  local_rib_prefixes_that_are_subprefixes_of_prefixes_covered_by_roa: 223722
+  local_rib_prefixes_that_are_subprefixes_of_valid_prefixes: 199007
+  local_rib_prefixes_with_invalid_subprefix: 29228
+  local_rib_valid_prefixes_with_invalid_subprefix: 905
+  total_rows: 817645
+'2021_03_19':
+  local_rib_covered_by_roa: 234850
+  local_rib_hijack: 0
+  local_rib_hijack_detected_covered_by_roa: 0
+  local_rib_hijack_detected_invalid_by_roa: 0
+  local_rib_invalid_hijack_subprefix_covered_by_prefix: 0
+  local_rib_invalid_prefix_covered_by_valid_or_unknown_prefix: 1080
+  local_rib_invalid_roa: 29507
+  local_rib_invalid_subprefix_covered_by_prefix: 29507
+  local_rib_prefixes_that_are_subprefixes_of_prefixes_covered_by_roa: 234850
+  local_rib_prefixes_that_are_subprefixes_of_valid_prefixes: 208889
+  local_rib_prefixes_with_invalid_subprefix: 30587
+  local_rib_valid_prefixes_with_invalid_subprefix: 924
+  total_rows: 826165
+'2021_04_29':
+  local_rib_covered_by_roa: 244015
+  local_rib_hijack: 0
+  local_rib_hijack_detected_covered_by_roa: 0
+  local_rib_hijack_detected_invalid_by_roa: 0
+  local_rib_invalid_hijack_subprefix_covered_by_prefix: 0
+  local_rib_invalid_prefix_covered_by_valid_or_unknown_prefix: 1160
+  local_rib_invalid_roa: 32184
+  local_rib_invalid_subprefix_covered_by_prefix: 32184
+  local_rib_prefixes_that_are_subprefixes_of_prefixes_covered_by_roa: 244015
+  local_rib_prefixes_that_are_subprefixes_of_valid_prefixes: 215592
+  local_rib_prefixes_with_invalid_subprefix: 33344
+  local_rib_valid_prefixes_with_invalid_subprefix: 997
+  total_rows: 831163
+'2021_06_02':
+  local_rib_covered_by_roa: 248695
+  local_rib_hijack: 12
+  local_rib_hijack_detected_covered_by_roa: 12
+  local_rib_hijack_detected_invalid_by_roa: 0
+  local_rib_invalid_hijack_subprefix_covered_by_prefix: 3
+  local_rib_invalid_prefix_covered_by_valid_or_unknown_prefix: 1162
+  local_rib_invalid_roa: 32280
+  local_rib_invalid_subprefix_covered_by_prefix: 32280
+  local_rib_prefixes_that_are_subprefixes_of_prefixes_covered_by_roa: 248695
+  local_rib_prefixes_that_are_subprefixes_of_valid_prefixes: 220275
+  local_rib_prefixes_with_invalid_subprefix: 33442
+  local_rib_valid_prefixes_with_invalid_subprefix: 1003
+  total_rows: 832270
+'2021_08_21':
+  local_rib_covered_by_roa: 258715
+  local_rib_hijack: 5
+  local_rib_hijack_detected_covered_by_roa: 5
+  local_rib_hijack_detected_invalid_by_roa: 0
+  local_rib_invalid_hijack_subprefix_covered_by_prefix: 1
+  local_rib_invalid_prefix_covered_by_valid_or_unknown_prefix: 1189
+  local_rib_invalid_roa: 31469
+  local_rib_invalid_subprefix_covered_by_prefix: 31469
+  local_rib_prefixes_that_are_subprefixes_of_prefixes_covered_by_roa: 258715
+  local_rib_prefixes_that_are_subprefixes_of_valid_prefixes: 231114
+  local_rib_prefixes_with_invalid_subprefix: 32658
+  local_rib_valid_prefixes_with_invalid_subprefix: 1052
+  total_rows: 838871
+
