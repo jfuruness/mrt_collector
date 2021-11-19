@@ -108,7 +108,7 @@ class MRTFile:
         # Bgpstream
         wfields += Row.columns
         # Roa validity and prefix meta
-        wfields += ("roa_validity", "prefix_id", "block_id", "prefix_block_id")
+        wfields += ("roa_validity", "roa_routed", "prefix_id", "block_id", "prefix_block_id")
         wfields += ("url", "source")
         for writer in writers:
             writer.writerow(wfields)

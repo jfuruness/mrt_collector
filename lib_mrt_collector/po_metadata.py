@@ -108,12 +108,14 @@ class POMetadata:
 
         # Prefix_ids is created upon init. Only origin is missing.
         if (prefix, origin) not in self.po_meta:
-            validity = self._get_roa_validity(prefix, prefix_obj, origin)
+            validity, routed = self._get_roa_validity(prefix, prefix_obj, origin)
             bgpstream_vals = self._get_bgpstream_vals(prefix, prefix_obj, origin)
             # Prefix metadata
             # Using tuples because managers have trouble with nested mutables
             # And they are also faster than lists (slightly)
-            meta = bgpstream_vals + (validity.value,) + self.prefix_ids[prefix]
+            if routed is not None:
+                routed = int(routed)
+            meta = bgpstream_vals + (validity.value, routed,) + self.prefix_ids[prefix]
             self.po_meta[(prefix, origin)] = meta
 
         return self.po_meta[(prefix, origin)]
@@ -144,7 +146,8 @@ class POMetadata:
             if len(roa.origin_max_lengths) == 1:
                 origin, max_length = list(roa.origin_max_lengths)[0]
                 if prefix_obj.prefixlen > max_length:
-                    self.roa_info[prefix] = ROAValidity.INVALID
+                    roa_origins = [x[0] for x in roa.origin_max_lengths]
+                    self.roa_info[prefix] = (ROAValidity.INVALID, 0 not in roa_origins)
                 else:
                     self.roa_info[prefix] = roa
             # There are some cases we could optimize out
@@ -154,13 +157,14 @@ class POMetadata:
             else:
                 self.roa_info[prefix] = roa
         else:
-            self.roa_info[prefix] = ROAValidity.UNKNOWN
+            self.roa_info[prefix] = (ROAValidity.UNKNOWN, None)
 
     def _get_roa_validity(self, prefix, prefix_obj: ip_network, origin: int):
         """returns roa validity"""
 
         result = self.roa_info[prefix]
-        if isinstance(result, ROAValidity):
+        # ROVValidity and routed
+        if isinstance(result, tuple):
             return result
         else:
             return result.get_validity(prefix_obj, origin)

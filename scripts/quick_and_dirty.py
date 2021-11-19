@@ -19,8 +19,10 @@ class ReportGenerator:
                       "lr_prefixes_with_invalid_subprefix": 0,
                       "lr_valid_prefixes_with_invalid_subprefix": 0,
                       "lr_invalid_subprefix_cb_prefix": 0,
+                      "lr_invalid_subprefix_cb_prefix_same_as_path": 0,
                       "lr_invalid_hijack_subprefix_cb_prefix": 0,
                       "lr_invalid_prefix_cb_valid_or_unknown_prefix": 0,
+                      "lr_invalid_roa_nr": 0,
                       "total_rows": 0,
                       }
 
@@ -39,11 +41,11 @@ class ReportGenerator:
 
         with open(self.path, "r") as f:
             reader = csv.DictReader(f, delimiter="\t")
-            rows = list(reader)
-            prefixes = set([ip_network(x["prefix"]) for x in rows])
+            rows = [x for x in tqdm(reader, desc="reader")]
+            prefixes = set([ip_network(x["prefix"]) for x in tqdm(rows, total=len(rows), desc="extracting prefixes")])
 
             def get_possible_superprefixes(p):
-                return [p.supernet(new_prefix=i) for i in range(p.prefixlen, -1, -1)]
+                return [p.supernet(new_prefix=i) for i in range(p.prefixlen - 1, -1, -1)]
 
             prefix_superprefix_dict = dict()
             for prefix in tqdm(prefixes, total=len(prefixes), desc="superprefixes"):
@@ -85,6 +87,9 @@ class ReportGenerator:
                 if row["hijack_detected_roa_validity"] == str(ROAValidity.INVALID.value):
                     self.stats["lr_hijack_detected_invalid_by_roa"] = self.stats["lr_hijack_detected_invalid_by_roa"] + 1
 
+                if row["roa_routed"] == "0":
+                    self.stats["lr_invalid_roa_nr"] += 1
+
                 row_prefix = ip_network(row["prefix"])
 
                 lr_prefixes_that_are_subprefixes_of_valid_prefixes = False #
@@ -94,6 +99,7 @@ class ReportGenerator:
                 lr_invalid_subprefix_cb_prefix = False  #
                 lr_invalid_hijack_subprefix_cb_prefix = False  #
                 lr_invalid_prefix_cb_valid_or_unknown_prefix = False
+                lr_invalid_subprefix_cb_prefix_same_as_path = False
 
                 superprefixes = prefix_superprefix_dict.get(row_prefix, [])
                 subprefixes = prefix_subprefix_dict.get(row_prefix, [])
@@ -121,6 +127,11 @@ class ReportGenerator:
                             lr_prefixes_that_are_subprefixes_of_valid_prefixes = True
                         if superprefix_row["roa_validity"] != str(ROAValidity.UNKNOWN.value):
                             lr_prefixes_that_are_subprefixes_of_prefixes_covered_by_roa = True
+
+                        if row["roa_validity"] == str(ROAValidity.INVALID.value):
+                            if row["as_path"] == superprefix_row["as_path"]:
+                                lr_invalid_subprefix_cb_prefix_same_as_path = True
+
                     if row["roa_validity"] == str(ROAValidity.INVALID.value):
                         lr_invalid_subprefix_cb_prefix = True
                         if row["hijack_detected_roa_validity"] not in [None, "", "None"]:
@@ -135,10 +146,11 @@ class ReportGenerator:
                 self.stats["lr_invalid_subprefix_cb_prefix"] += int(lr_invalid_subprefix_cb_prefix)
                 self.stats["lr_invalid_hijack_subprefix_cb_prefix"] += int(lr_invalid_hijack_subprefix_cb_prefix)
                 self.stats["lr_invalid_prefix_cb_valid_or_unknown_prefix"] += int(lr_invalid_prefix_cb_valid_or_unknown_prefix)
+                self.stats["lr_invalid_subprefix_cb_prefix_same_as_path"] += int(lr_invalid_subprefix_cb_prefix_same_as_path)
 
                 self.stats["total_rows"] = self.stats["total_rows"] + 1
 
-        temp_stats = {k.replace("lr", "local_rib").replace("cb", "covered_by"): v
+        temp_stats = {k.replace("lr", "local_rib").replace("cb", "covered_by").replace("_nr", "_non_routed"): v
                       for k, v in self.stats.items()}
         print(temp_stats)
         return temp_stats
