@@ -28,3 +28,7 @@ class Tool:
                 helper_funcs.run_cmds([f"sudo apt-get install -y {apt_dep}"])
             # Install tool from source
             cls._install_deps()
+
+    def parse(self):
+        self.install_deps()
+        

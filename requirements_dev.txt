@@ -1,0 +1,7 @@
+pytest==6.2.5
+types-requests==2.26.1
+pytest-cov==3.0.0
+mypy==0.910
+flake8==4.0.1
+tox==3.24.4
+pytest-xdist==2.5.0
