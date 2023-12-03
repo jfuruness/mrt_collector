@@ -10,7 +10,6 @@ class RouteViews(Source):
     """Source for MRT RIB dumps from Route Views"""
 
     url = "http://archive.routeviews.org"
-    value = 1
 
     @staticmethod
     def get_urls(t: datetime):

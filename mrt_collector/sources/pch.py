@@ -10,7 +10,6 @@ class PCH(Source):
     """Source for MRT RIB dumps from packet clearing house"""
 
     url = "https://www.pch.net/resources/Routing_Data/"
-    value = 2
 
     @staticmethod
     def get_urls(dl_t: datetime) -> list:
@@ -62,14 +61,14 @@ class PCH(Source):
         assert total_links == len(links), "PCH links not collected properly"
 
     @staticmethod
-    def _get_dump(page: str, collector_link: str, dl_time: datetime, ipv: str): 
+    def _get_dump(page: str, collector_link: str, dl_time: datetime, ipv: str):
         """Returns the full link of the RIB dump at that collector"""
 
         # Get the RIB dump at this collector
         # page:
         # https://www.pch.net/resources/Routing_Data/
         # IPv6_daily_snapshots/2021/08/
-        # collector_link:    
+        # collector_link:
         # route-collector.zrh2.pch.net/
         # dump:
         # route-collector.zrh2.pch.net-ipv6_bgp_routes.2021.08.09.gz
