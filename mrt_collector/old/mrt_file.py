@@ -43,7 +43,7 @@ class MRTFile:
             for path_attr in ["dumped_path", "raw_path"]:
                 # Save the paths to variables
                 self_path = getattr(self, path_attr)
-                other_path = getattr(other, path_attr) 
+                other_path = getattr(other, path_attr)
                 # If both parsed paths exist
                 if self_path.exists() and other_path.exists():
                     # Check the file size, sort in descending order

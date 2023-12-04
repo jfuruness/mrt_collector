@@ -26,6 +26,7 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
+    "beautifulsoup4==4.12.2",
     "tqdm==4.66.1",
     "requests==2.31.0",
 ]

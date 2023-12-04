@@ -27,15 +27,31 @@ class MRTCollector:
         mrt_files = mrt_fles if mrt_files else self.get_mrt_files(sources)
         if download_raw_mrts:
             self.download_raw_mrts(mrt_files)
+        raise NotImplementedError
 
     def get_mrt_files(self, sources: tuple[Source, ...] = Sources.sources.copy()) -> tuple[MRTFile, ...]:
         """Gets URLs from sources (cached) and returns MRT File objects"""
 
+        mrt_files = list()
+        for source in tqdm(sources, total=len(sources), desc=f"Parsing {sources}"):
+            for url in source.get_urls(self.dl_time, self.requests_cache_dir):
+                mrt_files.append(
+                    MRTFile(
+                        url,
+                        source,
+                        raw_dir=self.raw_dir,
+                        parsed_dir=self.parsed_dir,
+                        prefixes_dir=self.prefixes_dir,
+                        formatted_dir=self.formatted_dir
+                    )
+                )
+        return tuple(mrt_files)
 
     def download_raw_mrts(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Downloads raw MRT RIB dumps into raw_dir"""
 
-        raise NotImplementedError
+        for mrt_file in mrt_files:
+            mrt_file.download_raw()
 
     ###############
     # Directories #
@@ -46,6 +62,7 @@ class MRTCollector:
 
         for dir_ in (
             self.base_dir,
+            self.requests_cache_dir,
             self.raw_dir,
             self.parsed_dir,
             self.prefixes_dir,
@@ -54,6 +71,15 @@ class MRTCollector:
         ):
             dir_.mkdir(parents=True, exist_ok=True)
 
+    @property
+    def requests_cache_dir(self) -> Path:
+        """Returns dir that is sometimes used to cache requests
+
+        For example, when getting URLs from RIPE and Route Views,
+        this directory is used
+        """
+
+        return self.base_dir / "requests_cache"
 
     @property
     def raw_dir(self) -> Path:
