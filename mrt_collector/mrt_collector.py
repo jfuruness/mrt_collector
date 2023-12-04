@@ -11,6 +11,10 @@ from .mrt_file import MRTFile
 from .sources import Source
 
 
+def download_mrt(mrt_file: MRTFile) -> None:
+    mrt_file.download_raw()
+
+
 class MRTCollector:
     def __init__(
         self,
@@ -82,9 +86,6 @@ class MRTCollector:
 
     def download_raw_mrts(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Downloads raw MRT RIB dumps into raw_dir"""
-
-        def download_mrt(mrt_file: MRTFile) -> None:
-            mrt_file.download_raw()
 
         self._mp_tqdm(mrt_files, download_mrt, desc="Downloading MRTs (~12m)")
 
