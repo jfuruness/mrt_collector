@@ -1,18 +1,13 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import threading
 from datetime import datetime
 from multiprocessing import cpu_count
 from pathlib import Path
-import time
-from typing import Iterable, Optional
+from typing import Optional
 
 from tqdm import tqdm
 
 from .mrt_file import MRTFile
 from .sources import Source
-from .utils import mrt_dl_pbar
-
-
 
 
 class MRTCollector:
@@ -79,26 +74,19 @@ class MRTCollector:
 
         # Starts the progress bar in another thread
         if self.cpus == 1:
-            for mrt_file in mrt_files:
+            for mrt_file in tqdm(mrt_files, total=len(mrt_files), desc="Downloading"):
                 mrt_file.download_raw()
         else:
-
-
-            def mrt_dl_pbar(queue: manage.Queue, total_files: int) -> None:
-                """Progress bar that updates when MRT file is downloaded"""
-                with tqdm(total=total_files, desc="Parsing MRTs") as pbar:
-                    while queue.get() is not None:
-                        pbar.update()
-
-            with mrt_dl_pbar(mrt_files):
-                # Starting the download tasks using a thread pool
-                with ThreadPoolExecutor(max_workers=self.cpus * 2) as executor:
-                    futures = [executor.submit(x.download_raw) for x in mrt_files]
-
-                    # Wait for futures to complete
-                    for future in as_completed(futures):
-                        # reraise any exceptions from the threads
-                        future.result()
+            # https://stackoverflow.com/a/63834834/8903959
+            with ThreadPoolExecutor(max_workers=self.cpu_count * 2) as executor:
+                futures = [executor.submit(x.download_raw) for x in mrt_files]
+                for future in tqdm(
+                    as_completed(futures),
+                    total=len(mrt_files),
+                    desc="Downloading MRTs (~1hr)"
+                ):
+                    # reraise any exceptions from the threads
+                    future.result()
 
     ###############
     # Directories #

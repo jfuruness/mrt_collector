@@ -33,9 +33,12 @@ class MRTFile:
             # stream works best for large files
             # https://docs.python.org/3.5/library/urllib.request.html#legacy-interface
             with requests.get(self.url, stream=True, timeout=60) as r:  # verify=verify
-                r.raise_for_status()  # type: ignore
-                with self.raw_path.open("wb") as f:
-                    shutil.copyfileobj(r.raw, f)  # type: ignore
+                if r.status_code == 200:
+                    with self.raw_path.open("wb") as f:
+                        shutil.copyfileobj(r.raw, f)  # type: ignore
+                # Don't error, some files always fail to download
+                else:
+                    warnings.warn(f"status of {r.status_code} for {self.url}")
 
     def _url_to_fname(self, url: str, ext: str = "") -> str:
         """Converts a URL into a file name"""
