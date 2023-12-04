@@ -2,7 +2,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
 from multiprocessing import cpu_count
 from pathlib import Path
-from typing import Any, Callable, Iterable, Optional
+from typing import Any, Callable, Optional
 
 from tqdm import tqdm
 
