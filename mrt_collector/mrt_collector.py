@@ -115,7 +115,7 @@ class MRTCollector:
                 for future in tqdm(
                     as_completed(futures),
                     total=len(mrt_files),
-                    desc="Parsing MRTs (~12m)",
+                    desc="Parsing MRTs {self.parse_times.get(parse_func, '')}",
                 ):
                     # reraise any exceptions from the processes
                     future.result()
@@ -134,6 +134,14 @@ class MRTCollector:
         """Analyzes the formatted BGP dumps"""
 
         raise NotImplementedError
+
+    @property
+    def parse_times(self) -> dict[PARSE_FUNC, str]:
+        """Useful for printing the times it will take to parse files"""
+
+        return {
+            bgpkit_parser_json: "??m"
+        }
 
     ###############
     # Directories #
