@@ -96,7 +96,7 @@ class MRTCollector:
 
         # Remove MRT files that failed to download, and sort by file size
         mrt_files = tuple(list(sorted(x for x in mrt_files if x.download_succeeded)))
-        desc = "Parsing MRTs {self.parse_times.get(parse_func, '')}"
+        desc = f"Parsing MRTs {self.parse_times.get(parse_func, '')}"
 
         self._mp_tqdm(mrt_files, parse_func, desc=desc)
 
