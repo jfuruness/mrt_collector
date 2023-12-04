@@ -83,7 +83,7 @@ class MRTCollector:
                 for future in tqdm(
                     as_completed(futures),
                     total=len(mrt_files),
-                    desc="Downloading MRTs (~1hr)",
+                    desc="Downloading MRTs (~12m)",
                 ):
                     # reraise any exceptions from the threads
                     future.result()
