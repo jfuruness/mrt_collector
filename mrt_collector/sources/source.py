@@ -3,6 +3,7 @@ from datetime import datetime
 from pathlib import Path
 
 from bs4 import BeautifulSoup
+from requests_cache import CachedSession
 
 
 class Source(ABC):
@@ -22,7 +23,7 @@ class Source(ABC):
 
         with CachedSession(requests_cache_dir / "cache.db") as session:
             # Get the soup for the page
-            resp = session.get(url)
+            resp = session.get(self.url)
             resp.raise_for_status()
             soup = BeautifulSoup(resp.text, "html.parser")
             resp.close()

@@ -2,6 +2,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+from tqdm import tqdm
+
+from .mrt_file import MRTFile
+from .sources import Source
+
 
 class MRTCollector:
     def __init__(self, dl_time: datetime, base_dir: Optional[Path] = None) -> None:
@@ -17,19 +22,19 @@ class MRTCollector:
 
     def run(
         self,
-        sources: tuple[Source, ...] = Sources.sources.copy(),
+        sources: tuple[Source, ...] = Source.sources.copy(),
         # Steps
-        mrt_files: Optional[tuple[MRTFile, ...]] = None
+        mrt_files: Optional[tuple[MRTFile, ...]] = None,
         download_raw_mrts=True,
     ) -> None:
         """See README package description"""
 
-        mrt_files = mrt_fles if mrt_files else self.get_mrt_files(sources)
+        mrt_files = mrt_files if mrt_files else self.get_mrt_files(sources)
         if download_raw_mrts:
             self.download_raw_mrts(mrt_files)
         raise NotImplementedError
 
-    def get_mrt_files(self, sources: tuple[Source, ...] = Sources.sources.copy()) -> tuple[MRTFile, ...]:
+    def get_mrt_files(self, sources: tuple[Source, ...] = Source.sources.copy()) -> tuple[MRTFile, ...]:
         """Gets URLs from sources (cached) and returns MRT File objects"""
 
         mrt_files = list()

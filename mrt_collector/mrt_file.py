@@ -1,5 +1,9 @@
+from pathlib import Path
+import os
 import shutil
 from urllib.parse import quote
+
+import requests
 
 from .sources import Source
 
@@ -8,7 +12,7 @@ class MRTFile:
     def __init__(
         self,
         url: str,
-        source: Source
+        source: Source,
         raw_dir: Path,
         parsed_dir: Path,
         prefixes_dir: Path,
@@ -45,7 +49,7 @@ class MRTFile:
         return fname
 
     @property
-    def downloaded(self) -> bool
+    def downloaded(self) -> bool:
         """Returns True if file downloaded else False"""
 
         return self.raw_path.exists()
