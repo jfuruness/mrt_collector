@@ -2,7 +2,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
 from multiprocessing import cpu_count
 from pathlib import Path
-from typing import Optional
+from typing import Any, Callable, Iterable, Optional
 
 from tqdm import tqdm
 
@@ -83,42 +83,21 @@ class MRTCollector:
     def download_raw_mrts(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Downloads raw MRT RIB dumps into raw_dir"""
 
-        # Starts the progress bar in another thread
-        if self.cpus == 1:
-            for mrt_file in tqdm(mrt_files, total=len(mrt_files), desc="Downloading"):
-                mrt_file.download_raw()
-        else:
-            # https://stackoverflow.com/a/63834834/8903959
-            with ProcessPoolExecutor(max_workers=self.cpus) as executor:
-                futures = [executor.submit(x.download_raw) for x in mrt_files]
-                for future in tqdm(
-                    as_completed(futures),
-                    total=len(mrt_files),
-                    desc="Downloading MRTs (~12m)",
-                ):
-                    # reraise any exceptions from the processes
-                    future.result()
+        def download_mrt(mrt_file: MRTFile) -> None:
+            mrt_file.download_raw()
+
+        self._mp_tqdm(mrt_files, download_mrt, desc="Downloading MRTs (~12m)")
 
     def parse_mrts(
         self, mrt_files: tuple[MRTFile, ...], parse_func: PARSE_FUNC
     ) -> None:
         """Runs a tool to extract information from a dump"""
 
-        # Starts the progress bar in another thread
-        if self.cpus == 1:
-            for mrt_file in tqdm(mrt_files, total=len(mrt_files), desc="Parsing"):
-                parse_func(mrt_file)
-        else:
-            # https://stackoverflow.com/a/63834834/8903959
-            with ProcessPoolExecutor(max_workers=self.cpus) as executor:
-                futures = [executor.submit(parse_func, x) for x in mrt_files]
-                for future in tqdm(
-                    as_completed(futures),
-                    total=len(mrt_files),
-                    desc="Parsing MRTs {self.parse_times.get(parse_func, '')}",
-                ):
-                    # reraise any exceptions from the processes
-                    future.result()
+        # Remove MRT files that failed to download, and sort by file size
+        mrt_files = tuple(list(sorted(x for x in mrt_files if x.download_succeeded)))
+        desc = "Parsing MRTs {self.parse_times.get(parse_func, '')}"
+
+        self._mp_tqdm(mrt_files, parse_func, desc=desc)
 
     def store_prefixes(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Stores unique prefixes from MRT Files"""
@@ -135,13 +114,32 @@ class MRTCollector:
 
         raise NotImplementedError
 
+    def _mp_tqdm(
+        self, iterable: tuple[MRTFile, ...], func: Callable[[MRTFile], Any], desc: str
+    ) -> None:
+        """Runs tqdm with multiprocessing"""
+
+        # Starts the progress bar in another thread
+        if self.cpus == 1:
+            for item in tqdm(iterable, total=len(iterable), desc=desc):
+                func(item)
+        else:
+            # https://stackoverflow.com/a/63834834/8903959
+            with ProcessPoolExecutor(max_workers=self.cpus) as executor:
+                futures = [executor.submit(func, x) for x in iterable]
+                for future in tqdm(
+                    as_completed(futures),
+                    total=len(iterable),
+                    desc=desc,
+                ):
+                    # reraise any exceptions from the processes
+                    future.result()
+
     @property
     def parse_times(self) -> dict[PARSE_FUNC, str]:
         """Useful for printing the times it will take to parse files"""
 
-        return {
-            bgpkit_parser_json: "??m"
-        }
+        return {bgpkit_parser_json: "??m"}
 
     ###############
     # Directories #

@@ -33,6 +33,29 @@ class MRTFile:
         # self.prefixes_path: Path = prefixes_dir
         # self.formatted_path: Path = formatted_dir
 
+    def __lt__(self, other) -> bool:
+        """For sorting by file size
+
+        This is useful when doing long operations with multiprocessing.
+        By starting with the largest files first, it takes significantly less time
+        """
+
+        if isinstance(other, MRTFile):
+            for path_attr in ["parsed_path_psv", "raw_path"]:
+                # Save the paths to variables
+                self_path = getattr(self, path_attr)
+                other_path = getattr(other, path_attr)
+                # If both parsed paths exist
+                if self_path.exists() and other_path.exists():
+                    # Check the file size, sort in descending order
+                    # That way largest files are done first
+                    # https://stackoverflow.com/a/2104107/8903959
+                    if self_path.stat().st_size > other_path.stat().st_size:
+                        return True
+                    else:
+                        return False
+        return NotImplemented
+
     def download_raw(self, retries: int = 3) -> None:
         """Downloads the raw file if you haven't already"""
 
@@ -68,6 +91,9 @@ class MRTFile:
         warnings.warn(
             f"status of {status_code} for {self.url}, download failed but didn't err"
         )
+        # Write the file so that you don't go back to it later
+        with self.raw_path.open("wb") as f:
+            f.write(self.dl_err_str.encode("utf-8"))
 
     def _url_to_fname(self, url: str, ext: str = "") -> str:
         """Converts a URL into a file name"""
@@ -86,3 +112,18 @@ class MRTFile:
         """Returns True if file downloaded else False"""
 
         return self.raw_path.exists()
+
+    @property
+    def download_succeeded(self) -> bool:
+        """Returns true if download errored out. Just checks first line"""
+
+        with self.raw_path.open("rb") as f:
+            for line in f:
+                return line != self.dl_err_str.encode("utf-8")
+        raise NotImplementedError("Empty file?")
+
+    @property
+    def dl_err_str(self) -> str:
+        """String that is stored within a file if download errors"""
+
+        return "ERROR"
