@@ -78,17 +78,25 @@ class MRTCollector:
         """Downloads raw MRT RIB dumps into raw_dir"""
 
         # Starts the progress bar in another thread
-        with mrt_dl_pbar:
-            if self.cpus == 1:
-                for mrt_file in mrt_files:
-                    mrt_file.download_raw()
-            else:
+        if self.cpus == 1:
+            for mrt_file in mrt_files:
+                mrt_file.download_raw()
+        else:
+
+
+            def mrt_dl_pbar(queue: manage.Queue, total_files: int) -> None:
+                """Progress bar that updates when MRT file is downloaded"""
+                with tqdm(total=total_files, desc="Parsing MRTs") as pbar:
+                    while queue.get() is not None:
+                        pbar.update()
+
+            with mrt_dl_pbar(mrt_files):
                 # Starting the download tasks using a thread pool
                 with ThreadPoolExecutor(max_workers=self.cpus * 2) as executor:
                     futures = [executor.submit(x.download_raw) for x in mrt_files]
 
                     # Wait for futures to complete
-                    for future in as_completd(futures):
+                    for future in as_completed(futures):
                         # reraise any exceptions from the threads
                         future.result()
 
