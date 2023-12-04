@@ -9,8 +9,14 @@ from .sources import Source
 
 
 class MRTCollector:
-    def __init__(self, dl_time: datetime, base_dir: Optional[Path] = None) -> None:
+    def __init__(
+        self,
+        dl_time: datetime = datetime(2023, 12, 1, 23, 59, 59),
+        base_dir: Optional[Path] = None,
+    ) -> None:
         """Creates directories"""
+
+        self.dl_time: datetime = dl_time
 
         # Set base directory
         if base_dir is None:
@@ -22,7 +28,9 @@ class MRTCollector:
 
     def run(
         self,
-        sources: tuple[Source, ...] = Source.sources.copy(),
+        sources: tuple[Source, ...] = tuple(
+            [Cls() for Cls in Source.sources]  # type: ignore
+        ),
         # Steps
         mrt_files: Optional[tuple[MRTFile, ...]] = None,
         download_raw_mrts=True,
@@ -35,7 +43,10 @@ class MRTCollector:
         raise NotImplementedError
 
     def get_mrt_files(
-        self, sources: tuple[Source, ...] = Source.sources.copy()
+        self,
+        sources: tuple[Source, ...] = tuple(
+            [Cls() for Cls in Source.sources]  # type: ignore
+        ),
     ) -> tuple[MRTFile, ...]:
         """Gets URLs from sources (cached) and returns MRT File objects"""
 

@@ -19,7 +19,7 @@ class MRTFile:
         formatted_dir: Path,
     ) -> None:
         self.url: str = url
-        self.source: Source = Source
+        self.source: Source = source
         self.raw_path: Path = raw_dir / self._url_to_fname(self.url)
         # self.parsed_path: Path = parsed_dir
         # self.prefixes_path: Path = prefixes_dir
@@ -33,9 +33,9 @@ class MRTFile:
             # stream works best for large files
             # https://docs.python.org/3.5/library/urllib.request.html#legacy-interface
             with requests.get(self.url, stream=True, timeout=60) as r:  # verify=verify
-                r.raise_for_status()
+                r.raise_for_status()  # type: ignore
                 with self.raw_path.open("wb") as f:
-                    shutil.copyfileobj(r.raw, f)
+                    shutil.copyfileobj(r.raw, f)  # type: ignore
 
     def _url_to_fname(self, url: str, ext: str = "") -> str:
         """Converts a URL into a file name"""

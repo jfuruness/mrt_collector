@@ -15,8 +15,11 @@ class RouteViews(Source):
 
         assert dl_time.hour % 2 == 0, "route views only downloads every two hours"
         # Links to collectors
-        links = [f"{self.URL}{x}/" for x in self._get_hrefs() if "/bgpdata" in x]
-        raise NotImplementedError("Record number of links")
+        links = [
+            f"{self.URL}{x}/"
+            for x in self._get_hrefs(requests_cache_dir)
+            if "/bgpdata" in x
+        ]
         if len(links) != 26:
             warnings.warn("Number of collectors in route_views is off")
         # Return the links to the dumps from the collector links

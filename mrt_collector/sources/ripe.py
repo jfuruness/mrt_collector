@@ -19,7 +19,9 @@ class RIPE(Source):
         assert dl_time.hour % 8 == 0, "RIPE/RIS only downloads RIBS every 8hrs"
         # Links to collectors
         links = [
-            x for x in self._get_hrefs() if x.startswith("http://data.ris.ripe.net/rrc")
+            x
+            for x in self._get_hrefs(requests_cache_dir)
+            if x.startswith("http://data.ris.ripe.net/rrc")
         ]
         if len(links) != 26:
             warnings.warn("Number of collectors in RIPE is off")
