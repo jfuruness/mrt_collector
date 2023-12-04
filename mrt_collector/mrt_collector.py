@@ -78,7 +78,7 @@ class MRTCollector:
                 mrt_file.download_raw()
         else:
             # https://stackoverflow.com/a/63834834/8903959
-            with ThreadPoolExecutor(max_workers=self.cpu_count * 2) as executor:
+            with ThreadPoolExecutor(max_workers=self.cpus * 2) as executor:
                 futures = [executor.submit(x.download_raw) for x in mrt_files]
                 for future in tqdm(
                     as_completed(futures),
