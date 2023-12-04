@@ -18,13 +18,19 @@
 
 This package performs the following:
 
-1. Downloads MRT RIB dumps from RIPE RIS and Route Views
-2. Parses these MRT RIB dumps using any number of tools built to do this
+0. Initializes all of the directories
+1. Get all the URLs from the MRT data sources for the MRT RIB dumps and init MRTs
+    * into the requests\_cache
+    * in the init_mrt_files function
+1. Downloads raw MRT RIB dumps from RIPE RIS and Route Views
+    * into base\_dir / raw
+    * using download\_raw\_mrts func
+2. Parses these MRT RIB dumps using any number of tools built to do this into base\_dir / parsed
 3. (Optionally delete the original unparsed RIB dumps for space)
-4. Gets the unique prefixes contained within the MRT files
-5. Convert the dumps into something meaningful and store in a CSV
+4. Gets the unique prefixes contained within the MRT files into base\_dir / prefixes
+5. Format the dumps into something meaningful and store in a CSV into base\_dir / formatted
 6. (Optionally delete the parsed dumps)
-7. Analyze the CSVs
+7. Analyze the CSVs into base\_dir / analysis
 
 ## Usage
 * [mrt\_collector](#mrt\_collector)
