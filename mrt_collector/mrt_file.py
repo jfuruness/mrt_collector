@@ -23,7 +23,9 @@ class MRTFile:
         self.url: str = url
         self.source: Source = source
         self.raw_path: Path = raw_dir / self._url_to_fname(self.url)
-        # self.parsed_path: Path = parsed_dir
+        self.parsed_path_psv: Path = parsed_dir / self._url_to_fname(self.url, ext="psv")
+        # NOTE: This isn't always filled with a file, but is sometimes useful
+        self.parsed_path_json: Path = parsed_dir / self._url_to_fname(self.url, ext="json")
         # self.prefixes_path: Path = prefixes_dir
         # self.formatted_path: Path = formatted_dir
 
@@ -64,12 +66,13 @@ class MRTFile:
     def _url_to_fname(self, url: str, ext: str = "") -> str:
         """Converts a URL into a file name"""
 
-        fname = quote(self.url).replace("/", "_")
+        # precede with non_url so that bgp dump tools don't mistake it for one
+        fname = "non_url" + quote(self.url).replace("/", "_")
         if ext:
             fname = fname.replace(".gz", ext).replace(".bz2", ext)
             # The base without the extension
             base_name = os.path.splitext(fname)[0]
-            fname = f"{base_name}.csv"
+            fname = f"{base_name}.{ext}"
         return fname
 
     @property

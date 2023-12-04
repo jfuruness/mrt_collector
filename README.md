@@ -26,11 +26,9 @@ This package performs the following:
     * into base\_dir / raw
     * using download\_raw\_mrts func
 2. Parses these MRT RIB dumps using any number of tools built to do this into base\_dir / parsed
-3. (Optionally delete the original unparsed RIB dumps for space)
-4. Gets the unique prefixes contained within the MRT files into base\_dir / prefixes
-5. Format the dumps into something meaningful and store in a CSV into base\_dir / formatted
-6. (Optionally delete the parsed dumps)
-7. Analyze the CSVs into base\_dir / analysis
+3. Gets the unique prefixes contained within the MRT files into base\_dir / prefixes
+4. Format the dumps into something meaningful and store in a CSV into base\_dir / formatted
+5. Analyze the CSVs into base\_dir / analysis
 
 ## Usage
 * [mrt\_collector](#mrt\_collector)
@@ -68,6 +66,25 @@ cd mrt_collector
 pip3 install -e .[test]
 pre-commit install
 ```
+
+After installing the python package, you must also install whatever BGPDumpTool
+that you want to use.
+These are used to extract data from the raw MRT files, and are external packages for this.
+Installation for these changes from time to time, and supporting automatic installs of
+these tools doesn't make much sense for this repo.
+So instead users need to install them if they want to use them.
+By default, this is the tool that is used https://github.com/bgpkit/bgpkit-parser
+but if you want to use a different tool you must install it separately.
+At the time of this writing (Dec 4 2023) this can be installed with:
+
+```bash
+sudo apt install cargo -y
+git clone git@github.com:bgpkit/bgpkit-parser.git
+cargo install --path ./bgpkit-parser --features cli
+cp bgpkit-parser/target/release/bgpkit-parser ~/.local/bin
+```
+
+but refer to the docs to make sure it hasn't changed.
 
 To test the development package: [Testing](#testing)
 

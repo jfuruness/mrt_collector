@@ -6,6 +6,7 @@ from typing import Optional
 
 from tqdm import tqdm
 
+from .parse_funcs import PARSE_FUNC, bgp_kit_parser
 from .mrt_file import MRTFile
 from .sources import Source
 
@@ -24,7 +25,7 @@ class MRTCollector:
 
         # Set base directory
         if base_dir is None:
-            self.base_dir: Path = Path.home() / f"mrt_collector_{dl_time.date()}"
+            self.base_dir: Path = Path.home() / "mrt_data" / str(dl_time.date())
         else:
             self.base_dir = base_dir
 
@@ -38,13 +39,23 @@ class MRTCollector:
         # Steps
         mrt_files: Optional[tuple[MRTFile, ...]] = None,
         download_raw_mrts: bool = True,
+        parse_mrt_func: PARSE_FUNC = bgp_kit_parser,
+        store_prefixes: bool = True,
+        format_parsed_dumps: bool = True,
+        analyze_formatted_dumps: bool = True,
     ) -> None:
         """See README package description"""
 
         mrt_files = mrt_files if mrt_files else self.get_mrt_files(sources)
         if download_raw_mrts:
             self.download_raw_mrts(mrt_files)
-        raise NotImplementedError
+        self.parse_mrts(mrt_files, parse_mrt_func)
+        if store_prefixes:
+            self.store_prefixes(mrt_files)
+        if format_parsed_dumps:
+            self.format_parsed_dumps(mrt_files)
+        if analyze_formatted_dumps:
+            self.analyze_formatted_dumps(mrt_files)
 
     def get_mrt_files(
         self,
@@ -85,8 +96,43 @@ class MRTCollector:
                     total=len(mrt_files),
                     desc="Downloading MRTs (~12m)",
                 ):
-                    # reraise any exceptions from the threads
+                    # reraise any exceptions from the processes
                     future.result()
+
+    def parse_mrts(self, mrt_files: tuple[MRTFile, ...], parse_func: PARSE_FUNC) -> None:
+        """Runs a tool to extract information from a dump"""
+
+        # Starts the progress bar in another thread
+        if self.cpus == 1:
+            for mrt_file in tqdm(mrt_files, total=len(mrt_files), desc="Parsing"):
+                parse_func(mrt_file)
+        else:
+            # https://stackoverflow.com/a/63834834/8903959
+            with ProcessPoolExecutor(max_workers=self.cpus) as executor:
+                futures = [executor.submit(parse_func, x) for x in mrt_files]
+                for future in tqdm(
+                    as_completed(futures),
+                    total=len(mrt_files),
+                    desc="Parsing MRTs (~12m)",
+                ):
+                    # reraise any exceptions from the processes
+                    future.result()
+
+
+    def store_prefixes(self, mrt_files: tuple[MRTFile, ...]) -> None:
+        """Stores unique prefixes from MRT Files"""
+
+        raise NotImplementedError
+
+    def format_parsed_dumps(self, mrt_files: tuple[MRTFile, ...]) -> None:
+        """Formats the parsed BGP RIB dumps"""
+
+        raise NotImplementedError
+
+    def analyze_formatted_dumps(self, mrt_files: tuple[MRTFile, ...]) -> None:
+        """Analyzes the formatted BGP dumps"""
+
+        raise NotImplementedError
 
     ###############
     # Directories #
