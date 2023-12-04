@@ -20,8 +20,8 @@ class RouteViews(Source):
             for x in self._get_hrefs(requests_cache_dir)
             if "/bgpdata" in x
         ]
-        if len(links) != 26:
-            warnings.warn("Number of collectors in route_views is off")
+        if len(links) != 40:
+            warnings.warn(f"Expected 40 collectors from route views, got {len(links)}")
         # Return the links to the dumps from the collector links
         return tuple(
             [dl_time.strftime(f"{x}%Y.%m/RIBS/rib.%Y%m%d.%H00.bz2") for x in links]

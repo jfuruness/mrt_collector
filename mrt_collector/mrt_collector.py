@@ -1,22 +1,31 @@
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
 from datetime import datetime
+from multiprocessing import cpu_count
 from pathlib import Path
-from typing import Optional
+import time
+from typing import Iterable, Optional
 
 from tqdm import tqdm
 
 from .mrt_file import MRTFile
 from .sources import Source
+from .utils import mrt_dl_pbar
+
+
 
 
 class MRTCollector:
     def __init__(
         self,
-        dl_time: datetime = datetime(2023, 11, 1, 23, 59, 59),
+        dl_time: datetime = datetime(2023, 11, 1, 0, 0, 0),
+        cpus: int = cpu_count(),
         base_dir: Optional[Path] = None,
     ) -> None:
         """Creates directories"""
 
         self.dl_time: datetime = dl_time
+        self.cpus: int = cpus
 
         # Set base directory
         if base_dir is None:
@@ -33,7 +42,7 @@ class MRTCollector:
         ),
         # Steps
         mrt_files: Optional[tuple[MRTFile, ...]] = None,
-        download_raw_mrts=True,
+        download_raw_mrts: bool = True,
     ) -> None:
         """See README package description"""
 
@@ -68,8 +77,20 @@ class MRTCollector:
     def download_raw_mrts(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Downloads raw MRT RIB dumps into raw_dir"""
 
-        for mrt_file in mrt_files:
-            mrt_file.download_raw()
+        # Starts the progress bar in another thread
+        with mrt_dl_pbar:
+            if self.cpus == 1:
+                for mrt_file in mrt_files:
+                    mrt_file.download_raw()
+            else:
+                # Starting the download tasks using a thread pool
+                with ThreadPoolExecutor(max_workers=self.cpus * 2) as executor:
+                    futures = [executor.submit(x.download_raw) for x in mrt_files]
+
+                    # Wait for futures to complete
+                    for future in as_completd(futures):
+                        # reraise any exceptions from the threads
+                        future.result()
 
     ###############
     # Directories #

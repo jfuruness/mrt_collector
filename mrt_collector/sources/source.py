@@ -18,6 +18,9 @@ class Source(ABC):
         super().__init_subclass__(**kwargs)
         Source.sources += (cls,)
 
+    def __repr__(self) -> str:
+        return self.__class__.__name__
+
     def _get_hrefs(self, requests_cache_dir: Path) -> tuple[str, ...]:
         """Parses a URL and returns all the Hrefs for it"""
 

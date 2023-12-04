@@ -24,7 +24,7 @@ class RIPE(Source):
             if x.startswith("http://data.ris.ripe.net/rrc")
         ]
         if len(links) != 26:
-            warnings.warn("Number of collectors in RIPE is off")
+            warnings.warn(f"Expected 26 collectors from RIPE, got {len(links)}")
         # Return the links to the dumps from the collector links
         return tuple(
             [dl_time.strftime(f"{x}/%Y.%m/bview.%Y%m%d.%H00.gz") for x in links]
