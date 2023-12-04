@@ -4,7 +4,6 @@ import shutil
 from urllib.parse import quote
 import warnings
 
-import aiohttp
 import requests
 
 from .sources import Source
@@ -41,22 +40,6 @@ class MRTFile:
                 # Don't error, some files always fail to download
                 else:
                     warnings.warn(f"status of {r.status_code} for {self.url}")
-
-    async def async_download_raw(self) -> None:
-        """Downloads raw file async if not downloaded already"""
-
-        if not self.downloaded:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(self.url, timeout=60) as response:
-                    if response.status == 200:
-                        with self.raw_path.open('wb') as file:
-                            while True:
-                                chunk = await response.content.read(1024)
-                                if not chunk:
-                                    break
-                                file.write(chunk)
-                    else:
-                        warnings.warn(f"Status of {response.status} for {self.url}")
 
     def _url_to_fname(self, url: str, ext: str = "") -> str:
         """Converts a URL into a file name"""
