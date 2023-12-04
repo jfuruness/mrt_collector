@@ -13,7 +13,7 @@ def main():
         collector = MRTCollector()
         mrt_files = collector.get_mrt_files()
         # This one has a fast download time
-        mrt_files = [mrt_files[x] for x in (-2, -3, -4, -5)]
+        mrt_files = tuple([mrt_files[x] for x in (-2, -3, -4, -5)])
         # print(mrt_files[0].url)
         collector.run(mrt_files=mrt_files)
     else:

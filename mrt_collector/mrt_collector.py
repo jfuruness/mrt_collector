@@ -6,7 +6,7 @@ from typing import Optional
 
 from tqdm import tqdm
 
-from .parse_funcs import PARSE_FUNC, bgp_kit_parser
+from .parse_funcs import PARSE_FUNC, bgpkit_parser_json
 from .mrt_file import MRTFile
 from .sources import Source
 
@@ -39,7 +39,7 @@ class MRTCollector:
         # Steps
         mrt_files: Optional[tuple[MRTFile, ...]] = None,
         download_raw_mrts: bool = True,
-        parse_mrt_func: PARSE_FUNC = bgp_kit_parser,
+        parse_mrt_func: PARSE_FUNC = bgpkit_parser_json,
         store_prefixes: bool = True,
         format_parsed_dumps: bool = True,
         analyze_formatted_dumps: bool = True,

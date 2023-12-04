@@ -1,9 +1,9 @@
-from .parse_funcs import bgp_kit_parser_simple
+from . import parse_funcs
 from .mrt_collector import MRTCollector
 from .sources import Source, RIPE, RouteViews
 
 __all__ = [
-    "bgp_kit_parser_simple",
+    "parse_funcs",
     "MRTCollector",
     "Source",
     "RIPE",

@@ -21,18 +21,23 @@ def bgpkit_parser_json(mrt_file: MRTFile) -> None:
     For other funcs of this kind, note that you MUST always pipe to PSV
     """
 
-    check_call(
-        f"bgpkit-parser {mrt_file.raw_path} > {mrt_file.parsed_path_psv}", shell=True
-    )
-    check_call(
-        f"bgpkit-parser {mrt_file.raw_path} --json > {mrt_file.parsed_path_json}",
-        shell=True,
-    )
+    if not mrt_file.parsed_path_psv.exists():
+        check_call(
+            f"bgpkit-parser {mrt_file.raw_path} > {mrt_file.parsed_path_psv}",
+            shell=True
+        )
+    if not mrt_file.parsed_path_json.exists():
+        check_call(
+            f"bgpkit-parser {mrt_file.raw_path} --json > {mrt_file.parsed_path_json}",
+            shell=True,
+        )
 
 
 def bgpkit_parser(mrt_file: MRTFile) -> None:
     """Extracts info from raw dumps into parsed path"""
 
-    check_call(
-        f"bgpkit-parser {mrt_file.raw_path} > {mrt_file.parsed_path_psv}", shell=True
-    )
+    if not mrt_file.parsed_path_psv.exists():
+        check_call(
+            f"bgpkit-parser {mrt_file.raw_path} > {mrt_file.parsed_path_psv}",
+            shell=True
+        )

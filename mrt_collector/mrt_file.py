@@ -47,8 +47,8 @@ class MRTFile:
         for i in range(retries):
             try:
                 with requests.get(self.url, stream=True, timeout=60) as r:
-                    status_code = r.status_code
-                    if r.status_code == 200:
+                    status_code = r.status_code  # type: ignore
+                    if status_code == 200:
                         with self.raw_path.open("wb") as f:
                             shutil.copyfileobj(r.raw, f)  # type: ignore
                             return
