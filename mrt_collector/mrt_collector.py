@@ -1,4 +1,4 @@
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import asyncio
 from datetime import datetime
 from multiprocessing import cpu_count
 from pathlib import Path
@@ -43,7 +43,7 @@ class MRTCollector:
 
         mrt_files = mrt_files if mrt_files else self.get_mrt_files(sources)
         if download_raw_mrts:
-            self.download_raw_mrts(mrt_files)
+            await self.download_raw_mrts(mrt_files)
         raise NotImplementedError
 
     def get_mrt_files(
@@ -69,7 +69,7 @@ class MRTCollector:
                 )
         return tuple(mrt_files)
 
-    def download_raw_mrts(self, mrt_files: tuple[MRTFile, ...]) -> None:
+    async def download_raw_mrts(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Downloads raw MRT RIB dumps into raw_dir"""
 
         # Starts the progress bar in another thread
@@ -77,16 +77,17 @@ class MRTCollector:
             for mrt_file in tqdm(mrt_files, total=len(mrt_files), desc="Downloading"):
                 mrt_file.download_raw()
         else:
-            # https://stackoverflow.com/a/63834834/8903959
-            with ThreadPoolExecutor(max_workers=self.cpus * 2) as executor:
-                futures = [executor.submit(x.download_raw) for x in mrt_files]
-                for future in tqdm(
-                    as_completed(futures),
-                    total=len(mrt_files),
-                    desc="Downloading MRTs (~1hr)"
-                ):
-                    # reraise any exceptions from the threads
-                    future.result()
+            # Max number to run at once
+            asyncio.Semaphore(self.cpus)
+            tasks = [mrt_file.async_download_raw for mrt_file in mrt_files]
+
+            # Use tqdm.as_completed to create and manage the progress bar
+            for future in tqdm.as_completed(
+                fs=tasks,
+                total=len(mrt_files),
+                desc="Downloading MRTs (~1hr)"
+            ):
+                await future
 
     ###############
     # Directories #
