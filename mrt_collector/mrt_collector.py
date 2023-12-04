@@ -34,7 +34,9 @@ class MRTCollector:
             self.download_raw_mrts(mrt_files)
         raise NotImplementedError
 
-    def get_mrt_files(self, sources: tuple[Source, ...] = Source.sources.copy()) -> tuple[MRTFile, ...]:
+    def get_mrt_files(
+        self, sources: tuple[Source, ...] = Source.sources.copy()
+    ) -> tuple[MRTFile, ...]:
         """Gets URLs from sources (cached) and returns MRT File objects"""
 
         mrt_files = list()
@@ -47,7 +49,7 @@ class MRTCollector:
                         raw_dir=self.raw_dir,
                         parsed_dir=self.parsed_dir,
                         prefixes_dir=self.prefixes_dir,
-                        formatted_dir=self.formatted_dir
+                        formatted_dir=self.formatted_dir,
                     )
                 )
         return tuple(mrt_files)

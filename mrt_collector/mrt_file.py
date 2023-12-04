@@ -16,7 +16,7 @@ class MRTFile:
         raw_dir: Path,
         parsed_dir: Path,
         prefixes_dir: Path,
-        formatted_dir: Path
+        formatted_dir: Path,
     ) -> None:
         self.url: str = url
         self.source: Source = Source

@@ -28,7 +28,7 @@ class Source(ABC):
             soup = BeautifulSoup(resp.text, "html.parser")
             resp.close()
 
-        return tuple([a['href'] for a in soup.find_all('a', href=True)])
+        return tuple([a["href"] for a in soup.find_all("a", href=True)])
 
     @abstractmethod
     def get_urls(self, dl_time: datetime, requests_cache_dir: Path) -> tuple[str, ...]:
