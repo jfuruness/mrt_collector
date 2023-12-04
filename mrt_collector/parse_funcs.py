@@ -24,7 +24,7 @@ def bgpkit_parser_json(mrt_file: MRTFile) -> None:
     if not mrt_file.parsed_path_psv.exists():
         check_call(
             f"bgpkit-parser {mrt_file.raw_path} > {mrt_file.parsed_path_psv}",
-            shell=True
+            shell=True,
         )
     if not mrt_file.parsed_path_json.exists():
         check_call(
@@ -39,5 +39,5 @@ def bgpkit_parser(mrt_file: MRTFile) -> None:
     if not mrt_file.parsed_path_psv.exists():
         check_call(
             f"bgpkit-parser {mrt_file.raw_path} > {mrt_file.parsed_path_psv}",
-            shell=True
+            shell=True,
         )
