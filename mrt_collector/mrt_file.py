@@ -47,7 +47,10 @@ class MRTFile:
                             shutil.copyfileobj(r.raw, f)  # type: ignore
                             return
             except Exception as e:
-                print(f"URL {self.url} failed due to {e} {type(e)} {i + 1}/{retries}")
+                if status_code == 404:
+                    print(f"URL {self.url} failed due to 404 {i + 1}/{retries}")
+                else:
+                    print(f"URL {self.url} failed due to {e} {type(e)} {i + 1}/{retries}")
                 if i == retries - 1:
                     raise
 
