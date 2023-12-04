@@ -13,13 +13,15 @@ from lib_utils import helper_funcs, file_funcs
 class MRTFile:
     """This class contains functionality associated with MRT Files"""
 
-    def __init__(self,
-                 url,
-                 source,
-                 raw_dir=None,
-                 dumped_dir=None,
-                 prefix_dir=None,
-                 parsed_dir=None):
+    def __init__(
+        self,
+        url,
+        source,
+        raw_dir=None,
+        dumped_dir=None,
+        prefix_dir=None,
+        parsed_dir=None,
+    ):
         """Inits MRT File and the paths at which to write to"""
 
         self.url = url
@@ -54,7 +56,6 @@ class MRTFile:
                     else:
                         return False
         return NotImplemented
-
 
     def download(self):
         """Downloads raw MRT file"""
@@ -95,37 +96,58 @@ class MRTFile:
         # File that will be read from
         rfile = self.dumped_path.open(mode="r")
         # Opens all files for the block ids
-        wfiles = [open(self.parsed_path(i), "w")
-                  for i in range(po_metadata.next_block_id + 1)]
+        wfiles = [
+            open(self.parsed_path(i), "w") for i in range(po_metadata.next_block_id + 1)
+        ]
         # CSV reader
         reader = csv.reader(rfile, delimiter="|")
         writers = [csv.writer(x, delimiter="\t") for x in wfiles]
         # Things parsed in this file
-        wfields = ("prefix", "as_path", "atomic_aggregate", "aggregator",
-                   "communities", "timestamp", "origin", "collector",
-                   "prepending", "loops", "ixps", "gao_rexford", "new_asns",
-                   "path_poisoning",)
+        wfields = (
+            "prefix",
+            "as_path",
+            "atomic_aggregate",
+            "aggregator",
+            "communities",
+            "timestamp",
+            "origin",
+            "collector",
+            "prepending",
+            "loops",
+            "ixps",
+            "gao_rexford",
+            "new_asns",
+            "path_poisoning",
+        )
         # Bgpstream
         wfields += Row.columns
         # Roa validity and prefix meta
-        wfields += ("roa_validity", "roa_routed", "prefix_id", "block_id", "prefix_block_id")
+        wfields += (
+            "roa_validity",
+            "roa_routed",
+            "prefix_id",
+            "block_id",
+            "prefix_block_id",
+        )
         wfields += ("url", "source")
         for writer in writers:
             writer.writerow(wfields)
 
         for i, ann in enumerate(reader):
             try:
-                (_type,
-                 prefix,
-                 as_path,
-                 next_hop,
-                 bgp_type,
-                 atomic_aggregate,
-                 aggregator,
-                 communities,
-                 peer,
-                 timestamp,
-                 asn_32b) = ann
+                (
+                    _type,
+                    prefix,
+                    as_path,
+                    next_hop,
+                    bgp_type,
+                    atomic_aggregate,
+                    aggregator,
+                    communities,
+                    peer,
+                    timestamp,
+                    asn_32b,
+                ) = ann
             except ValueError as e:
                 print(f"Problem with ann line {i} for {self.dumped_path}, fix later")
                 continue
@@ -152,10 +174,7 @@ class MRTFile:
             if not as_path:
                 continue
             _as_path = as_path.split(" ")
-            path_data = self._get_path_data(_as_path,
-                                            non_public_asns,
-                                            max_asn,
-                                            set())
+            path_data = self._get_path_data(_as_path, non_public_asns, max_asn, set())
             origin = _as_path[-1]
             collector = _as_path[0]
             if aggregator:
@@ -179,14 +198,24 @@ class MRTFile:
             # asn_32_bit - 1 if yes 0 if no
             # Feel free to add these later, it won't break things
             # Just also add them to the table
-            wfields = (prefix,
-                       as_path,
-                       atomic_aggregate,
-                       aggregator,
-                       communities,
-                       timestamp,
-                       origin,
-                       collector,) + path_data + meta + (self.url, self.source,)
+            wfields = (
+                (
+                    prefix,
+                    as_path,
+                    atomic_aggregate,
+                    aggregator,
+                    communities,
+                    timestamp,
+                    origin,
+                    collector,
+                )
+                + path_data
+                + meta
+                + (
+                    self.url,
+                    self.source,
+                )
+            )
 
             # Saving rows to a list then writing is slower
             writers[block_id].writerow(wfields)
@@ -224,11 +253,17 @@ class MRTFile:
             else:
                 last_non_ixp = asn
 
-
         # doesn't follow Gao rexford according to Caida
         # Contains ASNs that Caida doesn't have (that aren't non public)
         # path poisoning by reserved asn, non public asn, or clique being split
-        return (int(prepending), int(loop), int(ixp), int(False), int(False), int(False),)
+        return (
+            int(prepending),
+            int(loop),
+            int(ixp),
+            int(False),
+            int(False),
+            int(False),
+        )
 
     def _url_to_path(self, ext=""):
         _path = quote(self.url).replace("/", "_")

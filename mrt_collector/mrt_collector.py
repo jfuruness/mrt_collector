@@ -99,7 +99,9 @@ class MRTCollector:
                     # reraise any exceptions from the processes
                     future.result()
 
-    def parse_mrts(self, mrt_files: tuple[MRTFile, ...], parse_func: PARSE_FUNC) -> None:
+    def parse_mrts(
+        self, mrt_files: tuple[MRTFile, ...], parse_func: PARSE_FUNC
+    ) -> None:
         """Runs a tool to extract information from a dump"""
 
         # Starts the progress bar in another thread
@@ -117,7 +119,6 @@ class MRTCollector:
                 ):
                     # reraise any exceptions from the processes
                     future.result()
-
 
     def store_prefixes(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Stores unique prefixes from MRT Files"""

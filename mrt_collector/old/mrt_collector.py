@@ -40,10 +40,7 @@ class MRTCollector(Base):
         self.prefix_dir = self.dir_ / "prefix"
         self.parsed_dir = self.dir_ / "parsed"
 
-        for path in [self.raw_dir,
-                     self.dumped_dir,
-                     self.prefix_dir,
-                     self.parsed_dir]:
+        for path in [self.raw_dir, self.dumped_dir, self.prefix_dir, self.parsed_dir]:
             path.mkdir(parents=True, exist_ok=self.dir_exist_ok)
 
         other_collector_kwargs = deepcopy(self.kwargs)
@@ -51,26 +48,38 @@ class MRTCollector(Base):
         other_collector_kwargs.pop("base_dir", None)
 
         # Gets ROAs
-        self.roa_collector = ROACollector(**deepcopy(other_collector_kwargs), dir_=self.dir_ / ROACollector.__name__)
+        self.roa_collector = ROACollector(
+            **deepcopy(other_collector_kwargs), dir_=self.dir_ / ROACollector.__name__
+        )
         # Gets relationships
-        self.caida_collector = CaidaCollector(**deepcopy(other_collector_kwargs), dir_=self.dir_ / CaidaCollector.__name__)
+        self.caida_collector = CaidaCollector(
+            **deepcopy(other_collector_kwargs), dir_=self.dir_ / CaidaCollector.__name__
+        )
         # Gets hijacks, leaks, outage info from bgpstream.com
-        self.bgpstream_website_collector = BGPStreamWebsiteCollector(**deepcopy(other_collector_kwargs),
-                                                                     dir_=self.dir_ / BGPStreamWebsiteCollector.__name__)
+        self.bgpstream_website_collector = BGPStreamWebsiteCollector(
+            **deepcopy(other_collector_kwargs),
+            dir_=self.dir_ / BGPStreamWebsiteCollector.__name__,
+        )
 
         # Temporary placeholder for AS designations (reserved, private, etc)
         class IANACollector(Base):
             def __init__(*args, **kwargs):
                 pass
+
             def run(*args, **kwargs):
                 pass
-        self.iana_collector = IANACollector(**deepcopy(other_collector_kwargs), dir_=self.dir_ / IANACollector.__name__)
 
-    def run(self,
-            sources=Source.sources.copy(),
-            tool=BGPGrep,
-            max_block_size=2000,
-            local_files=None):
+        self.iana_collector = IANACollector(
+            **deepcopy(other_collector_kwargs), dir_=self.dir_ / IANACollector.__name__
+        )
+
+    def run(
+        self,
+        sources=Source.sources.copy(),
+        tool=BGPGrep,
+        max_block_size=2000,
+        local_files=None,
+    ):
         """Downloads and parses the latest RIB dumps from sources.
 
         First all downloading is done so as to efficiently multiprocess
@@ -79,12 +88,10 @@ class MRTCollector(Base):
         In depth explanation in readme
         """
 
-
         # Downloads all other collectors that we need to process MRTs
         self._download_collectors()
 
-        mrt_files = self._init_mrt_files(sources=sources,
-                                         local_files=local_files)
+        mrt_files = self._init_mrt_files(sources=sources, local_files=local_files)
         try:
             # Get downloaded instances of mrt files
             mrt_files = self._download_mrts(mrt_files)
@@ -101,11 +108,16 @@ class MRTCollector(Base):
             delete_paths([self.dumped_dir, self.prefix_dir])
         # So much space, always clean up upon error
         except Exception as e:
-            dirs = [x.dir_ for x in [self,
-                                     self.roa_collector,
-                                     self.caida_collector,
-                                     self.bgpstream_website_collector,]]
-                                     #self.iana_collector]]
+            dirs = [
+                x.dir_
+                for x in [
+                    self,
+                    self.roa_collector,
+                    self.caida_collector,
+                    self.bgpstream_website_collector,
+                ]
+            ]
+            # self.iana_collector]]
             delete_paths(dirs)
             raise e
 
@@ -113,10 +125,12 @@ class MRTCollector(Base):
         """Runs collectors which are needed to process MRTs"""
 
         # Roa validity, relationships/reserved ASNs for path poisoning
-        for collector in [self.roa_collector,
-                          self.caida_collector,
-                          self.iana_collector,
-                          self.bgpstream_website_collector]:
+        for collector in [
+            self.roa_collector,
+            self.caida_collector,
+            self.iana_collector,
+            self.bgpstream_website_collector,
+        ]:
             collector.run()
 
     def _init_mrt_files(self, sources=Source.sources.copy(), local_files=None):
@@ -124,10 +138,12 @@ class MRTCollector(Base):
 
         logging.info(f"Sources: {[x.__class__.__name__ for x in sources]}")
 
-        path_kwargs = {"raw_dir": self.raw_dir,
-                       "dumped_dir": self.dumped_dir,
-                       "prefix_dir": self.prefix_dir,
-                       "parsed_dir": self.parsed_dir}
+        path_kwargs = {
+            "raw_dir": self.raw_dir,
+            "dumped_dir": self.dumped_dir,
+            "prefix_dir": self.prefix_dir,
+            "parsed_dir": self.parsed_dir,
+        }
 
         # Initialize MRT files from URLs of sources
         mrt_files = list()
@@ -163,9 +179,7 @@ class MRTCollector(Base):
         can be run very fast
         """
 
-        self.parse_mp(MRTFile.get_prefixes,
-                      [sorted(mrt_files)],
-                      "Getting prefixes")
+        self.parse_mp(MRTFile.get_prefixes, [sorted(mrt_files)], "Getting prefixes")
 
         prefix_path = self.prefix_dir / "all_prefixes.txt"
         parsed_path = self.prefix_dir / "parsed.txt"
@@ -175,9 +189,11 @@ class MRTCollector(Base):
         # https://unix.stackexchange.com/a/128782/477240
         # cat is also the fastest way to combine files
         # https://unix.stackexchange.com/a/118248/477240
-        cmds = [f"cd {self.prefix_dir}",
-                f"cat ./* >> {prefix_path}",
-                f"awk '!x[$0]++' {prefix_path} > {parsed_path}"]
+        cmds = [
+            f"cd {self.prefix_dir}",
+            f"cat ./* >> {prefix_path}",
+            f"awk '!x[$0]++' {prefix_path} > {parsed_path}",
+        ]
         logging.info("Extracting prefix IDs")
         run_cmds(cmds)
         print(parsed_path)
@@ -205,29 +221,33 @@ class MRTCollector(Base):
         # Reads them in here so I can skip the uniq prefixes func for dev
         with open(uniq_prefixes_path, "r") as f:
             uniq_prefixes = [x.strip() for x in f]
-        meta = POMetadata(uniq_prefixes,
-                          max_block_size,
-                          self.roa_collector.tsv_path,
-                          self.bgpstream_website_collector.tsv_path)
+        meta = POMetadata(
+            uniq_prefixes,
+            max_block_size,
+            self.roa_collector.tsv_path,
+            self.bgpstream_website_collector.tsv_path,
+        )
         # Later make this not hardcoded
         # https://www.iana.org/assignments/iana-as-numbers-special-registry/iana-as-numbers-special-registry.xhtml
         # https://www.iana.org/assignments/as-numbers/as-numbers.xhtml
         logging.warning("Make non public asns not hardcoded")
-        non_public_asns = set([0, 112, 23456, 65535]
-                              + list(range(64496, 64511))
-                              + list(range(64512, 65534))
-                              + list(range(65536, 65551))
-                              # Unallocated
-                              + list(range(147770, 196607))
-                              + list(range(213404, 262143))
-                              + list(range(272797, 327679))
-                              + list(range(329728, 393215)))
+        non_public_asns = set(
+            [0, 112, 23456, 65535]
+            + list(range(64496, 64511))
+            + list(range(64512, 65534))
+            + list(range(65536, 65551))
+            # Unallocated
+            + list(range(147770, 196607))
+            + list(range(213404, 262143))
+            + list(range(272797, 327679))
+            + list(range(329728, 393215))
+        )
         max_asn = 401308
 
         print("read caida df and pass to parse funcs. Do the same with iana")
-        #for mrt_file in sorted(mrt_files):
+        # for mrt_file in sorted(mrt_files):
         #    mrt_file.parse(meta)
-        #input("remove above after caida and iana for mp")
+        # input("remove above after caida and iana for mp")
         logging.info("logging about to shutdown")
         # Done here to avoid conflict when creating dirs
         # TODO: move this to use the parsed_path of MRT file
@@ -235,21 +255,26 @@ class MRTCollector(Base):
         for parse_dir in parse_dirs:
             parse_dir.mkdir(exist_ok=self.dir_exist_ok)
         logging.shutdown()
-        self.parse_mp(MRTFile.parse,
-                      [sorted(mrt_files),
-                       [meta] * len(mrt_files),
-                       [non_public_asns] * len(mrt_files),
-                       [max_asn] * len(mrt_files),
-                       ],
-                      "Adding metadata to MRTs")
+        self.parse_mp(
+            MRTFile.parse,
+            [
+                sorted(mrt_files),
+                [meta] * len(mrt_files),
+                [non_public_asns] * len(mrt_files),
+                [max_asn] * len(mrt_files),
+            ],
+            "Adding metadata to MRTs",
+        )
         # Concatenate all chunk dirs into 1 file per chunk
         output_files = []
         for parse_dir in parse_dirs:
             output_file = Path(str(parse_dir) + ".tsv")
             output_files.append(output_file)
             parsed_file = next(parse_dir.iterdir())
-            cmd = (f"head -n 1 {parsed_file} > {output_file} && "
-                   f"tail -n+2 -q {parse_dir}/* >> {output_file}")
+            cmd = (
+                f"head -n 1 {parsed_file} > {output_file} && "
+                f"tail -n+2 -q {parse_dir}/* >> {output_file}"
+            )
             run_cmds([cmd])
             delete_paths([parse_dir])
 
@@ -257,6 +282,8 @@ class MRTCollector(Base):
         # Useful for statistics
         output_file = Path(str(self.parsed_dir) + ".tsv")
         parsed_file = next(self.parsed_dir.iterdir())
-        cmd = (f"head -n 1 {parsed_file} > {output_file} && "
-               f"tail -n+2 -q {self.parsed_dir}/* >> {output_file}")
+        cmd = (
+            f"head -n 1 {parsed_file} > {output_file} && "
+            f"tail -n+2 -q {self.parsed_dir}/* >> {output_file}"
+        )
         run_cmds([cmd])

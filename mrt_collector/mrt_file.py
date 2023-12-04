@@ -23,9 +23,13 @@ class MRTFile:
         self.url: str = url
         self.source: Source = source
         self.raw_path: Path = raw_dir / self._url_to_fname(self.url)
-        self.parsed_path_psv: Path = parsed_dir / self._url_to_fname(self.url, ext="psv")
+        self.parsed_path_psv: Path = parsed_dir / self._url_to_fname(
+            self.url, ext="psv"
+        )
         # NOTE: This isn't always filled with a file, but is sometimes useful
-        self.parsed_path_json: Path = parsed_dir / self._url_to_fname(self.url, ext="json")
+        self.parsed_path_json: Path = parsed_dir / self._url_to_fname(
+            self.url, ext="json"
+        )
         # self.prefixes_path: Path = prefixes_dir
         # self.formatted_path: Path = formatted_dir
 
@@ -52,7 +56,9 @@ class MRTFile:
                 if status_code == 404:
                     print(f"URL {self.url} failed due to 404 {i + 1}/{retries}")
                 else:
-                    print(f"URL {self.url} failed due to {e} {type(e)} {i + 1}/{retries}")
+                    print(
+                        f"URL {self.url} failed due to {e} {type(e)} {i + 1}/{retries}"
+                    )
                 if i == retries - 1:
                     raise
 

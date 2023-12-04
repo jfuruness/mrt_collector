@@ -13,18 +13,25 @@ from lib_roa_checker import ROAChecker, ROAValidity
 class POMetadata:
     """Stores prefix origin metadata"""
 
-    __slots__ = ["prefix_ids", "roa_checker", "next_prefix_id",
-                 "next_block_id", "max_block_size", "next_prefix_block_id",
-                 "po_meta", "roa_info", "bgpstream_po_dict", "bgpstream_origin_dict"]
+    __slots__ = [
+        "prefix_ids",
+        "roa_checker",
+        "next_prefix_id",
+        "next_block_id",
+        "max_block_size",
+        "next_prefix_block_id",
+        "po_meta",
+        "roa_info",
+        "bgpstream_po_dict",
+        "bgpstream_origin_dict",
+    ]
 
-    def __init__(self,
-                 prefixes,
-                 max_block_size,
-                 roas_path,
-                 bgpstream_website_tsv_path):
+    def __init__(self, prefixes, max_block_size, roas_path, bgpstream_website_tsv_path):
         self.prefix_ids = dict()
         self.po_meta = dict()
-        bgpstream_po_dict, bgpstream_origin_dict = self.get_bgpstream_dict(bgpstream_website_tsv_path)
+        bgpstream_po_dict, bgpstream_origin_dict = self.get_bgpstream_dict(
+            bgpstream_website_tsv_path
+        )
         self.bgpstream_po_dict = bgpstream_po_dict
         self.bgpstream_origin_dict = bgpstream_origin_dict
         self.roa_checker = self._init_roas_checker(roas_path)
@@ -66,27 +73,35 @@ class POMetadata:
             for row in reader:
                 # Hijack
                 if row["hijack_detected_origin_number"] not in [None, ""]:
-                    po = (row["hijack_more_specific_prefix"],
-                          int(row["hijack_detected_origin_number"]),)
+                    po = (
+                        row["hijack_more_specific_prefix"],
+                        int(row["hijack_detected_origin_number"]),
+                    )
                     bgpstream_po_info[po] = tuple(list(row.values()))
-                    po = (row["hijack_expected_prefix"],
-                          int(row["hijack_expected_origin_number"]),)
+                    po = (
+                        row["hijack_expected_prefix"],
+                        int(row["hijack_expected_origin_number"]),
+                    )
                     bgpstream_po_info[po] = tuple(list(row.values()))
                 # Leak
                 elif row["leaked_prefix"] not in [None, ""]:
-                    po = (row["leaked_prefix"],
-                          int(row["leaker_as_number"]),)
+                    po = (
+                        row["leaked_prefix"],
+                        int(row["leaker_as_number"]),
+                    )
                     bgpstream_po_info[po] = tuple(list(row.values()))
 
-                    #po = (row["leaked_prefix"],
+                    # po = (row["leaked_prefix"],
                     #      int(row["leak_origin_as_number"]),)
-                    #bgpstream_po_info[po] = tuple(list(row.values()))
-                    #po = (row["leaked_prefix"],
+                    # bgpstream_po_info[po] = tuple(list(row.values()))
+                    # po = (row["leaked_prefix"],
                     #      int(row["leaked_to_number"]),)
-                    #bgpstream_po_info[po] = tuple(list(row.values()))
+                    # bgpstream_po_info[po] = tuple(list(row.values()))
 
                 elif row["outage_as_number"] not in [None, ""]:
-                    bgpstream_origin_info[int(row["outage_as_number"])] = tuple(row.values())
+                    bgpstream_origin_info[int(row["outage_as_number"])] = tuple(
+                        row.values()
+                    )
         return bgpstream_po_info, bgpstream_origin_info
 
     def _get_bgpstream_vals(self, prefix_str, prefix_obj, origin):
@@ -115,7 +130,14 @@ class POMetadata:
             # And they are also faster than lists (slightly)
             if routed is not None:
                 routed = int(routed)
-            meta = bgpstream_vals + (validity.value, routed,) + self.prefix_ids[prefix]
+            meta = (
+                bgpstream_vals
+                + (
+                    validity.value,
+                    routed,
+                )
+                + self.prefix_ids[prefix]
+            )
             self.po_meta[(prefix, origin)] = meta
 
         return self.po_meta[(prefix, origin)]
@@ -130,9 +152,9 @@ class POMetadata:
             logging.warning(f"{prefix} had host bits set")
             return
 
-        prefix_meta = tuple([self.next_prefix_id,
-                             self.next_block_id,
-                             self.next_prefix_block_id])
+        prefix_meta = tuple(
+            [self.next_prefix_id, self.next_block_id, self.next_prefix_block_id]
+        )
 
         self.prefix_ids[prefix] = prefix_meta
         self.next_prefix_id += 1

@@ -1,6 +1,8 @@
 """This file contains functions used to dump BGP RIBs"""
 
 from subprocess import check_call
+from typing import Callable
+
 from .mrt_file import MRTFile
 
 
@@ -19,11 +21,18 @@ def bgpkit_parser_json(mrt_file: MRTFile) -> None:
     For other funcs of this kind, note that you MUST always pipe to PSV
     """
 
-    check_call(f"bgpkit-parser {mrt_file.raw_path} > {mrt_file.parsed_path_psv}", shell=True)
-    check_call(f"bgpkit-parser {raw_dump_path} --json > {mrt_file.parsed_path_json}", shell=True)
+    check_call(
+        f"bgpkit-parser {mrt_file.raw_path} > {mrt_file.parsed_path_psv}", shell=True
+    )
+    check_call(
+        f"bgpkit-parser {mrt_file.raw_path} --json > {mrt_file.parsed_path_json}",
+        shell=True,
+    )
 
 
 def bgpkit_parser(mrt_file: MRTFile) -> None:
     """Extracts info from raw dumps into parsed path"""
 
-    check_call(f"bgpkit-parser {mrt_file.raw_path} > {mrt_file.parsed_path_psv}", shell=True)
+    check_call(
+        f"bgpkit-parser {mrt_file.raw_path} > {mrt_file.parsed_path_psv}", shell=True
+    )
