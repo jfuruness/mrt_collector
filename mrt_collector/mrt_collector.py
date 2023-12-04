@@ -11,7 +11,7 @@ from .sources import Source
 class MRTCollector:
     def __init__(
         self,
-        dl_time: datetime = datetime(2023, 12, 1, 23, 59, 59),
+        dl_time: datetime = datetime(2023, 11, 1, 23, 59, 59),
         base_dir: Optional[Path] = None,
     ) -> None:
         """Creates directories"""
