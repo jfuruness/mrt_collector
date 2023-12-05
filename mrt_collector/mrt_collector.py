@@ -20,7 +20,7 @@ class MRTCollector:
     def __init__(
         self,
         dl_time: datetime = datetime(2023, 11, 1, 0, 0, 0),
-        cpus: int = cpu_count(),
+        cpus: int = 1,#cpu_count(),
         base_dir: Optional[Path] = None,
     ) -> None:
         """Creates directories"""
@@ -166,8 +166,8 @@ class MRTCollector:
 
         # Starts the progress bar in another thread
         if self.cpus == 1:
-            for item in tqdm(iterable, total=len(iterable), desc=desc):
-                func(item)
+            for args in tqdm(iterable, total=len(iterable), desc=desc):
+                func(*args)
         else:
             # https://stackoverflow.com/a/63834834/8903959
             with ProcessPoolExecutor(max_workers=self.cpus) as executor:

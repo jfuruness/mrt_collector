@@ -1,10 +1,12 @@
 """This file contains functions used when multiprocessing"""
 
+import csv
 from subprocess import check_call
 from typing import Callable
 
 from .mrt_file import MRTFile
 from .prefix_origin_metadata import PrefixOriginMetadata
+
 
 def download_mrt(mrt_file: MRTFile) -> None:
     mrt_file.download_raw()
@@ -59,6 +61,7 @@ def bgpkit_parser(mrt_file: MRTFile) -> None:
 # Format Funcs #
 ################
 
+
 FORMAT_FUNC = Callable[[MRTFile, PrefixOriginMetadata], None]
 
 
@@ -70,11 +73,12 @@ def format_json_into_tsv(
 
     # Open all blocks for all files
     mrt_file.formatted_dir.mkdir(parents=True, exist_ok=True)
-    block_nums =list(range(prefix_origin_metadata.next_block_id + 1))
+    block_nums = list(range(prefix_origin_metadata.next_block_id + 1))
     wfiles = [(mrt_file.formatted_dir / f"{i}.tsv").open("w") for i in block_nums]
 
-    rfile = self.parsed_path.open()
+    rfile = mrt_file.parsed_path.open()
     writers = [csv.writer(x, delimiter="\t") for x in wfiles]
+    print(writers)
 
     # TODO
 
