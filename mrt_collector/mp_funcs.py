@@ -3,6 +3,7 @@
 import csv
 from ipaddress import ip_network
 import json
+import os
 from subprocess import check_call
 from typing import Any, Callable
 
@@ -27,7 +28,7 @@ def store_prefixes(mrt_file: MRTFile) -> None:
 PARSE_FUNC = Callable[[MRTFile], None]
 
 
-def bgpkit_parser_json(mrt_file: MRTFile) -> None:
+def bgpkit_parser_csv(mrt_file: MRTFile) -> None:
     """Extracts info from raw dumps into parsed path
 
     For this particular parser, I output both to CSV and to JSON
@@ -45,11 +46,29 @@ def bgpkit_parser_json(mrt_file: MRTFile) -> None:
     #         f"bgpkit-parser {mrt_file.raw_path} > {mrt_file.parsed_path_psv}",
     #         shell=True,
     #     )
-    if not mrt_file.parsed_path_json.exists():
+    if not mrt_file.parsed_path_csv.exists():
         check_call(
             f"bgpkit-parser {mrt_file.raw_path} --json > {mrt_file.parsed_path_json}",
             shell=True,
         )
+        # Unfortunately, the JSON files are so large that my computer runs out of space
+        # when trying to parse them. So instead we need to immediatly read them in,
+        # write them to CSV, and delete
+        with mrt_file.parsed_path_json.open() as json_f:
+            for line in json_f:
+                fieldnames = list(json.loads(line).keys())
+                break
+
+        with mrt_file.parsed_path_csv.open("w") as csv_f:
+            # NOTE: not using DictWriter because this is much faster
+            writer = csv.writer(csv_f)
+            writer.writerow(fieldnames)
+            with mrt_file.parsed_path_json.open() as json_f:
+                for line in json_f:
+                    line_as_dict = json.loads(line)
+                    row = [str(line_as_dict[x]) for x in fieldnames]
+                    writer.writerow(row)
+        os.remove(str(mrt_file.parsed_path_json))
 
 
 def bgpkit_parser(mrt_file: MRTFile) -> None:
@@ -70,26 +89,25 @@ def bgpkit_parser(mrt_file: MRTFile) -> None:
 FORMAT_FUNC = Callable[[MRTFile, PrefixOriginMetadata], None]
 
 
-def format_json_into_tsv(
+def format_csv_into_tsv(
     mrt_file: MRTFile, prefix_origin_metadata: PrefixOriginMetadata
 ) -> None:
-    """Formats JSON into a PSV"""
+    """Formats csv into a PSV"""
 
     # Open all blocks for all files
     mrt_file.formatted_dir.mkdir(parents=True, exist_ok=True)
     block_nums = list(range(prefix_origin_metadata.next_block_id + 1))
     wfiles = [(mrt_file.formatted_dir / f"{i}.tsv").open("w") for i in block_nums]
 
-    rfile = mrt_file.parsed_path_json.open()
+    rfile = mrt_file.parsed_path_csv.open()
+    reader = csv.DictReader(rfile)
     writers = [csv.writer(x, delimiter="\t") for x in wfiles]
 
     non_public_asns = get_non_public_asns()
     print(mrt_file.url)
     from tqdm import tqdm
 
-    for line in tqdm(rfile):
-        meta = json.loads(line)
-
+    for meta in tqdm(reader):
         # VALIDATION ###
         try:
             prefix_obj = ip_network(meta["prefix"])
@@ -99,10 +117,7 @@ def format_json_into_tsv(
         assert meta["type"] == "ANNOUNCE", f"Not an announcement? {meta}"
 
         # No AS sets or empty AS paths
-        if any(isinstance(x, list) for x in meta["as_path"]) or meta["as_path"] in [
-            None,
-            [],
-        ]:
+        if meta["as_path"] in [None, "[]", ""] or "[" in meta["as_path"][1:-1]:
             continue
 
         meta = _get_path_data(meta, non_public_asns)
@@ -115,8 +130,7 @@ def format_json_into_tsv(
         values = [meta[x] for x in fieldnames()]
         writers[meta["block_id"]].writerow(values)
 
-    rfile.close()
-    for f in wfiles:
+    for f in wfiles + [rfile]:
         f.close()
 
 
@@ -142,7 +156,9 @@ def get_non_public_asns() -> frozenset[int]:
 def _get_path_data(
     meta: dict[str, Any], non_public_asns: frozenset[int]
 ) -> dict[str, Any]:
-    as_path = meta["as_path"]
+    # Before we validate that this isn't empty and no AS sets
+    as_path_str = meta["as_path"][1:-1].replace(" ", "").split(",")
+    as_path = [int(x) for x in as_path_str]
     meta["origin_asn"] = as_path[-1]
     meta["collector_asn"] = as_path[0]
     meta["invalid_as_path_asns"] = list()
@@ -161,7 +177,6 @@ def _get_path_data(
     last_asn = None
     last_non_ixp = None
     for asn in as_path:
-        asn = int(asn)
         if asn in non_public_asns or asn > MAX_ASN:
             meta["invalid_as_path_asns"].append(asn)
         if last_asn == asn:

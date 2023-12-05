@@ -32,6 +32,10 @@ class MRTFile:
         self.parsed_path_json: Path = parsed_dir / self._url_to_fname(
             self.url, ext="json"
         )
+        # NOTE: This isn't always filled with a file, but is sometimes useful
+        self.parsed_path_csv: Path = parsed_dir / self._url_to_fname(
+            self.url, ext="csv"
+        )
         self.non_unique_prefixes_path: Path = prefixes_dir / self._url_to_fname(
             # Must do this in the extension,or else it just removes the non_unique
             self.url,
