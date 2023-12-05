@@ -1,4 +1,4 @@
-from . import parse_funcs
+from . import mp_funcs
 from .mrt_collector import MRTCollector
 from .sources import Source, RIPE, RouteViews
 

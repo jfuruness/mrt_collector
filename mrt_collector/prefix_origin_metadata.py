@@ -8,7 +8,8 @@ from tqdm import tqdm
 
 from bgpstream_website_collector import BGPStreamWebsiteCollector
 from roa_collector import ROACollector
-from roa_checker import ROAChecker, ROA, ROAValidity, ROARouted
+from roa_checker import ROAChecker, ROAValidity, ROARouted
+from roa_checker.roa import ROA
 
 
 class PrefixOriginMetadata:
@@ -21,10 +22,12 @@ class PrefixOriginMetadata:
     def __init__(
         self,
         dl_time: datetime,
+        requests_cache_db_path: Path,
         prefixes_path: Path,
         max_block_size: int,
     ) -> None:
         self.dl_time: datetime = dl_time
+        self.requests_cache_db_path: Path = requests_cache_db_path
         # Stores prefix and it's corresponding ID for block
         self.extrapolator_meta: dict[str, dict[str, int]] = dict()
         self.bgpstream_po_meta: dict[
@@ -50,7 +53,10 @@ class PrefixOriginMetadata:
             self._add_prefix_to_extrapolator_meta(prefix)
 
     def _get_bgpstream_po_meta(self) -> dict[tuple[str, int], dict[str, Any]]:
-        collector = BGPStreamWebsiteCollector(csv_path=None)
+        collector = BGPStreamWebsiteCollector(
+            csv_path=None,
+            requests_cache_db_path=self.requests_cache_db_path,
+        )
         rows: list[dict[str, Any]] = collector.run(self.dl_time.date())
         bgpstream_po_info: dict[tuple[str, int], dict[str, Any]] = dict()
         for row in rows:
@@ -79,15 +85,24 @@ class PrefixOriginMetadata:
                     int(row["leak_origin_as_number"]),
                 )
                 bgpstream_po_info[po] = row
-                po = (
-                    row["leaked_prefix"],
-                    int(row["leaked_to_number"]),
-                )
-                bgpstream_po_info[po] = row
+
+                asns_str = row["leaked_to_number"].replace("{", "").replace("}", "")
+                asns_str = asns_str.replace(" ", "")
+                leaked_to_asns = asns_str.split(",")
+                for leaked_to_asn in leaked_to_asns:
+                    po = (
+                        row["leaked_prefix"],
+                        int(leaked_to_asn),
+                    )
+                    bgpstream_po_info[po] = row
         return bgpstream_po_info
 
     def _get_bgpstream_origin_meta(self) -> dict[int, dict[str, Any]]:
-        collector = BGPStreamWebsiteCollector(csv_path=None)
+        collector = BGPStreamWebsiteCollector(
+            csv_path=None,
+            requests_cache_db_path=self.requests_cache_db_path,
+        )
+
         rows: list[dict[str, Any]] = collector.run(self.dl_time.date())
         bgpstream_origin_info: dict[int, dict[str, Any]] = dict()
         for row in rows:

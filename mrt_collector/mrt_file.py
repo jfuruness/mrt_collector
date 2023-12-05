@@ -39,7 +39,7 @@ class MRTFile:
             self.url + "_unique", ext="csv"
         )
 
-        # self.formatted_path: Path = formatted_dir
+        self.formatted_dir: Path = formatted_dir / self._url_to_fname(self.url)
 
     def __lt__(self, other) -> bool:
         """For sorting by file size

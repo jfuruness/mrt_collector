@@ -7,18 +7,13 @@ from typing import Any, Callable, Optional
 
 from tqdm import tqdm
 
-from .parse_funcs import PARSE_FUNC, bgpkit_parser_json
+from .mp_funcs import PARSE_FUNC, bgpkit_parser_json
+from .mp_funcs import download_mrt
+from .mp_funcs import store_prefixes
+from .mp_funcs import FORMAT_FUNC, format_json_into_tsv
 from .prefix_origin_metadata import PrefixOriginMetadata
 from .mrt_file import MRTFile
 from .sources import Source
-
-
-def download_mrt(mrt_file: MRTFile) -> None:
-    mrt_file.download_raw()
-
-
-def store_prefixes(mrt_file: MRTFile) -> None:
-    mrt_file.store_unique_prefixes()
 
 
 class MRTCollector:
@@ -51,7 +46,8 @@ class MRTCollector:
         download_raw_mrts: bool = True,
         parse_mrt_func: PARSE_FUNC = bgpkit_parser_json,
         store_prefixes: bool = True,
-        format_parsed_dumps: bool = True,
+        max_block_size: int = 2000,  # Used for extrapolator
+        format_parsed_dumps_func: FORMAT_FUNC = format_json_into_tsv,
         analyze_formatted_dumps: bool = True,
     ) -> None:
         """See README package description"""
@@ -62,8 +58,8 @@ class MRTCollector:
         self.parse_mrts(mrt_files, parse_mrt_func)
         if store_prefixes:
             self.store_prefixes(mrt_files)
-        if format_parsed_dumps:
-            self.format_parsed_dumps(mrt_files)
+        self.format_parsed_dumps(mrt_files, max_block_size, format_parsed_dumps_func)
+        raise NotImplementedError("Add logic to not redo formatting")
         if analyze_formatted_dumps:
             self.analyze_formatted_dumps(mrt_files)
 
@@ -93,7 +89,8 @@ class MRTCollector:
     def download_raw_mrts(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Downloads raw MRT RIB dumps into raw_dir"""
 
-        self._mp_tqdm(mrt_files, download_mrt, desc="Downloading MRTs (~12m)")
+        args = tuple([(x,) for x in mrt_files])
+        self._mp_tqdm(args, download_mrt, desc="Downloading MRTs (~12m)")
 
     def parse_mrts(
         self, mrt_files: tuple[MRTFile, ...], parse_func: PARSE_FUNC
@@ -102,15 +99,16 @@ class MRTCollector:
 
         # Remove MRT files that failed to download, and sort by file size
         mrt_files = tuple(list(sorted(x for x in mrt_files if x.download_succeeded)))
+        args = tuple([(x,) for x in mrt_files])
         desc = f"Parsing MRTs (largest first) {self.parse_times.get(parse_func, '')}"
-
-        self._mp_tqdm(mrt_files, parse_func, desc=desc)
+        self._mp_tqdm(args, parse_func, desc=desc)
 
     def store_prefixes(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Stores unique prefixes from MRT Files"""
 
+        args = tuple([(x,) for x in mrt_files])
         # First with multiprocessing store for each file
-        self._mp_tqdm(mrt_files, store_prefixes, desc="Storing prefixes")
+        self._mp_tqdm(args, store_prefixes, desc="Storing prefixes")
 
         file_paths = " ".join(
             str(x.unique_prefixes_path)
@@ -134,18 +132,23 @@ class MRTCollector:
         self,
         mrt_files: tuple[MRTFile, ...],
         # Used by the extrapolator
-        max_block_size: int = 2000,
+        max_block_size: int,
+        format_func: FORMAT_FUNC,
     ) -> None:
         """Formats the parsed BGP RIB dumps and add metadata from other sources"""
 
+        # Initialize prefix origin metadata
         prefix_origin_metadata = PrefixOriginMetadata(
             self.dl_time,
+            self.requests_cache_dir / "other_collector_cache.db",
             self.all_unique_prefixes_path,
             max_block_size,
         )
 
-        print(prefix_origin_metadata)
-        raise NotImplementedError("Add metadata to anns and output into blocks")
+        mrt_files = [x for x in mrt_files if x.unique_prefixes_path.exists()]
+        args = tuple([(x, prefix_origin_metadata) for x in mrt_files])
+        self._mp_tqdm(args, format_func, desc="Formatting")
+        raise NotImplementedError("Actually write the format func")
 
     def analyze_formatted_dumps(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Analyzes the formatted BGP dumps"""
@@ -153,7 +156,11 @@ class MRTCollector:
         raise NotImplementedError
 
     def _mp_tqdm(
-        self, iterable: tuple[MRTFile, ...], func: Callable[[MRTFile], Any], desc: str
+        self,
+        # args to func in a list of lists
+        iterable: tuple[tuple[Any, ...], ...],
+        func: Callable[[tuple[Any, ...]], Any],
+        desc: str
     ) -> None:
         """Runs tqdm with multiprocessing"""
 
@@ -164,7 +171,7 @@ class MRTCollector:
         else:
             # https://stackoverflow.com/a/63834834/8903959
             with ProcessPoolExecutor(max_workers=self.cpus) as executor:
-                futures = [executor.submit(func, x) for x in iterable]
+                futures = [executor.submit(func, *x) for x in iterable]
                 for future in tqdm(
                     as_completed(futures),
                     total=len(iterable),
