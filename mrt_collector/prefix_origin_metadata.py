@@ -30,12 +30,12 @@ class PrefixOriginMetadata:
         self.requests_cache_db_path: Path = requests_cache_db_path
         # Stores prefix and it's corresponding ID for block
         self.extrapolator_meta: dict[str, dict[str, int]] = dict()
-        self.bgpstream_po_meta: dict[
-            tuple[str, int], dict[str, Any]
-        ] = self._get_bgpstream_po_meta()
-        self.bgpstream_origin_meta: dict[
-            int, dict[str, Any]
-        ] = self._get_bgpstream_origin_meta()
+        # self.bgpstream_po_meta: dict[
+        #     tuple[str, int], dict[str, Any]
+        # ] = self._get_bgpstream_po_meta()
+        # self.bgpstream_origin_meta: dict[
+        #     int, dict[str, Any]
+        # ] = self._get_bgpstream_origin_meta()
         self.roa_checker: ROAChecker = self._init_roa_checker()
         self.prefix_roa_dict: dict[str, ROA] = dict()
         # prefix mapped to an ID
@@ -173,22 +173,22 @@ class PrefixOriginMetadata:
             validity, routed = roa.get_validity(prefix_obj, origin)
         else:
             validity, routed = ROAValidity.UNKNOWN, ROARouted.UNKNOWN
-        meta["validity"] = validity.value
-        meta["routed"] = routed.value
+        meta["roa_validity"] = validity.value
+        meta["roa_routed"] = routed.value
 
         # Add bgpstream meta
-        meta.update(
-            self.bgpstream_po_meta.get(
-                (
-                    prefix,
-                    origin,
-                ),
-                # mypy being dumb
-                dict(),  # type: ignore
-            )
-        )
+        # meta.update(
+        #     self.bgpstream_po_meta.get(
+        #         (
+        #             prefix,
+        #             origin,
+        #         ),
+        #         # mypy being dumb
+        #         dict(),  # type: ignore
+        #     )
+        # )
         # mypy doesn't understand the second argument of get
-        meta.update(self.bgpstream_origin_meta.get(origin, dict()))  # type: ignore
+        # meta.update(self.bgpstream_origin_meta.get(origin, dict()))  # type: ignore
 
         return meta
 
