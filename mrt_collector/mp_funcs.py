@@ -156,7 +156,7 @@ def _get_path_data(
     meta["input_clique_split"] = None
 
     # TODO: Actually get IXPs from CAIDA
-    ixps = set()
+    ixps: set[int] = set()
     as_path_set = set()
     last_asn = None
     last_non_ixp = None
@@ -179,7 +179,7 @@ def _get_path_data(
     return meta
 
 
-def fieldnames() -> tuple[str]:
+def fieldnames() -> tuple[str, ...]:
 
     return (
         # from bgpkit parser ###
