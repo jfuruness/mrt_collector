@@ -99,7 +99,10 @@ def format_json_into_tsv(
         assert meta["type"] == "ANNOUNCE", f"Not an announcement? {meta}"
 
         # No AS sets or empty AS paths
-        if any(isinstance(x, list) for x in meta["as_path"]) or meta["as_path"] in [None, []]:
+        if any(isinstance(x, list) for x in meta["as_path"]) or meta["as_path"] in [
+            None,
+            [],
+        ]:
             continue
 
         meta = _get_path_data(meta, non_public_asns)
