@@ -32,7 +32,6 @@ class MRTCollector:
         if base_dir is None:
             t_str = str(dl_time).replace(" ", "_")
             self.base_dir: Path = Path.home() / "mrt_data" / t_str
-            input(self.base_dir)
         else:
             self.base_dir = base_dir
 
@@ -48,7 +47,7 @@ class MRTCollector:
         download_raw_mrts: bool = True,
         parse_mrt_func: PARSE_FUNC = bgpkit_parser_csv,
         store_prefixes: bool = True,
-        max_block_size: int = 2000,  # Used for extrapolator
+        max_block_size: int = 10000,  # Used for extrapolator
         format_parsed_dumps_func: FORMAT_FUNC = format_csv_into_tsv,
         analyze_formatted_dumps: bool = True,
     ) -> None:
@@ -108,15 +107,16 @@ class MRTCollector:
     def store_prefixes(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Stores unique prefixes from MRT Files"""
 
+        if self.all_unique_prefixes_path.exists():
+            return
         args = tuple([(x,) for x in mrt_files])
         # First with multiprocessing store for each file
         self._mp_tqdm(args, store_prefixes, desc="Storing prefixes")
 
-        file_paths = " ".join(
-            str(x.unique_prefixes_path)
-            for x in mrt_files
-            if x.unique_prefixes_path.exists()
-        )
+        successful_mrts = [x for x in mrt_files if x.unique_prefixes_path.exists()]
+        assert successful_mrts, "No prefixes?"
+
+        file_paths = " ".join([str(x.unique_prefixes_path) for x in successful_mrts])
         # Concatenate all files, fastest with cat
         # https://unix.stackexchange.com/a/118248/477240
         cmd = f"cat {file_paths} >> {self.all_non_unique_prefixes_path}"
@@ -129,6 +129,7 @@ class MRTCollector:
             f"> {self.all_unique_prefixes_path}",
             shell=True,
         )
+        print(f"prefixes written to {self.all_unique_prefixes_path}")
 
     def format_parsed_dumps(
         self,
@@ -139,6 +140,12 @@ class MRTCollector:
     ) -> None:
         """Formats the parsed BGP RIB dumps and add metadata from other sources"""
 
+        # If this file exists, don't redo
+        completed_path = self.formatted_dir / f"{max_block_size}_completed.txt"
+        if completed_path.exists():
+            return
+
+        print("Starting prefix origin metadata")
         # Initialize prefix origin metadata
         prefix_origin_metadata = PrefixOriginMetadata(
             self.dl_time,
@@ -146,12 +153,15 @@ class MRTCollector:
             self.all_unique_prefixes_path,
             max_block_size,
         )
+        print("prefix origin metadata complete")
 
         mrt_files = tuple([x for x in mrt_files if x.unique_prefixes_path.exists()])
         args = tuple([(x, prefix_origin_metadata) for x in mrt_files])
         self._mp_tqdm(args, format_func, desc="Formatting")
-        raise NotImplementedError("Actually write the format func")
-        raise NotImplementedError("Add logic to not redo formatting")
+
+        # Write this file so that we don't redo this step
+        with completed_path.open("w") as f:
+            f.write("complete")
 
     def analyze_formatted_dumps(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Analyzes the formatted BGP dumps"""

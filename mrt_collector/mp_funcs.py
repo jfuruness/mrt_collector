@@ -54,6 +54,8 @@ def bgpkit_parser_csv(mrt_file: MRTFile) -> None:
         # Unfortunately, the JSON files are so large that my computer runs out of space
         # when trying to parse them. So instead we need to immediatly read them in,
         # write them to CSV, and delete
+        # Must leave this here to keep in scope
+        fieldnames = []
         with mrt_file.parsed_path_json.open() as json_f:
             for line in json_f:
                 fieldnames = list(json.loads(line).keys())
@@ -62,12 +64,14 @@ def bgpkit_parser_csv(mrt_file: MRTFile) -> None:
         with mrt_file.parsed_path_csv.open("w") as csv_f:
             # NOTE: not using DictWriter because this is much faster
             writer = csv.writer(csv_f)
-            writer.writerow(fieldnames)
-            with mrt_file.parsed_path_json.open() as json_f:
-                for line in json_f:
-                    line_as_dict = json.loads(line)
-                    row = [str(line_as_dict[x]) for x in fieldnames]
-                    writer.writerow(row)
+            # Sometimes JSON files are empty
+            if fieldnames:
+                writer.writerow(fieldnames)
+                with mrt_file.parsed_path_json.open() as json_f:
+                    for line in json_f:
+                        line_as_dict = json.loads(line)
+                        row = [str(line_as_dict[x]) for x in fieldnames]
+                        writer.writerow(row)
         os.remove(str(mrt_file.parsed_path_json))
 
 
@@ -97,7 +101,15 @@ def format_csv_into_tsv(
     # Open all blocks for all files
     mrt_file.formatted_dir.mkdir(parents=True, exist_ok=True)
     block_nums = list(range(prefix_origin_metadata.next_block_id + 1))
-    wfiles = [(mrt_file.formatted_dir / f"{i}.tsv").open("w") for i in block_nums]
+    # Must store in the block num, or else if you change the block num and then
+    # overwrite, this will have a mix of files and it will be wrong
+    format_dir = mrt_file.formatted_dir / str(prefix_origin_metadata.max_block_size)
+    if format_dir.exists():
+        return
+    else:
+        format_dir.mkdir(parents=True, exist_ok=True)
+
+    wfiles = [(format_dir / f"{i}.tsv").open("w") for i in block_nums]
 
     rfile = mrt_file.parsed_path_csv.open()
     reader = csv.DictReader(rfile)
@@ -107,7 +119,8 @@ def format_csv_into_tsv(
     print(mrt_file.url)
     from tqdm import tqdm
 
-    for meta in tqdm(reader):
+    # for meta in tqdm(reader):
+    for meta in reader:
         # VALIDATION ###
         try:
             prefix_obj = ip_network(meta["prefix"])

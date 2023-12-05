@@ -1,3 +1,4 @@
+import csv
 import json
 from pathlib import Path
 import os
@@ -131,6 +132,37 @@ class MRTFile:
                 with self.parsed_path_json.open() as json_f:
                     for line in json_f:
                         prefixes_f.write(json.loads(line)["prefix"] + "\n")
+            # make this unique using cat, that way it's not slow Python
+            # makes joining these files in MRTCollector 3x faster
+            check_call(
+                (
+                    f"cat {self.non_unique_prefixes_path} "
+                    f"| uniq > {self.unique_prefixes_path}"
+                ),
+                shell=True,
+            )
+        elif not self.unique_prefixes_path.exists() and self.parsed_path_csv.exists():
+            with self.non_unique_prefixes_path.open("w") as prefixes_f:
+                # Get fieldnames first to discover if file has anything
+                fieldnames = []
+                with self.parsed_path_csv.open() as csv_f:
+                    reader = csv.reader(csv_f)
+                    for line in reader:
+                        fieldnames = line
+                        break
+
+                if fieldnames:
+                    try:
+                        prefix_index = fieldnames.index("prefix")
+                    except ValueError as e:
+                        raise ValueError(f"{fieldnames} {e}")
+                    with self.parsed_path_csv.open() as csv_f:
+                        reader = csv.reader(csv_f)
+                        for i, row in enumerate(reader):
+                            # Header
+                            if i == 0:
+                                continue
+                            prefixes_f.write(row[prefix_index] + "\n")
             # make this unique using cat, that way it's not slow Python
             # makes joining these files in MRTCollector 3x faster
             check_call(
