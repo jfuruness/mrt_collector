@@ -8,6 +8,7 @@ from typing import Any, Callable, Optional
 from tqdm import tqdm
 
 from .parse_funcs import PARSE_FUNC, bgpkit_parser_json
+from .prefix_origin_metadata import PrefixOriginMetadata
 from .mrt_file import MRTFile
 from .sources import Source
 
@@ -137,13 +138,14 @@ class MRTCollector:
     ) -> None:
         """Formats the parsed BGP RIB dumps and add metadata from other sources"""
 
-        po_metadata = POMetadata(
+        prefix_origin_metadata = PrefixOriginMetadata(
             self.dl_time,
             self.all_unique_prefixes_path,
             max_block_size,
         )
+
+        print(prefix_origin_metadata)
         raise NotImplementedError("Add metadata to anns and output into blocks")
-        raise NotImplementedError("Also output the po_metadata into it's own file")
 
     def analyze_formatted_dumps(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Analyzes the formatted BGP dumps"""

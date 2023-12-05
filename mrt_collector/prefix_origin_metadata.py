@@ -11,7 +11,7 @@ from roa_collector import ROACollector
 from roa_checker import ROAChecker, ROA
 
 
-class POMetadata:
+class PrefixOriginMetadata:
     """Stores prefix origin metadata"""
 
     ##############
