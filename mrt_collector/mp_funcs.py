@@ -86,6 +86,7 @@ def format_json_into_tsv(
     non_public_asns = get_non_public_asns()
     print(mrt_file.url)
     from tqdm import tqdm
+
     for line in tqdm(rfile):
         meta = json.loads(line)
 
@@ -104,9 +105,7 @@ def format_json_into_tsv(
         meta = _get_path_data(meta, non_public_asns)
         meta.update(
             prefix_origin_metadata.get_meta(
-                meta["prefix"],
-                prefix_obj,
-                meta["origin_asn"]
+                meta["prefix"], prefix_obj, meta["origin_asn"]
             )
         )
         meta["url"] = mrt_file.url
@@ -119,7 +118,6 @@ def format_json_into_tsv(
 
 
 def get_non_public_asns() -> frozenset[int]:
-
     return frozenset(
         # Later make this not hardcoded
         # https://www.iana.org/assignments/iana-as-numbers-special-registry/
@@ -139,8 +137,7 @@ def get_non_public_asns() -> frozenset[int]:
 
 
 def _get_path_data(
-    meta: dict[str, Any],
-    non_public_asns: frozenset[int]
+    meta: dict[str, Any], non_public_asns: frozenset[int]
 ) -> dict[str, Any]:
     as_path = meta["as_path"]
     meta["origin_asn"] = as_path[-1]
@@ -180,7 +177,6 @@ def _get_path_data(
 
 
 def fieldnames() -> tuple[str, ...]:
-
     return (
         # from bgpkit parser ###
         "aggr_asn",
