@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from bgpstream_website_collector import BGPStreamWebsiteCollector
 from roa_collector import ROACollector
-from roa_checker import ROAChecker, ROA
+from roa_checker import ROAChecker, ROA, ROAValidity, ROARouted
 
 
 class PrefixOriginMetadata:
@@ -86,7 +86,7 @@ class PrefixOriginMetadata:
                 bgpstream_po_info[po] = row
         return bgpstream_po_info
 
-    def _get_bgpstream_origin_meta(self) -> dict[tuple[str, int], dict[str, Any]]:
+    def _get_bgpstream_origin_meta(self) -> dict[int, dict[str, Any]]:
         collector = BGPStreamWebsiteCollector(csv_path=None)
         rows: list[dict[str, Any]] = collector.run(self.dl_time.date())
         bgpstream_origin_info: dict[int, dict[str, Any]] = dict()
@@ -154,7 +154,10 @@ class PrefixOriginMetadata:
         # Add validity meta
         prefix_obj = ip_network(prefix)
         roa = self._get_roa(prefix_obj)
-        validity, routed = roa.get_validity(prefix_obj, origin)
+        if roa:
+            validity, routed = roa.get_validity(prefix_obj, origin)
+        else:
+            validity, routed = ROAValidity.UNKNOWN, ROARouted.UNKNOWN
         meta["validity"] = validity.value
         meta["routed"] = routed.value
 
@@ -165,10 +168,12 @@ class PrefixOriginMetadata:
                     prefix,
                     origin,
                 ),
-                dict(),
+                # mypy being dumb
+                dict(),  # type: ignore
             )
         )
-        meta.update(self.bgpstream_origin_meta.get(origin, dict()))
+        # mypy doesn't understand the second argument of get
+        meta.update(self.bgpstream_origin_meta.get(origin, dict()))  # type: ignore
 
         return meta
 

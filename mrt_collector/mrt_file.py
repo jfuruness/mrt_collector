@@ -112,7 +112,10 @@ class MRTFile:
             # By adding uniq here. mrt_collector._get_prefix_ids has a 3x speedup
             # Even the bash cmd speeds up because it doesn't write as much
             check_call(
-                f'cut -d "|" -f 2 {self.parsed_path_psv} | uniq > {self.prefixes_path}',
+                (
+                    f'cut -d "|" -f 2 {self.parsed_path_psv} '
+                    f"| uniq > {self.unique_prefixes_path}"
+                ),
                 shell=True,
             )
         elif not self.unique_prefixes_path.exists() and self.parsed_path_json.exists():
