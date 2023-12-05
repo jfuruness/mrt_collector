@@ -2,6 +2,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
 from multiprocessing import cpu_count
 from pathlib import Path
+from subprocess import check_call
 from typing import Any, Callable, Optional
 
 from tqdm import tqdm
@@ -13,6 +14,9 @@ from .sources import Source
 
 def download_mrt(mrt_file: MRTFile) -> None:
     mrt_file.download_raw()
+
+def store_prefixes(mrt_file: MRTFile) -> None:
+    mrt_file.store_unique_prefixes()
 
 
 class MRTCollector:
@@ -96,19 +100,48 @@ class MRTCollector:
 
         # Remove MRT files that failed to download, and sort by file size
         mrt_files = tuple(list(sorted(x for x in mrt_files if x.download_succeeded)))
-        desc = f"Parsing MRTs {self.parse_times.get(parse_func, '')}"
+        desc = f"Parsing MRTs (largest first) {self.parse_times.get(parse_func, '')}"
 
         self._mp_tqdm(mrt_files, parse_func, desc=desc)
 
     def store_prefixes(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Stores unique prefixes from MRT Files"""
 
-        raise NotImplementedError
+        # First with multiprocessing store for each file
+        self._mp_tqdm(mrt_files, store_prefixes, desc="Storing prefixes")
 
-    def format_parsed_dumps(self, mrt_files: tuple[MRTFile, ...]) -> None:
-        """Formats the parsed BGP RIB dumps"""
+        file_paths = ' '.join(
+            str(x.unique_prefixes_path) for x in mrt_files if x.unique_prefixes_path.exists()
+        )
+        # Concatenate all files, fastest with cat
+        # https://unix.stackexchange.com/a/118248/477240
+        cmd = f"cat {file_paths} >> {self.all_non_unique_prefixes_path}"
+        check_call(cmd, shell=True)
+        # Make lines unique, fastest with awk
+        # it uses a hash map while all others require sort
+        # https://unix.stackexchange.com/a/128782/477240
+        check_call(
+            f"awk '!x[$0]++' {self.all_non_unique_prefixes_path} "
+            f"> {self.all_unique_prefixes_path}",
+            shell=True,
+        )
 
-        raise NotImplementedError
+    def format_parsed_dumps(
+        self,
+        mrt_files: tuple[MRTFile, ...],
+        # Used by the extrapolator
+        max_block_size: int = 2000,
+    ) -> None:
+        """Formats the parsed BGP RIB dumps and add metadata from other sources"""
+
+        po_metadata = POMetadata(
+            self.dl_time,
+            self.all_unique_prefixes_path,
+            max_block_size,
+
+        )
+        raise NotImplementedError("Add metadata to anns and output into blocks")
+        raise NotImplementedError("Also output the po_metadata into it's own file")
 
     def analyze_formatted_dumps(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Analyzes the formatted BGP dumps"""
@@ -140,7 +173,17 @@ class MRTCollector:
     def parse_times(self) -> dict[PARSE_FUNC, str]:
         """Useful for printing the times it will take to parse files"""
 
-        return {bgpkit_parser_json: "??m"}
+        return {bgpkit_parser_json: "~35m"}
+
+    @property
+    def all_non_unique_prefixes_path(self) -> Path:
+        """Returns the path to all prefixes"""
+        return self.prefixes_dir / "all_non_unique_prefixes.csv"
+
+    @property
+    def all_unique_prefixes_path(self) -> Path:
+        """Returns the path to all prefixes"""
+        return self.prefixes_dir / "all_unique_prefixes.csv"
 
     ###############
     # Directories #

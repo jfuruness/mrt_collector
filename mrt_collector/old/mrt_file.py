@@ -90,7 +90,7 @@ class MRTFile:
         """
 
         # TYPE|PREFIXES|PATH ATTRIBUTES|PEER|TIMESTAMP|ASN32BIT
-        # PATH ATTRIBUtES:
+        # PATH ATTRIBUTES:
         # AS_PATH|NEXT_HOP|ORIGIN|ATOMIC_AGGREGATE|AGGREGATOR|COMMUNITIES
 
         # File that will be read from

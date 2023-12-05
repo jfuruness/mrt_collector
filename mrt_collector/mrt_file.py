@@ -1,6 +1,8 @@
+import json
 from pathlib import Path
 import os
 import shutil
+from subprocess import check_call
 import time
 from urllib.parse import quote
 import warnings
@@ -30,7 +32,14 @@ class MRTFile:
         self.parsed_path_json: Path = parsed_dir / self._url_to_fname(
             self.url, ext="json"
         )
-        # self.prefixes_path: Path = prefixes_dir
+        self.non_unique_prefixes_path: Path = prefixes_dir / self._url_to_fname(
+            self.url + "_non_unique", ext="csv"
+        )
+        self.unique_prefixes_path: Path = prefixes_dir / self._url_to_fname(
+            self.url + "_unique", ext="csv"
+        )
+
+
         # self.formatted_path: Path = formatted_dir
 
     def __lt__(self, other) -> bool:
@@ -94,6 +103,33 @@ class MRTFile:
         # Write the file so that you don't go back to it later
         with self.raw_path.open("wb") as f:
             f.write(self.dl_err_str.encode("utf-8"))
+
+    def store_unique_prefixes(self) -> None:
+        """Stores unique prefixes if not previously stored"""
+
+        if not self.unique_prefixes_path.exists() and self.parsed_path_psv.exists():
+            # unique instead of awk here because it's sometimes ribs in
+            # so may prefix origin pairs are next to each other
+            # By adding uniq here. mrt_collector._get_prefix_ids has a 3x speedup
+            # Even the bash cmd speeds up because it doesn't write as much
+            check_call(
+                f'cut -d "|" -f 2 {self.parsed_path_psv} | uniq > {self.prefixes_path}',
+                shell=True,
+            )
+        elif not self.unique_prefixes_path.exists() and self.parsed_path_json.exists():
+            with self.non_unique_prefixes_path.open("w") as prefixes_f:
+                with self.parsed_path_json.open() as json_f:
+                    for line in json_f:
+                        prefixes_f.write(json.loads(line)["prefix"] + "\n")
+            # make this unique using cat, that way it's not slow Python
+            # makes joining these files in MRTCollector 3x faster
+            check_call(
+                (
+                    f"cat {self.non_unique_prefixes_path} "
+                    f"| uniq > {self.unique_prefixes_path}"
+                ),
+                shell=True
+            )
 
     def _url_to_fname(self, url: str, ext: str = "") -> str:
         """Converts a URL into a file name"""
