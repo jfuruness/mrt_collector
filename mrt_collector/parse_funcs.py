@@ -21,7 +21,6 @@ def bgpkit_parser_json(mrt_file: MRTFile) -> None:
     For other funcs of this kind, note that you MUST always pipe to PSV
     """
 
-
     # This takes up so much space that it's not even possible on 1 TB machine
     # if not mrt_file.parsed_path_psv.exists():
     #     check_call(

@@ -39,7 +39,6 @@ class MRTFile:
             self.url + "_unique", ext="csv"
         )
 
-
         # self.formatted_path: Path = formatted_dir
 
     def __lt__(self, other) -> bool:
@@ -128,7 +127,7 @@ class MRTFile:
                     f"cat {self.non_unique_prefixes_path} "
                     f"| uniq > {self.unique_prefixes_path}"
                 ),
-                shell=True
+                shell=True,
             )
 
     def _url_to_fname(self, url: str, ext: str = "") -> str:

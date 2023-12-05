@@ -15,6 +15,7 @@ from .sources import Source
 def download_mrt(mrt_file: MRTFile) -> None:
     mrt_file.download_raw()
 
+
 def store_prefixes(mrt_file: MRTFile) -> None:
     mrt_file.store_unique_prefixes()
 
@@ -110,8 +111,10 @@ class MRTCollector:
         # First with multiprocessing store for each file
         self._mp_tqdm(mrt_files, store_prefixes, desc="Storing prefixes")
 
-        file_paths = ' '.join(
-            str(x.unique_prefixes_path) for x in mrt_files if x.unique_prefixes_path.exists()
+        file_paths = " ".join(
+            str(x.unique_prefixes_path)
+            for x in mrt_files
+            if x.unique_prefixes_path.exists()
         )
         # Concatenate all files, fastest with cat
         # https://unix.stackexchange.com/a/118248/477240
@@ -138,7 +141,6 @@ class MRTCollector:
             self.dl_time,
             self.all_unique_prefixes_path,
             max_block_size,
-
         )
         raise NotImplementedError("Add metadata to anns and output into blocks")
         raise NotImplementedError("Also output the po_metadata into it's own file")

@@ -2,11 +2,13 @@ from datetime import datetime
 from functools import cache
 from ipaddress import ip_network, IPv4Network, IPv6Network
 from pathlib import Path
+from typing import Any, Optional
 
 from tqdm import tqdm
 
-from roa_collector import ROACollector, ROA as ROACollectorROA
-from roa_checker import ROAChecker, ROA, ROAValidity, ROARouted
+from bgpstream_website_collector import BGPStreamWebsiteCollector
+from roa_collector import ROACollector
+from roa_checker import ROAChecker, ROA
 
 
 class POMetadata:
@@ -25,12 +27,12 @@ class POMetadata:
         self.dl_time: datetime = dl_time
         # Stores prefix and it's corresponding ID for block
         self.extrapolator_meta: dict[str, dict[str, int]] = dict()
-        self.bgpstream_po_meta: dict[tuple[str, int], dict[str, Any]] = (
-            self._get_bgpstream_po_meta()
-        )
-        self.bgpstream_origin_meta: dict[int, dict[str, Any]] = (
-            self._get_bgpstream_origin_meta()
-        )
+        self.bgpstream_po_meta: dict[
+            tuple[str, int], dict[str, Any]
+        ] = self._get_bgpstream_po_meta()
+        self.bgpstream_origin_meta: dict[
+            int, dict[str, Any]
+        ] = self._get_bgpstream_origin_meta()
         self.roa_checker: ROAChecker = self._init_roa_checker()
         self.prefix_roa_dict: dict[str, ROA] = dict()
         # prefix mapped to an ID
@@ -50,7 +52,7 @@ class POMetadata:
     def _get_bgpstream_po_meta(self) -> dict[tuple[str, int], dict[str, Any]]:
         collector = BGPStreamWebsiteCollector(csv_path=None)
         rows: list[dict[str, Any]] = collector.run(self.dl_time.date())
-        bgpstream_po_info: dict[tuple[str, int], dict[str, Any] = dict()
+        bgpstream_po_info: dict[tuple[str, int], dict[str, Any]] = dict()
         for row in rows:
             # Hijack
             if row["hijack_detected_origin_number"] not in [None, ""]:
@@ -72,18 +74,22 @@ class POMetadata:
                 )
                 bgpstream_po_info[po] = row
 
-                po = (row["leaked_prefix"],
-                     int(row["leak_origin_as_number"]),)
+                po = (
+                    row["leaked_prefix"],
+                    int(row["leak_origin_as_number"]),
+                )
                 bgpstream_po_info[po] = row
-                po = (row["leaked_prefix"],
-                     int(row["leaked_to_number"]),)
+                po = (
+                    row["leaked_prefix"],
+                    int(row["leaked_to_number"]),
+                )
                 bgpstream_po_info[po] = row
         return bgpstream_po_info
 
     def _get_bgpstream_origin_meta(self) -> dict[tuple[str, int], dict[str, Any]]:
         collector = BGPStreamWebsiteCollector(csv_path=None)
         rows: list[dict[str, Any]] = collector.run(self.dl_time.date())
-        bgpstream_origin_info: dict[int, dict[str, Any] = dict()
+        bgpstream_origin_info: dict[int, dict[str, Any]] = dict()
         for row in rows:
             if row["outage_as_number"] not in [None, ""]:
                 bgpstream_origin_info[int(row["outage_as_number"])] = row
@@ -95,14 +101,14 @@ class POMetadata:
         roa_checker = ROAChecker()
         # TODO: Change this to historical roas
         for roa in ROACollector(csv_path=None).run():
-            roa_checker.insert(ip_network(row["prefix"]), origin, max_length)
+            roa_checker.insert(ip_network(roa.prefix), roa.origin, roa.max_length)
         return roa_checker
 
     def _add_prefix_to_extrapolator_meta(self, prefix: str) -> None:
         """Adds prefix data to various data structures"""
 
         try:
-            prefix_obj = ip_network(prefix)
+            ip_network(prefix)
         # Occurs when host bits are set. We throw these out
         except ValueError as e:
             print(f"{prefix} had host bits set {e}, throwing it out")
@@ -115,7 +121,7 @@ class POMetadata:
             "block_prefix_id": self.next_block_prefix_id,
         }
 
-        self.extrapolator_meta[prefix] = prefix_meta
+        self.extrapolator_meta[prefix] = extrapolator_meta
 
         # Increment extrapolator metadata
         self.next_prefix_id += 1
@@ -138,10 +144,7 @@ class POMetadata:
 
     @cache
     def get_meta(
-        self,
-        prefix: str,
-        prefix_obj: IPv4Network | IPv6Network,
-        origin: int
+        self, prefix: str, prefix_obj: IPv4Network | IPv6Network, origin: int
     ) -> dict[str, Any]:
         """Returns prefix origin metadata"""
 
@@ -156,7 +159,15 @@ class POMetadata:
         meta["routed"] = routed.value
 
         # Add bgpstream meta
-        meta.update(self.bgpstream_po_meta.get((prefix, origin,), dict()))
+        meta.update(
+            self.bgpstream_po_meta.get(
+                (
+                    prefix,
+                    origin,
+                ),
+                dict(),
+            )
+        )
         meta.update(self.bgpstream_origin_meta.get(origin, dict()))
 
         return meta
