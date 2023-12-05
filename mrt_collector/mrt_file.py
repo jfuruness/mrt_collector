@@ -33,10 +33,12 @@ class MRTFile:
             self.url, ext="json"
         )
         self.non_unique_prefixes_path: Path = prefixes_dir / self._url_to_fname(
-            self.url + "_non_unique", ext="csv"
+            # Must do this in the extension,or else it just removes the non_unique
+            self.url, ext="non_unique.csv"
         )
         self.unique_prefixes_path: Path = prefixes_dir / self._url_to_fname(
-            self.url + "_unique", ext="csv"
+            # Must do this in the extension,or else it just removes the unique
+            self.url, ext="unique.csv"
         )
 
         self.formatted_dir: Path = formatted_dir / self._url_to_fname(self.url)

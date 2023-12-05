@@ -84,8 +84,9 @@ def format_json_into_tsv(
     writers = [csv.writer(x, delimiter="\t") for x in wfiles]
 
     non_public_asns = get_non_public_asns()
-
-    for line in rfile:
+    print(mrt_file.url)
+    from tqdm import tqdm
+    for line in tqdm(rfile):
         meta = json.loads(line)
 
         # VALIDATION ###
