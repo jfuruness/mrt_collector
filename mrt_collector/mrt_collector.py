@@ -20,7 +20,7 @@ class MRTCollector:
     def __init__(
         self,
         dl_time: datetime = datetime(2023, 11, 1, 0, 0, 0),
-        cpus: int = 1,#cpu_count(),
+        cpus: int = 1,  # cpu_count(),
         base_dir: Optional[Path] = None,
     ) -> None:
         """Creates directories"""
@@ -161,7 +161,7 @@ class MRTCollector:
         # args to func in a list of lists
         iterable: tuple[tuple[Any, ...], ...],
         func: Callable[..., Any],
-        desc: str
+        desc: str,
     ) -> None:
         """Runs tqdm with multiprocessing"""
 

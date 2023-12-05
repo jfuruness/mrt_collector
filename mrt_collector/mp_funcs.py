@@ -57,6 +57,7 @@ def bgpkit_parser(mrt_file: MRTFile) -> None:
             shell=True,
         )
 
+
 ################
 # Format Funcs #
 ################
@@ -66,8 +67,7 @@ FORMAT_FUNC = Callable[[MRTFile, PrefixOriginMetadata], None]
 
 
 def format_json_into_tsv(
-    mrt_file: MRTFile,
-    prefix_origin_metadata: PrefixOriginMetadata
+    mrt_file: MRTFile, prefix_origin_metadata: PrefixOriginMetadata
 ) -> None:
     """Formats JSON into a PSV"""
 
