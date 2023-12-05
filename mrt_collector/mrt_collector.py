@@ -59,7 +59,7 @@ class MRTCollector:
         if store_prefixes:
             self.store_prefixes(mrt_files)
         self.format_parsed_dumps(mrt_files, max_block_size, format_parsed_dumps_func)
-        raise NotImplementedError("Add logic to not redo formatting")
+
         if analyze_formatted_dumps:
             self.analyze_formatted_dumps(mrt_files)
 
@@ -145,10 +145,11 @@ class MRTCollector:
             max_block_size,
         )
 
-        mrt_files = [x for x in mrt_files if x.unique_prefixes_path.exists()]
+        mrt_files = tuple([x for x in mrt_files if x.unique_prefixes_path.exists()])
         args = tuple([(x, prefix_origin_metadata) for x in mrt_files])
         self._mp_tqdm(args, format_func, desc="Formatting")
         raise NotImplementedError("Actually write the format func")
+        raise NotImplementedError("Add logic to not redo formatting")
 
     def analyze_formatted_dumps(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Analyzes the formatted BGP dumps"""
@@ -159,7 +160,7 @@ class MRTCollector:
         self,
         # args to func in a list of lists
         iterable: tuple[tuple[Any, ...], ...],
-        func: Callable[[tuple[Any, ...]], Any],
+        func: Callable[..., Any],
         desc: str
     ) -> None:
         """Runs tqdm with multiprocessing"""

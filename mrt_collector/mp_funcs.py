@@ -76,7 +76,7 @@ def format_json_into_tsv(
     block_nums = list(range(prefix_origin_metadata.next_block_id + 1))
     wfiles = [(mrt_file.formatted_dir / f"{i}.tsv").open("w") for i in block_nums]
 
-    rfile = mrt_file.parsed_path.open()
+    rfile = mrt_file.parsed_path_json.open()
     writers = [csv.writer(x, delimiter="\t") for x in wfiles]
     print(writers)
 
