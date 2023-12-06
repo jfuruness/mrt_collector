@@ -160,7 +160,7 @@ class MRTCollector:
         mrt_files = tuple([x for x in mrt_files if x.unique_prefixes_path.exists()])
         args = tuple([(x, prefix_origin_metadata) for x in mrt_files])
         iterable = args
-        desc = "Formatting"
+        desc = "Formatting (~??m)"
         func = format_func
         # Starts the progress bar in another thread
         if self.cpus == 1:
@@ -182,7 +182,7 @@ class MRTCollector:
                         # Increment pbar
                         pbar.n = self._get_count_formatted()
                         pbar.refresh()
-                        time.sleep(5)
+                        time.sleep(10)
 
         # Write this file so that we don't redo this step
         with completed_path.open("w") as f:

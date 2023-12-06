@@ -154,7 +154,7 @@ def format_psv_into_tsv(
         values = [meta[x] for x in fieldnames()]
         writers[meta["block_id"]].writerow(values)
         count += 1
-        if count % 100 == 0:
+        if count % 10000 == 0:
             with count_file_path.open("w") as f:
                 f.write(str(count))
 
