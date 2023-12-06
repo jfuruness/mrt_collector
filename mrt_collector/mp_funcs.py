@@ -28,6 +28,7 @@ def store_prefixes(mrt_file: MRTFile) -> None:
 PARSE_FUNC = Callable[[MRTFile], None]
 
 
+# NOTE: DO NOT USE! No point, now that PSV flag exists that includes the JSON info
 def bgpkit_parser_csv(mrt_file: MRTFile) -> None:
     """Extracts info from raw dumps into parsed path
 
@@ -80,7 +81,7 @@ def bgpkit_parser(mrt_file: MRTFile) -> None:
 
     if not mrt_file.parsed_path_psv.exists():
         check_call(
-            f"bgpkit-parser {mrt_file.raw_path} > {mrt_file.parsed_path_psv}",
+            f"bgpkit-parser {mrt_file.raw_path} --psv > {mrt_file.parsed_path_psv}",
             shell=True,
         )
 
@@ -93,10 +94,10 @@ def bgpkit_parser(mrt_file: MRTFile) -> None:
 FORMAT_FUNC = Callable[[MRTFile, PrefixOriginMetadata], None]
 
 
-def format_csv_into_tsv(
+def format_psv_into_tsv(
     mrt_file: MRTFile, prefix_origin_metadata: PrefixOriginMetadata
 ) -> None:
-    """Formats csv into a PSV"""
+    """Formats PSV into a TSV"""
 
     # Open all blocks for all files
     mrt_file.formatted_dir.mkdir(parents=True, exist_ok=True)
@@ -111,26 +112,30 @@ def format_csv_into_tsv(
 
     wfiles = [(format_dir / f"{i}.tsv").open("w") for i in block_nums]
 
-    rfile = mrt_file.parsed_path_csv.open()
-    reader = csv.DictReader(rfile)
+    rfile = mrt_file.parsed_path_psv.open()
+    reader = csv.DictReader(rfile, delimiter="|")
     writers = [csv.writer(x, delimiter="\t") for x in wfiles]
+    for writer in writers:
+        writer.writerow(fieldnames())
 
     non_public_asns = get_non_public_asns()
     print(mrt_file.url)
     from tqdm import tqdm
 
     # for meta in tqdm(reader):
-    for meta in reader:
+    for meta in tqdm(reader):
         # VALIDATION ###
         try:
             prefix_obj = ip_network(meta["prefix"])
         # This occurs whenever host bits are set
         except ValueError:
+            print("Can't set prefix")
             continue
-        assert meta["type"] == "ANNOUNCE", f"Not an announcement? {meta}"
+        assert meta["type"] == "A", f"Not an announcement? {meta}"
 
         # No AS sets or empty AS paths
-        if meta["as_path"] in [None, "[]", ""] or "[" in meta["as_path"][1:-1]:
+        if meta["as_path"] in [None, "[]", ""] or "{" in meta["as_path"]:
+            print(f"AS SET in {meta['as_path']}")
             continue
 
         meta = _get_path_data(meta, non_public_asns)
@@ -170,8 +175,13 @@ def _get_path_data(
     meta: dict[str, Any], non_public_asns: frozenset[int]
 ) -> dict[str, Any]:
     # Before we validate that this isn't empty and no AS sets
-    as_path_str = meta["as_path"][1:-1].replace(" ", "").split(",")
-    as_path = [int(x) for x in as_path_str]
+    as_path_str = meta["as_path"].split(" ")
+    assert "," not in meta["as_path"]
+    try:
+        as_path = [int(x) for x in as_path_str]
+    except ValueError:
+        print("\n\n!!!!!!!!!!!!!\n\n")
+        raise ValueError(meta["as_path"])
     meta["origin_asn"] = as_path[-1]
     meta["collector_asn"] = as_path[0]
     meta["invalid_as_path_asns"] = list()
@@ -215,19 +225,19 @@ def fieldnames() -> tuple[str, ...]:
         "as_path",
         "atomic",  # true if prefix aggregation occured, even if aggr_asn is False
         "communities",
-        "deprecated",
+        # "deprecated",            ############ No longer present
         "local_pref",
         # "med",  useless imo
         # "next_hop",  # ip addr
         "only_to_customer",
         "origin",  # IGP or
-        "origin_asns",
+        # "origin_asns",            ############ No longer present
         # "peer_asn",  # ASN that is connected to vantage point
         # "peer_ip",  # IP of AS connected to vantage point
         "prefix",
         "timestamp",
         # "type",  # always announce
-        "unknown",
+        # "unknown",                   ### No longer present
         # Extrapolator ###
         "prefix_id",
         "block_id",

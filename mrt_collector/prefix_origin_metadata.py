@@ -36,6 +36,7 @@ class PrefixOriginMetadata:
         # self.bgpstream_origin_meta: dict[
         #     int, dict[str, Any]
         # ] = self._get_bgpstream_origin_meta()
+        print("initializing roa checker")
         self.roa_checker: ROAChecker = self._init_roa_checker()
         self.prefix_roa_dict: dict[str, ROA] = dict()
         # prefix mapped to an ID
@@ -46,8 +47,12 @@ class PrefixOriginMetadata:
         self.max_block_size: int = max_block_size
         # Prefix ID within it's given block
         self.next_block_prefix_id: int = 0
+        print("roa checker done")
+        print("reading prefixes")
         with prefixes_path.open() as f:
-            prefixes = [x.strip() for x in f]
+            # Don't include header
+            prefixes = [x.strip() for x in f if x.strip() != "prefix"]
+        print("prefixes read")
 
         for prefix in tqdm(prefixes, "Adding extrapolator meta", total=len(prefixes)):
             self._add_prefix_to_extrapolator_meta(prefix)

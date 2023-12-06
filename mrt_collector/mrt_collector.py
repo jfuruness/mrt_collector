@@ -7,10 +7,10 @@ from typing import Any, Callable, Optional
 
 from tqdm import tqdm
 
-from .mp_funcs import PARSE_FUNC, bgpkit_parser_csv
+from .mp_funcs import PARSE_FUNC, bgpkit_parser
 from .mp_funcs import download_mrt
 from .mp_funcs import store_prefixes
-from .mp_funcs import FORMAT_FUNC, format_csv_into_tsv
+from .mp_funcs import FORMAT_FUNC, format_psv_into_tsv
 from .prefix_origin_metadata import PrefixOriginMetadata
 from .mrt_file import MRTFile
 from .sources import Source
@@ -20,7 +20,7 @@ class MRTCollector:
     def __init__(
         self,
         dl_time: datetime = datetime(2023, 11, 1, 0, 0, 0),
-        cpus: int = cpu_count(),
+        cpus: int = 1,  # cpu_count(),
         base_dir: Optional[Path] = None,
     ) -> None:
         """Creates directories"""
@@ -45,10 +45,10 @@ class MRTCollector:
         # Steps
         mrt_files: Optional[tuple[MRTFile, ...]] = None,
         download_raw_mrts: bool = True,
-        parse_mrt_func: PARSE_FUNC = bgpkit_parser_csv,
+        parse_mrt_func: PARSE_FUNC = bgpkit_parser,
         store_prefixes: bool = True,
         max_block_size: int = 10000,  # Used for extrapolator
-        format_parsed_dumps_func: FORMAT_FUNC = format_csv_into_tsv,
+        format_parsed_dumps_func: FORMAT_FUNC = format_psv_into_tsv,
         analyze_formatted_dumps: bool = True,
     ) -> None:
         """See README package description"""
@@ -197,7 +197,7 @@ class MRTCollector:
     def parse_times(self) -> dict[PARSE_FUNC, str]:
         """Useful for printing the times it will take to parse files"""
 
-        return {bgpkit_parser_csv: "~35m"}
+        return {bgpkit_parser: "~??m"}
 
     @property
     def all_non_unique_prefixes_path(self) -> Path:

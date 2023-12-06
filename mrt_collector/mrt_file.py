@@ -122,11 +122,12 @@ class MRTFile:
             # Even the bash cmd speeds up because it doesn't write as much
             check_call(
                 (
-                    f'cut -d "|" -f 2 {self.parsed_path_psv} '
+                    f'cut -d "|" -f 5 {self.parsed_path_psv} '
                     f"| uniq > {self.unique_prefixes_path}"
                 ),
                 shell=True,
             )
+        # NOTE: likely obsolete, consider removing
         elif not self.unique_prefixes_path.exists() and self.parsed_path_json.exists():
             with self.non_unique_prefixes_path.open("w") as prefixes_f:
                 with self.parsed_path_json.open() as json_f:
@@ -141,6 +142,7 @@ class MRTFile:
                 ),
                 shell=True,
             )
+        # NOTE: likely obsolete, consider removing
         elif not self.unique_prefixes_path.exists() and self.parsed_path_csv.exists():
             with self.non_unique_prefixes_path.open("w") as prefixes_f:
                 # Get fieldnames first to discover if file has anything
