@@ -146,11 +146,11 @@ class MRTFile:
         elif not self.unique_prefixes_path.exists() and self.parsed_path_csv.exists():
             with self.non_unique_prefixes_path.open("w") as prefixes_f:
                 # Get fieldnames first to discover if file has anything
-                fieldnames = []
+                fieldnames: list[str] = []
                 with self.parsed_path_csv.open() as csv_f:
                     reader = csv.reader(csv_f)
-                    for line in reader:
-                        fieldnames = line
+                    for line in reader:  # type: ignore
+                        fieldnames = line  # type: ignore
                         break
 
                 if fieldnames:

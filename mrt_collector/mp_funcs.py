@@ -120,7 +120,8 @@ def format_psv_into_tsv(
 
     non_public_asns = get_non_public_asns()
     print(mrt_file.url)
-    from tqdm import tqdm
+    # This is only temporary
+    from tqdm import tqdm  # noqa
 
     # for meta in tqdm(reader):
     for meta in reader:
