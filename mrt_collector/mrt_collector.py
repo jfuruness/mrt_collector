@@ -3,6 +3,8 @@ from datetime import datetime
 from multiprocessing import cpu_count
 from pathlib import Path
 from subprocess import check_call
+import subprocess
+import time
 from typing import Any, Callable, Optional
 
 from tqdm import tqdm
@@ -157,16 +159,85 @@ class MRTCollector:
 
         mrt_files = tuple([x for x in mrt_files if x.unique_prefixes_path.exists()])
         args = tuple([(x, prefix_origin_metadata) for x in mrt_files])
-        self._mp_tqdm(args, format_func, desc="Formatting")
+        iterable = args
+        desc = "Formatting"
+        func = format_func
+        # Starts the progress bar in another thread
+        if self.cpus == 1:
+            for args in tqdm(iterable, total=len(iterable), desc=desc):
+                func(*args)  # type: ignore
+        else:
+            total = self._get_parsed_lines()
+            # https://stackoverflow.com/a/63834834/8903959
+            with ProcessPoolExecutor(max_workers=self.cpus) as executor:
+                futures = [executor.submit(func, *x) for x in iterable]
+                with tqdm(total=total, desc=desc) as pbar:
+                    while futures:
+                        # Non blocking check for completion
+                        completed = [x for x in futures if x.done()]
+                        futures = [x for x in futures if x not in completed]
+                        for future in completed:
+                            # reraise any exceptions from the processes
+                            future.result()
+                        # Increment pbar
+                        pbar.n = self._get_count_formatted()
+                        pbar.refresh()
+                        time.sleep(5)
 
         # Write this file so that we don't redo this step
         with completed_path.open("w") as f:
             f.write("complete")
 
+        print("Count func will break with mx block size changing")
+
     def analyze_formatted_dumps(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Analyzes the formatted BGP dumps"""
 
         raise NotImplementedError
+
+    def _get_parsed_lines(self) -> int:
+        """Gets the total number of lines in parsed dir"""
+
+        parsed_count_path = self.parsed_dir / "total_lines.txt"
+        if parsed_count_path.exists():
+            with parsed_count_path.open() as f:
+                return int(f.read().strip())
+
+        print("Getting parsed lines")
+        # Define the command to be executed
+        command = f"find {self.parsed_dir} -name '*.psv' | xargs wc -l"
+
+        # Run the command
+        result = subprocess.run(command, shell=True, text=True, capture_output=True)
+
+        # Check if the command was successful
+        if result.returncode != 0:
+            print("Error running command:", result.stderr)
+            raise Exception
+
+        # Process the output to get the total number of lines
+        output = result.stdout.strip()
+        lines = output.split("\n")
+        count = int(lines[-1].strip().split(" ")[0])
+
+        with parsed_count_path.open("w") as f:
+            f.write(str(count))
+        return count
+
+    def _get_count_formatted(self) -> int:
+        """Returns the total number of lines that have been formatted so far"""
+
+        total_sum = 0
+        for file_path in self.formatted_dir.rglob("count.txt"):
+            try:
+                with file_path.open() as f:
+                    number = int(f.read().strip())
+                    total_sum += number
+            except ValueError:
+                pass
+            except Exception as e:
+                print(f"Error reading file {file_path}: {e}")
+        return total_sum
 
     def _mp_tqdm(
         self,

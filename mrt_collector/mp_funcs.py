@@ -2,6 +2,7 @@
 
 import csv
 from ipaddress import ip_network
+from pathlib import Path
 import json
 import os
 from subprocess import check_call
@@ -99,6 +100,7 @@ def format_psv_into_tsv(
 ) -> None:
     """Formats PSV into a TSV"""
 
+    count = 0
     # Open all blocks for all files
     mrt_file.formatted_dir.mkdir(parents=True, exist_ok=True)
     block_nums = list(range(prefix_origin_metadata.next_block_id + 1))
@@ -109,6 +111,7 @@ def format_psv_into_tsv(
         return
     else:
         format_dir.mkdir(parents=True, exist_ok=True)
+    count_file_path: Path = format_dir / "count.txt"
 
     wfiles = [(format_dir / f"{i}.tsv").open("w") for i in block_nums]
 
@@ -131,12 +134,14 @@ def format_psv_into_tsv(
         # This occurs whenever host bits are set
         except ValueError:
             print("Can't set prefix")
+            count += 1
             continue
         assert meta["type"] == "A", f"Not an announcement? {meta}"
 
         # No AS sets or empty AS paths
         if meta["as_path"] in [None, "[]", ""] or "{" in meta["as_path"]:
             # print(f"AS SET in {meta['as_path']}")
+            count += 1
             continue
 
         meta = _get_path_data(meta, non_public_asns)
@@ -148,6 +153,13 @@ def format_psv_into_tsv(
         meta["url"] = mrt_file.url
         values = [meta[x] for x in fieldnames()]
         writers[meta["block_id"]].writerow(values)
+        count += 1
+        if count % 100 == 0:
+            with count_file_path.open("w") as f:
+                f.write(str(count))
+
+    with count_file_path.open("w") as f:
+        f.write(str(count))
 
     for f in wfiles + [rfile]:
         f.close()
