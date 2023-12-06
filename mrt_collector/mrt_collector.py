@@ -56,12 +56,12 @@ class MRTCollector:
         """See README package description"""
 
         mrt_files = mrt_files if mrt_files else self.get_mrt_files(sources)
-        if download_raw_mrts:
-            self.download_raw_mrts(mrt_files)
-        self.parse_mrts(mrt_files, parse_mrt_func)
-        if store_prefixes:
-            self.store_prefixes(mrt_files)
-        self.format_parsed_dumps(mrt_files, max_block_size, format_parsed_dumps_func)
+        # if download_raw_mrts:
+        #     self.download_raw_mrts(mrt_files)
+        # self.parse_mrts(mrt_files, parse_mrt_func)
+        # if store_prefixes:
+        #     self.store_prefixes(mrt_files)
+        # self.format_parsed_dumps(mrt_files, max_block_size, format_parsed_dumps_func)
 
         if analyze_formatted_dumps:
             self.analyze_formatted_dumps(mrt_files)
@@ -170,7 +170,7 @@ class MRTCollector:
         mrt_files = tuple([x for x in mrt_files if x.unique_prefixes_path.exists()])
         args = tuple([(x, prefix_origin_metadata) for x in mrt_files])
         iterable = args
-        desc = "Formatting (~??m)"
+        desc = "Formatting (~3hrs)"
         func = format_func
         # Starts the progress bar in another thread
         if self.cpus == 1:
