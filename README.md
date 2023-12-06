@@ -34,8 +34,9 @@ This package performs the following:
 * [mrt\_collector](#mrt\_collector)
 
 VERY IMPORTANT:
-Typically the total amount of data from the MRTs if you download all of the MRT files quickly balloons to over 100GB.
+Typically the total amount of data from the MRTs if you download all of the MRT files quickly balloons to over a few hundred GB.
 Make sure you have enough storage capacity for this.
+Additionally, when formatting, each core takes about 3GB of RAM. Plan accordingly
 
 TODO
 

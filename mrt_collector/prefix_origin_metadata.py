@@ -162,7 +162,9 @@ class PrefixOriginMetadata:
     # Get Meta Funcs #
     ##################
 
-    @cache
+    # Consumes too much memory. Also lol disabling this barely affected speed
+    # it might even be faster now, and before took up so much RAM my machine would crash
+    # @cache
     def get_meta(
         self, prefix: str, prefix_obj: IPv4Network | IPv6Network, origin: int
     ) -> dict[str, Any]:
@@ -197,7 +199,9 @@ class PrefixOriginMetadata:
 
         return meta
 
-    @cache
+    # consumes too much memory. Also lol disabling this barely affected speed.
+    # it might even be faster now, and before took up so much RAM my machine would crash
+    # @cache
     def _get_roa(self, prefix_obj: IPv4Network | IPv6Network) -> Optional[ROA]:
         """Cached function around returning ROAs"""
         return self.roa_checker.get_roa(prefix_obj)

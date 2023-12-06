@@ -149,6 +149,16 @@ class MRTCollector:
 
         print("Starting prefix origin metadata")
         # Initialize prefix origin metadata
+        # ROA checker is .7GB
+        # exr data is .4GB
+        # format_func adds no RAM, just .1GB that doesn't accumulate
+        # jk it does add ram, seems to do so on large files, it accumulates up to 1gb...
+        # wow, even more than 1GB is consumed, like 1.5GB now, and just going to kill it
+        # wow, went from like 1gb total preprogram, to 2gb total pre loop, to 4gb post loop
+        # and python isn't giving the memory back...
+        # AHA - it is thge prefix origin metadata caching mechanism
+        # just gonna disable that, don't mind me
+        # except for potentially pickling/unpickling for mp
         prefix_origin_metadata = PrefixOriginMetadata(
             self.dl_time,
             self.requests_cache_dir / "other_collector_cache.db",
@@ -169,7 +179,7 @@ class MRTCollector:
         else:
             total = self._get_parsed_lines()
             # https://stackoverflow.com/a/63834834/8903959
-            with ProcessPoolExecutor(max_workers=self.cpus) as executor:
+            with ProcessPoolExecutor(max_workers=self.cpus // 2) as executor:
                 futures = [executor.submit(func, *x) for x in iterable]
                 with tqdm(total=total, desc=desc) as pbar:
                     while futures:
