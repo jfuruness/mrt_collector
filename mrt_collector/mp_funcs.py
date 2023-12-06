@@ -123,7 +123,7 @@ def format_psv_into_tsv(
     from tqdm import tqdm
 
     # for meta in tqdm(reader):
-    for meta in tqdm(reader):
+    for meta in reader:
         # VALIDATION ###
         try:
             prefix_obj = ip_network(meta["prefix"])
@@ -135,7 +135,7 @@ def format_psv_into_tsv(
 
         # No AS sets or empty AS paths
         if meta["as_path"] in [None, "[]", ""] or "{" in meta["as_path"]:
-            print(f"AS SET in {meta['as_path']}")
+            # print(f"AS SET in {meta['as_path']}")
             continue
 
         meta = _get_path_data(meta, non_public_asns)
