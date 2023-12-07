@@ -121,10 +121,8 @@ class MRTFile:
             # By adding uniq here. mrt_collector._get_prefix_ids has a 3x speedup
             # Even the bash cmd speeds up because it doesn't write as much
             check_call(
-                (
-                    f'cut -d "|" -f 5 {self.parsed_path_psv} '
-                    f"| uniq > {self.unique_prefixes_path}"
-                ),
+                f'cut -d "|" -f 5 {self.parsed_path_psv} '
+                f"| uniq > {self.unique_prefixes_path}",
                 shell=True,
             )
         # NOTE: likely obsolete, consider removing
@@ -136,10 +134,8 @@ class MRTFile:
             # make this unique using cat, that way it's not slow Python
             # makes joining these files in MRTCollector 3x faster
             check_call(
-                (
-                    f"cat {self.non_unique_prefixes_path} "
-                    f"| uniq > {self.unique_prefixes_path}"
-                ),
+                f"cat {self.non_unique_prefixes_path} "
+                f"| uniq > {self.unique_prefixes_path}",
                 shell=True,
             )
         # NOTE: likely obsolete, consider removing
@@ -168,10 +164,8 @@ class MRTFile:
             # make this unique using cat, that way it's not slow Python
             # makes joining these files in MRTCollector 3x faster
             check_call(
-                (
-                    f"cat {self.non_unique_prefixes_path} "
-                    f"| uniq > {self.unique_prefixes_path}"
-                ),
+                f"cat {self.non_unique_prefixes_path} "
+                f"| uniq > {self.unique_prefixes_path}",
                 shell=True,
             )
 
