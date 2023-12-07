@@ -450,7 +450,7 @@ def fieldnames() -> tuple[str, ...]:
         "end_time",
         "event_number",
         "event_type",
-        "url",
+        "bgpstream_url",
         "hijack_detected_as_path",
         "hijack_detected_by_bgpmon_peers",
         "hijack_detected_origin_name",
@@ -490,7 +490,49 @@ def fieldnames() -> tuple[str, ...]:
 
 
 def analyze(mrt_file, max_block_size):
+    stats = {
+        "ann_not_covered_by_roa": 0,
+        "ann_covered_by_roa": 0,
+        "ann_invalid_by_roa": 0,
+        "ann_invalid_by_length_routed_roa": 0,
+        "ann_invalid_by_origin_routed_roa": 0,
+        "ann_invalid_by_origin_routed_and_length_roa": 0,
+        # non routed
+        "ann_invalid_by_non_routed_roa": 0,
+        "ann_invalid_by_length_non_routed_roa": 0,
+        "ann_invalid_by_origin_non_routed_roa": 0,
+        "ann_invalid_by_origin_and_length_non_routed_roa": 0,
+        # bgpstream
+        "ann_on_bgpstream_set": set(),
+        "ann_invalid_by_roa_and_on_bgpstream_set": set(),
+        "ann_valid_by_roa_and_on_bgpstream_set": set(),
+        # Prefix aggregation
+        "aggregator_asns_set": set(),
+        "ann_atomic": 0,
+        # community is a tuple of ASN that set it, and community_attr
+        "communities_set": set(),
+        "local_pref_set": set(),
+        "only_to_customer": 0,
+        # Origin
+        "ibgp": 0,
+        "ebgp": 0,
+        "invalid_as_path_asns": 0,
+        "invalid_as_path_asns_set": set(),
+        "ixps_in_as_path": 0,
+        "ixps_in_as_path_set": set(),
+        "prepending": 0,
+        "not_valley_free_caida_path": 0,
+        "non_caida_asns": 0,
+        "non_caida_asns_set": set(),
+        "input_clique_split": 0,
+        "as_path_loop": 0,
+        "as_sets": 0,
+        "as_sets_set": set(),
+        "missing_caida_relationship": 0,
+        "missing_as_path": 0,
+    }
     for formatted_path in (mrt_file.formatted_dir / str(max_block_size)).glob("*.tsv"):
         with formatted_path.open() as f:
             reader = csv.DictReader(f)
             print(reader)
+            raise NotImplementedError("calculate each statistic listed above")
