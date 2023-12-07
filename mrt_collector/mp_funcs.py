@@ -154,7 +154,9 @@ def format_psv_into_tsv(
             )
         )
         meta["url"] = mrt_file.url
-        values = [meta[x] for x in fieldnames()]
+        # Must use .get here, since not all values return something from bgpstream
+        # Really this should be changed to ensure we don't make any typos
+        values = [meta.get(x) for x in fieldnames()]
         writers[meta["block_id"]].writerow(values)
         count += 1
         if count % 10000 == 0:
