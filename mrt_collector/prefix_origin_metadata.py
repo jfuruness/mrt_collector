@@ -1,7 +1,9 @@
 from datetime import datetime
-from functools import cache
+
+# from functools import cache
 from ipaddress import ip_network, IPv4Network, IPv6Network
 from pathlib import Path
+import pickle
 from typing import Any, Optional
 
 from tqdm import tqdm
@@ -124,7 +126,7 @@ class PrefixOriginMetadata:
                 pickle.dump(rows, f)
 
         with pickle_path.open("rb") as f:
-            rows: list[dict[str, Any]] = pickle.load(f)
+            rows = pickle.load(f)
             for row in rows:
                 # Can't save URL since that would overwrite the source url
                 row["bgpstream_url"] = row.pop("url")

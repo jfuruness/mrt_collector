@@ -7,9 +7,9 @@ import json
 import os
 import re
 from subprocess import check_call
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
-from bgpy_pkg import CaidaCollector, Relationships
+from bgpy_pkg import CaidaCollector, Relationships, ASGroups
 
 from .mrt_file import MRTFile
 from .prefix_origin_metadata import PrefixOriginMetadata
@@ -191,10 +191,7 @@ as_set_re = re.compile("{.+?}")
 
 
 def _get_path_data(
-    meta: dict[str, Any],
-    non_public_asns: frozenset[int],
-    bgp_dag,
-    ixps: set[int]
+    meta: dict[str, Any], non_public_asns: frozenset[int], bgp_dag, ixps: set[int]
 ) -> dict[str, Any]:
     as_path = convert_as_path_str(meta["as_path"])
     as_set_strs = as_set_re.findall(meta["as_path"])
@@ -241,15 +238,19 @@ def _get_path_data(
 
                 if asn in input_clique_asns:
                     # if this isn't the first input clique ASN
-                    if (input_clique_asn_in_path
+                    if (
+                        input_clique_asn_in_path
                         and last_asn is not None
-                            and last_asn not in input_clique_asns):
+                        and last_asn not in input_clique_asns
+                    ):
                         meta["input_clique_split"] = True
                     input_clique_asn_in_path = True
 
-                if (last_asn is not None
+                if (
+                    last_asn is not None
                     and asn in bgp_dag.as_dict
-                        and last_asn in bgp_dag.as_dict):
+                    and last_asn in bgp_dag.as_dict
+                ):
                     current_as = bgp_dag.as_dict[asn]
                     last_as = bgp_dag.as_dict[last_asn]
                     # Go left to right
@@ -264,7 +265,6 @@ def _get_path_data(
                         rel = None
                         meta["missing_caida_relationship"] = True
                     relationships.append(rel)
-
 
         else:
             asn = asn_or_set
@@ -285,15 +285,19 @@ def _get_path_data(
 
             if asn in input_clique_asns:
                 # if this isn't the first input clique ASN
-                if (input_clique_asn_in_path
+                if (
+                    input_clique_asn_in_path
                     and last_asn is not None
-                        and last_asn not in input_clique_asns):
+                    and last_asn not in input_clique_asns
+                ):
                     meta["input_clique_split"] = True
                 input_clique_asn_in_path = True
 
-            if (last_asn is not None
+            if (
+                last_asn is not None
                 and asn in bgp_dag.as_dict
-                    and last_asn in bgp_dag.as_dict):
+                and last_asn in bgp_dag.as_dict
+            ):
                 current_as = bgp_dag.as_dict[asn]
                 last_as = bgp_dag.as_dict[last_asn]
                 # Go left to right
@@ -320,14 +324,16 @@ def _get_path_data(
             if no_more_peers and relationship == Relationships.PEER:
                 meta["valley_free_caida_path"] = False
                 break
-           if no_more_customers and relationship == Relationships.CUSTOMER:
+            if no_more_customers and relationship == Relationships.CUSTOMER:
                 meta["valley_free_caida_path"] = False
                 break
 
             if relationship == Relationships.PEER:
                 no_more_peers = True
-            if (last_relationship == Relationships.CUSTOMER
-                and relationship != last_relationship:
+            if (
+                last_relationship == Relationships.CUSTOMER
+                and relationship != last_relationship
+            ):
                 no_more_customers = True
 
             last_relationship = relationship
@@ -341,7 +347,7 @@ def convert_as_path_str(as_path_str: str) -> list[int | list[int]]:
     NOTE: must account for AS sets
     """
 
-    as_path = list()
+    as_path: list[int | list[int]] = list()
     as_set: Optional[list[int]] = None
     for chars in as_path_str.split(" "):
         # Start of AS set
@@ -349,6 +355,7 @@ def convert_as_path_str(as_path_str: str) -> list[int | list[int]]:
             as_set = [int(chars.replace("{", ""))]
         # End of AS set
         elif "}" in chars:
+            assert as_set
             as_set.append(int(chars.replace("}", "")))
             as_path.append(as_set)
             as_set = None
@@ -358,7 +365,6 @@ def convert_as_path_str(as_path_str: str) -> list[int | list[int]]:
         else:
             as_path.append(int(chars))
     return as_path
-
 
 
 def fieldnames() -> tuple[str, ...]:
@@ -433,8 +439,9 @@ def fieldnames() -> tuple[str, ...]:
         "url",
     )
 
+
 def analyze(mrt_file, max_block_size):
-    for formatted_path in (mrt_file.formatted_dir / str(max_block_size).glob("*.tsv"):
+    for formatted_path in (mrt_file.formatted_dir / str(max_block_size)).glob("*.tsv"):
         with formatted_path.open() as f:
-            # aggr_asn  aggr_ip as_path atomic  communities local_pref  only_to_customer    origin  prefix  timestamp   prefix_id   block_id    block_prefix_id origin_asn  collector_asn   invalid_as_path_asns    ixps_in_as_path prepending  valley_free_caida_path  non_caida_asns  input_clique_split  as_path_loop    ixps_in_as_path url
             reader = csv.DictReader(f)
+            print(reader)

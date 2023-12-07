@@ -9,6 +9,8 @@ from typing import Any, Callable, Optional
 
 from tqdm import tqdm
 
+from bgpy_pkg import CaidaCollector
+
 from .mp_funcs import PARSE_FUNC, bgpkit_parser
 from .mp_funcs import download_mrt
 from .mp_funcs import store_prefixes
@@ -110,7 +112,7 @@ class MRTCollector:
         """Stores unique prefixes from MRT Files"""
 
         # If this file exists, don't redo
-        completed_path = self.prefixes_dir / f"completed.txt"
+        completed_path = self.prefixes_dir / "completed.txt"
         if completed_path.exists():
             with completed_path.open() as f:
                 urls = f.read().split("\n")
@@ -166,7 +168,8 @@ class MRTCollector:
         # format_func adds no RAM, just .1GB that doesn't accumulate
         # jk it does add ram, seems to do so on large files, it accumulates up to 1gb...
         # wow, even more than 1GB is consumed, like 1.5GB now, and just going to kill it
-        # wow, went from like 1gb total preprogram, to 2gb total pre loop, to 4gb post loop
+        # wow, went from like 1gb total preprogram,
+        # to 2gb total pre loop, to 4gb post loop
         # and python isn't giving the memory back...
         # AHA - it is thge prefix origin metadata caching mechanism
         # just gonna disable that, don't mind me
