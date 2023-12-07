@@ -9,7 +9,7 @@ from typing import Any, Callable, Optional
 
 from tqdm import tqdm
 
-from bgpy_pkg import CaidaCollector
+from bgpy.caida_collector import CaidaCollector
 
 from .mp_funcs import PARSE_FUNC, bgpkit_parser
 from .mp_funcs import download_mrt
@@ -24,7 +24,7 @@ class MRTCollector:
     def __init__(
         self,
         dl_time: datetime = datetime(2023, 11, 1, 0, 0, 0),
-        cpus: int = cpu_count(),
+        cpus: int = 1,  # cpu_count(),
         base_dir: Optional[Path] = None,
     ) -> None:
         """Creates directories"""
@@ -58,12 +58,12 @@ class MRTCollector:
         """See README package description"""
 
         mrt_files = mrt_files if mrt_files else self.get_mrt_files(sources)
-        # if download_raw_mrts:
-        #     self.download_raw_mrts(mrt_files)
-        # self.parse_mrts(mrt_files, parse_mrt_func)
-        # if store_prefixes:
-        #     self.store_prefixes(mrt_files)
-        # self.format_parsed_dumps(mrt_files, max_block_size, format_parsed_dumps_func)
+        if download_raw_mrts:
+            self.download_raw_mrts(mrt_files)
+        self.parse_mrts(mrt_files, parse_mrt_func)
+        if store_prefixes:
+            self.store_prefixes(mrt_files)
+        self.format_parsed_dumps(mrt_files, max_block_size, format_parsed_dumps_func)
 
         if analyze_formatted_dumps:
             self.analyze_formatted_dumps(mrt_files)
@@ -117,6 +117,7 @@ class MRTCollector:
             with completed_path.open() as f:
                 urls = f.read().split("\n")
                 if set(urls) == set(x.url for x in mrt_files):
+                    print("Already stored prefixes, not redoing")
                     return
         args = tuple([(x,) for x in mrt_files])
         # First with multiprocessing store for each file
@@ -159,6 +160,7 @@ class MRTCollector:
             with completed_path.open() as f:
                 urls = f.read().split("\n")
                 if set(urls) == set(x.url for x in mrt_files):
+                    print("Already formatted, not reformatting")
                     return
 
         print("Starting prefix origin metadata")

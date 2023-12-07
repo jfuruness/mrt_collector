@@ -9,7 +9,8 @@ import re
 from subprocess import check_call
 from typing import Any, Callable, Optional
 
-from bgpy_pkg import CaidaCollector, Relationships, ASGroups
+from bgpy.caida_collector import CaidaCollector
+from bgpy.enums import Relationships, ASGroups
 
 from .mrt_file import MRTFile
 from .prefix_origin_metadata import PrefixOriginMetadata
@@ -195,6 +196,16 @@ def _get_path_data(
 ) -> dict[str, Any]:
     as_path = convert_as_path_str(meta["as_path"])
     as_set_strs = as_set_re.findall(meta["as_path"])
+
+    origin_asn_or_set = as_path[-1]
+    if isinstance(origin_asn_or_set, list):
+        # Just take the first one. Best guess.
+        meta["origin_asn"] = origin_asn_or_set[0]
+    elif isinstance(origin_asn_or_set, int):
+        meta["origin_asn"] = origin_asn_or_set
+    else:
+        raise NotImplementedError("Case not accounted for")
+
     meta["as_sets"] = as_set_strs if as_set_strs else None
     meta["collector_asn"] = as_path[0]
     meta["invalid_as_path_asns"] = list()
@@ -208,7 +219,7 @@ def _get_path_data(
     meta["input_clique_split"] = False
     meta["missing_caida_relationship"] = False
     relationships = list()
-    input_clique_asns: set[int] = bgp_dag.asn_groups[ASGroups.INPUT_CLIQUE]
+    input_clique_asns: set[int] = bgp_dag.asn_groups[ASGroups.INPUT_CLIQUE.value]
 
     input_clique_asn_in_path = False
     as_path_set = set()
@@ -256,9 +267,9 @@ def _get_path_data(
                     # Go left to right
                     # From last asn (origin) to next AS (provider), last as is customer
                     if last_as in current_as.providers:
-                        rel = Relationships.CUSTOMER
+                        rel = Relationships.CUSTOMERS
                     elif last_as in current_as.customers:
-                        rel = Relationships.PROVIDER
+                        rel = Relationships.PROVIDERS
                     elif last_as in current_as.peers:
                         rel = Relationships.PEER
                     else:
@@ -303,9 +314,9 @@ def _get_path_data(
                 # Go left to right
                 # From last asn (origin) to next AS (provider), last as is customer
                 if last_as in current_as.providers:
-                    rel = Relationships.CUSTOMER
+                    rel = Relationships.CUSTOMERS
                 elif last_as in current_as.customers:
-                    rel = Relationships.PROVIDER
+                    rel = Relationships.PROVIDERS
                 elif last_as in current_as.peers:
                     rel = Relationships.PEER
                 else:
@@ -317,21 +328,21 @@ def _get_path_data(
         no_more_customers = False
         no_more_peers = False
         last_relationship = relationships[0]
-        if last_relationship == Relationships.PEER:
+        if last_relationship == Relationships.PEERS:
             no_more_peers = True
 
         for relationship in relationships[1:]:
-            if no_more_peers and relationship == Relationships.PEER:
+            if no_more_peers and relationship == Relationships.PEERS:
                 meta["valley_free_caida_path"] = False
                 break
-            if no_more_customers and relationship == Relationships.CUSTOMER:
+            if no_more_customers and relationship == Relationships.CUSTOMERS:
                 meta["valley_free_caida_path"] = False
                 break
 
-            if relationship == Relationships.PEER:
+            if relationship == Relationships.PEERS:
                 no_more_peers = True
             if (
-                last_relationship == Relationships.CUSTOMER
+                last_relationship == Relationships.CUSTOMERS
                 and relationship != last_relationship
             ):
                 no_more_customers = True
