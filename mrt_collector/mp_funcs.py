@@ -362,7 +362,8 @@ def convert_as_path_str(as_path_str: str) -> list[int | list[int]]:
 
     as_path: list[int | list[int]] = list()
     as_set: Optional[list[int]] = None
-    for chars in as_path_str.split(" "):
+    # Normal ASNs are separated by spaces. AS sets are: {1,2,3}
+    for chars in as_path_str.replace(",", " ").split(" "):
         # Start of AS set
         if "{" in chars:
             as_set = [int(chars.replace("{", "").replace("}", ""))]
