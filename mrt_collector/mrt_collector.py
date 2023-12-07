@@ -1,5 +1,6 @@
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
+import gc
 from multiprocessing import cpu_count
 from pathlib import Path
 from subprocess import check_call
@@ -115,10 +116,15 @@ class MRTCollector:
         completed_path = self.prefixes_dir / "completed.txt"
         if completed_path.exists():
             with completed_path.open() as f:
-                urls = f.read().split("\n")
-                if set(urls) == set(x.url for x in mrt_files):
+                urls = set(f.read().split("\n"))
+                mrt_file_urls = set(x.url for x in mrt_files)
+                if urls != mrt_file_urls:
                     print("Already stored prefixes, not redoing")
                     return
+                else:
+                    print("prefix urls don't match, redoing")
+                    print(urls)
+                    print(mrt_file_urls)
         args = tuple([(x,) for x in mrt_files])
         # First with multiprocessing store for each file
         self._mp_tqdm(args, store_prefixes, desc="Storing prefixes")
@@ -185,6 +191,8 @@ class MRTCollector:
         print("prefix origin metadata complete")
         print("caching caida")
         CaidaCollector().run(tsv_path=None)
+        # Collect CAIDA collector (number of unreachable objects is returned
+        print(gc.collect())
         print("cached caida")
 
         mrt_files = tuple([x for x in mrt_files if x.unique_prefixes_path.exists()])
@@ -195,7 +203,7 @@ class MRTCollector:
         # Starts the progress bar in another thread
         if self.cpus == 1:
             for args in tqdm(iterable, total=len(iterable), desc=desc):
-                func(*args)  # type: ignore
+                func(*args, single_proc=True)  # type: ignore
         else:
             total = self._get_parsed_lines()
             # https://stackoverflow.com/a/63834834/8903959

@@ -3,10 +3,12 @@
 import csv
 from ipaddress import ip_network
 from pathlib import Path
+from pprint import pprint
 import json
 import os
 import re
 from subprocess import check_call
+import subprocess
 from typing import Any, Callable, Optional
 
 from bgpy.caida_collector import CaidaCollector
@@ -100,7 +102,9 @@ FORMAT_FUNC = Callable[[MRTFile, PrefixOriginMetadata], None]
 
 
 def format_psv_into_tsv(
-    mrt_file: MRTFile, prefix_origin_metadata: PrefixOriginMetadata
+    mrt_file: MRTFile,
+    prefix_origin_metadata: PrefixOriginMetadata,
+    single_proc: bool = False,
 ) -> None:
     """Formats PSV into a TSV"""
 
@@ -133,8 +137,27 @@ def format_psv_into_tsv(
     # This is only temporary
     from tqdm import tqdm  # noqa
 
+    if single_proc:
+        # Define the command to be executed
+        command = f"wc -l {mrt_file.parsed_path_psv}"
+
+        # Run the command
+        result = subprocess.run(command, shell=True, text=True, capture_output=True)
+
+        # Check if the command was successful
+        if result.returncode != 0:
+            print("Error running command:", result.stderr)
+            raise Exception
+
+        # Process the output to get the total number of lines
+        output = result.stdout.strip()
+        lines = output.split("\n")
+        total_lines = int(lines[-1].strip().split(" ")[0])
+        iterable = tqdm(reader, total=total_lines, desc="Formatting file")
+    else:
+        iterable = reader
     # for meta in tqdm(reader):
-    for meta in reader:
+    for meta in iterable:
         # VALIDATION ###
         try:
             prefix_obj = ip_network(meta["prefix"])
@@ -146,6 +169,11 @@ def format_psv_into_tsv(
             continue
 
         assert meta["type"] == "A", f"Not an announcement? {meta}"
+
+        if not meta["as_path"]:
+            print("missing_as_path")
+            pprint(meta)
+            continue
 
         meta = _get_path_data(meta, non_public_asns, bgp_dag, ixps)
         meta.update(
@@ -362,26 +390,29 @@ def convert_as_path_str(as_path_str: str) -> list[int | list[int]]:
 
     as_path: list[int | list[int]] = list()
     as_set: Optional[list[int]] = None
-    # Normal ASNs are separated by spaces. AS sets are: {1,2,3}
-    for chars in as_path_str.replace(",", " ").split(" "):
-        # Start of AS set
-        if "{" in chars:
-            as_set = [int(chars.replace("{", "").replace("}", ""))]
-            # Must account for the case of a single ASN
-            if "}" in chars:
+    try:
+        # Normal ASNs are separated by spaces. AS sets are: {1,2,3}
+        for chars in as_path_str.replace(",", " ").split(" "):
+            # Start of AS set
+            if "{" in chars:
+                as_set = [int(chars.replace("{", "").replace("}", ""))]
+                # Must account for the case of a single ASN
+                if "}" in chars:
+                    as_path.append(as_set)
+                    as_set = None
+            # End of AS set
+            elif "}" in chars:
+                assert as_set
+                as_set.append(int(chars.replace("}", "")))
                 as_path.append(as_set)
                 as_set = None
-        # End of AS set
-        elif "}" in chars:
-            assert as_set
-            as_set.append(int(chars.replace("}", "")))
-            as_path.append(as_set)
-            as_set = None
-        # We're in AS set
-        elif as_set is not None:
-            as_set.append(int(chars.replace("}", "")))
-        else:
-            as_path.append(int(chars))
+            # We're in AS set
+            elif as_set is not None:
+                as_set.append(int(chars.replace("}", "")))
+            else:
+                as_path.append(int(chars))
+    except ValueError as e:
+        raise ValueError(f"{as_path_str} {e}")
     return as_path
 
 
