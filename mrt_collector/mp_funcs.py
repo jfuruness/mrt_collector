@@ -365,7 +365,11 @@ def convert_as_path_str(as_path_str: str) -> list[int | list[int]]:
     for chars in as_path_str.split(" "):
         # Start of AS set
         if "{" in chars:
-            as_set = [int(chars.replace("{", ""))]
+            as_set = [int(chars.replace("{", "").replace("}", ""))]
+            # Must account for the case of a single ASN
+            if "}" in chars:
+                as_path.append(as_set)
+                as_set = None
         # End of AS set
         elif "}" in chars:
             assert as_set
