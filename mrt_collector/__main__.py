@@ -1,4 +1,5 @@
 import argparse
+from datetime import datetime
 
 from .mrt_collector import MRTCollector
 
@@ -10,7 +11,7 @@ def main():
 
     if args.quick:
         # For the quick version, just run it with a single MRT file
-        collector = MRTCollector()
+        collector = MRTCollector(dl_time=datetime(2023, 12, 2, 0, 0, 0))
         mrt_files = collector.get_mrt_files()
         # This one has a fast download time
         mrt_files = tuple([mrt_files[x] for x in (-2, -3, -4, -5)])
