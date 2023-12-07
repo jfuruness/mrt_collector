@@ -89,6 +89,7 @@ At the time of this writing (Dec 4 2023) this can be installed with:
 ```bash
 sudo apt install cargo -y
 git clone git@github.com:bgpkit/bgpkit-parser.git
+git checkout origin/feature/psv-with-header
 cargo install --path ./bgpkit-parser --features cli
 cp bgpkit-parser/target/release/bgpkit-parser ~/.local/bin
 ```
