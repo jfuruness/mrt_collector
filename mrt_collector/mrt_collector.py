@@ -109,8 +109,13 @@ class MRTCollector:
     def store_prefixes(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Stores unique prefixes from MRT Files"""
 
-        if self.all_unique_prefixes_path.exists():
-            return
+        # If this file exists, don't redo
+        completed_path = self.prefixes_dir / f"completed.txt"
+        if completed_path.exists():
+            with completed_path.open() as f:
+                urls = f.read().split("\n")
+                if set(urls) == set(x.url for x in mrt_files):
+                    return
         args = tuple([(x,) for x in mrt_files])
         # First with multiprocessing store for each file
         self._mp_tqdm(args, store_prefixes, desc="Storing prefixes")
@@ -131,6 +136,10 @@ class MRTCollector:
             f"> {self.all_unique_prefixes_path}",
             shell=True,
         )
+        # Write this file so that we don't redo this step
+        with completed_path.open("w") as f:
+            for mrt_file in mrt_files:
+                f.write(mrt_file.url + "\n")
         print(f"prefixes written to {self.all_unique_prefixes_path}")
 
     def format_parsed_dumps(
@@ -145,7 +154,10 @@ class MRTCollector:
         # If this file exists, don't redo
         completed_path = self.formatted_dir / f"{max_block_size}_completed.txt"
         if completed_path.exists():
-            return
+            with completed_path.open() as f:
+                urls = f.read().split("\n")
+                if set(urls) == set(x.url for x in mrt_files):
+                    return
 
         print("Starting prefix origin metadata")
         # Initialize prefix origin metadata
@@ -196,7 +208,8 @@ class MRTCollector:
 
         # Write this file so that we don't redo this step
         with completed_path.open("w") as f:
-            f.write("complete")
+            for mrt_file in mrt_files:
+                f.write(mrt_file.url + "\n")
 
         print("Count func will break with mx block size changing")
 

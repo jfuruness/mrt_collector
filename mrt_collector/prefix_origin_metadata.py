@@ -30,12 +30,12 @@ class PrefixOriginMetadata:
         self.requests_cache_db_path: Path = requests_cache_db_path
         # Stores prefix and it's corresponding ID for block
         self.extrapolator_meta: dict[str, dict[str, int]] = dict()
-        # self.bgpstream_po_meta: dict[
-        #     tuple[str, int], dict[str, Any]
-        # ] = self._get_bgpstream_po_meta()
-        # self.bgpstream_origin_meta: dict[
-        #     int, dict[str, Any]
-        # ] = self._get_bgpstream_origin_meta()
+        self.bgpstream_po_meta: dict[
+            tuple[str, int], dict[str, Any]
+        ] = self._get_bgpstream_po_meta()
+        self.bgpstream_origin_meta: dict[
+            int, dict[str, Any]
+        ] = self._get_bgpstream_origin_meta()
         print("initializing roa checker")
         self.roa_checker: ROAChecker = self._init_roa_checker()
         self.prefix_roa_dict: dict[str, ROA] = dict()
@@ -58,11 +58,7 @@ class PrefixOriginMetadata:
             self._add_prefix_to_extrapolator_meta(prefix)
 
     def _get_bgpstream_po_meta(self) -> dict[tuple[str, int], dict[str, Any]]:
-        collector = BGPStreamWebsiteCollector(
-            csv_path=None,
-            requests_cache_db_path=self.requests_cache_db_path,
-        )
-        rows: list[dict[str, Any]] = collector.run(self.dl_time.date())
+        rows = self._get_bgpstream_rows()
         bgpstream_po_info: dict[tuple[str, int], dict[str, Any]] = dict()
         for row in rows:
             # Hijack
@@ -103,17 +99,36 @@ class PrefixOriginMetadata:
         return bgpstream_po_info
 
     def _get_bgpstream_origin_meta(self) -> dict[int, dict[str, Any]]:
-        collector = BGPStreamWebsiteCollector(
-            csv_path=None,
-            requests_cache_db_path=self.requests_cache_db_path,
-        )
-
-        rows: list[dict[str, Any]] = collector.run(self.dl_time.date())
+        rows = self._get_bgpstream_rows()
         bgpstream_origin_info: dict[int, dict[str, Any]] = dict()
         for row in rows:
             if row["outage_as_number"] not in [None, ""]:
                 bgpstream_origin_info[int(row["outage_as_number"])] = row
         return bgpstream_origin_info
+
+    def _get_bgpstream_rows(self) -> list[dict[str, Any]]:
+        """Returns all bgpstream rows"""
+
+        # TODO: have this as a property somewhere...
+        pickle_path = Path("/tmp/bgpstream_rows.pickle")
+
+        # Cache result if not exists. requests_cache too slow for this...
+        if not pickle_path.exists():
+            collector = BGPStreamWebsiteCollector(
+                csv_path=None,
+                requests_cache_db_path=self.requests_cache_db_path,
+            )
+
+            rows: list[dict[str, Any]] = collector.run(self.dl_time.date())
+            with pickle_path.open("wb") as f:
+                pickle.dump(rows, f)
+
+        with pickle_path.open("rb") as f:
+            rows: list[dict[str, Any]] = pickle.load(f)
+            for row in rows:
+                # Can't save URL since that would overwrite the source url
+                row["bgpstream_url"] = row.pop("url")
+            return rows
 
     def _init_roa_checker(self) -> ROAChecker:
         """Downloads ROAs and returns ROAChecker"""
@@ -184,18 +199,18 @@ class PrefixOriginMetadata:
         meta["roa_routed"] = routed.value
 
         # Add bgpstream meta
-        # meta.update(
-        #     self.bgpstream_po_meta.get(
-        #         (
-        #             prefix,
-        #             origin,
-        #         ),
-        #         # mypy being dumb
-        #         dict(),  # type: ignore
-        #     )
-        # )
+        meta.update(
+            self.bgpstream_po_meta.get(
+                (
+                    prefix,
+                    origin,
+                ),
+                # mypy being dumb
+                dict(),  # type: ignore
+            )
+        )
         # mypy doesn't understand the second argument of get
-        # meta.update(self.bgpstream_origin_meta.get(origin, dict()))  # type: ignore
+        meta.update(self.bgpstream_origin_meta.get(origin, dict()))  # type: ignore
 
         return meta
 

@@ -255,6 +255,37 @@ def fieldnames() -> tuple[str, ...]:
         "prefix_id",
         "block_id",
         "block_prefix_id",
+        # ROA Validity (from po metadata) ###
+        "roa_validity",
+        "roa_routed",
+        # BGPStream (from po metadata) ###
+        "country",
+        "start_time",
+        "end_time",
+        "event_number",
+        "event_type",
+        "url",
+        "hijack_detected_as_path",
+        "hijack_detected_by_bgpmon_peers",
+        "hijack_detected_origin_name",
+        "hijack_detected_origin_number",
+        "hijack_expected_origin_name",
+        "hijack_expected_origin_number",
+        "hijack_expected_prefix",
+        "hijack_more_specific_prefix",
+        "leak_detected_by_bgpmon_peers",
+        "leak_example_as_path",
+        "leaked_prefix",
+        "leaked_to_name",
+        "leaked_to_number",
+        "leaker_as_name",
+        "leaker_as_number",
+        "leak_origin_as_name",
+        "leak_origin_as_number",
+        "outage_as_name",
+        "outage_as_number",
+        "outage_number_prefixes_affected",
+        "outage_percent_prefixes_affected",
         # AS Path data ###
         "origin_asn",
         "collector_asn",
@@ -269,3 +300,9 @@ def fieldnames() -> tuple[str, ...]:
         # Other ###
         "url",
     )
+
+def analyze(mrt_file, max_block_size):
+    for formatted_path in (mrt_file.formatted_dir / str(max_block_size).glob("*.tsv"):
+        with formatted_path.open() as f:
+            # aggr_asn  aggr_ip as_path atomic  communities local_pref  only_to_customer    origin  prefix  timestamp   prefix_id   block_id    block_prefix_id origin_asn  collector_asn   invalid_as_path_asns    ixps_in_as_path prepending  valley_free_caida_path  non_caida_asns  input_clique_split  as_path_loop    ixps_in_as_path url
+            reader = csv.DictReader(f)
