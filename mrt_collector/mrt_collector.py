@@ -178,6 +178,9 @@ class MRTCollector:
             max_block_size,
         )
         print("prefix origin metadata complete")
+        print("caching caida")
+        CaidaCollector().run(tsv_path=None)
+        print("cached caida")
 
         mrt_files = tuple([x for x in mrt_files if x.unique_prefixes_path.exists()])
         args = tuple([(x, prefix_origin_metadata) for x in mrt_files])

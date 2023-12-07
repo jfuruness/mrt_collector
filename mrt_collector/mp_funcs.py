@@ -5,8 +5,11 @@ from ipaddress import ip_network
 from pathlib import Path
 import json
 import os
+import re
 from subprocess import check_call
 from typing import Any, Callable
+
+from bgpy_pkg import CaidaCollector, Relationships
 
 from .mrt_file import MRTFile
 from .prefix_origin_metadata import PrefixOriginMetadata
@@ -100,6 +103,9 @@ def format_psv_into_tsv(
 ) -> None:
     """Formats PSV into a TSV"""
 
+    bgp_dag = CaidaCollector().run(tsv_path=None)
+    ixps = bgp_dag.ixp_asns
+
     count = 0
     # Open all blocks for all files
     mrt_file.formatted_dir.mkdir(parents=True, exist_ok=True)
@@ -132,19 +138,15 @@ def format_psv_into_tsv(
         try:
             prefix_obj = ip_network(meta["prefix"])
         # This occurs whenever host bits are set
+        # Should never happen, but might occur sometimes
         except ValueError:
-            print("Can't set prefix")
+            print("Can't set prefix: {prefix_obj}")
             count += 1
             continue
+
         assert meta["type"] == "A", f"Not an announcement? {meta}"
 
-        # No AS sets or empty AS paths
-        if meta["as_path"] in [None, "[]", ""] or "{" in meta["as_path"]:
-            # print(f"AS SET in {meta['as_path']}")
-            count += 1
-            continue
-
-        meta = _get_path_data(meta, non_public_asns)
+        meta = _get_path_data(meta, non_public_asns, bgp_dag, ixps)
         meta.update(
             prefix_origin_metadata.get_meta(
                 meta["prefix"], prefix_obj, meta["origin_asn"]
@@ -184,50 +186,179 @@ def get_non_public_asns() -> frozenset[int]:
     )
 
 
+# Non greedy regex match for AS sets
+as_set_re = re.compile("{.+?}")
+
+
 def _get_path_data(
-    meta: dict[str, Any], non_public_asns: frozenset[int]
+    meta: dict[str, Any],
+    non_public_asns: frozenset[int],
+    bgp_dag,
+    ixps: set[int]
 ) -> dict[str, Any]:
-    # Before we validate that this isn't empty and no AS sets
-    as_path_str = meta["as_path"].split(" ")
-    assert "," not in meta["as_path"]
-    try:
-        as_path = [int(x) for x in as_path_str]
-    except ValueError:
-        print("\n\n!!!!!!!!!!!!!\n\n")
-        raise ValueError(meta["as_path"])
-    meta["origin_asn"] = as_path[-1]
+    as_path = convert_as_path_str(meta["as_path"])
+    as_set_strs = as_set_re.findall(meta["as_path"])
+    meta["as_sets"] = as_set_strs if as_set_strs else None
     meta["collector_asn"] = as_path[0]
     meta["invalid_as_path_asns"] = list()
     meta["ixps_in_as_path"] = list()
     meta["prepending"] = False
     meta["as_path_loop"] = False
     # TODO: Check these
-    meta["valley_free_caida_path"] = None
+    meta["valley_free_caida_path"] = True
     # ASNs not part of CAIDA
-    meta["non_caida_asns"] = None
-    meta["input_clique_split"] = None
+    meta["non_caida_asns"] = list()
+    meta["input_clique_split"] = False
+    meta["missing_caida_relationship"] = False
+    relationships = list()
+    input_clique_asns: set[int] = bgp_dag.asn_groups[ASGroups.INPUT_CLIQUE]
 
-    # TODO: Actually get IXPs from CAIDA
-    ixps: set[int] = set()
+    input_clique_asn_in_path = False
     as_path_set = set()
     last_asn = None
-    last_non_ixp = None
-    for asn in as_path:
-        if asn in non_public_asns or asn > MAX_ASN:
-            meta["invalid_as_path_asns"].append(asn)
-        if last_asn == asn:
-            meta["prepending"] = True
-            meta["as_path_loop"] = True
-        elif asn in as_path_set:
-            meta["as_path_loop"] = True
-        as_path_set.add(asn)
-        last_asn = asn
-        if asn in ixps:
-            meta["ixps_in_as_path"].append(asn)
+    # MUST reverse this, since you must get relationships in order
+    # in order to check for route leaks
+    for asn_or_set in reversed(as_path):
+        # AS SET
+        # TODO: Refactor, this is duplicated code in the AS set
+        # and in the non as set
+        if isinstance(asn_or_set, list):
+            for asn in asn_or_set:
+                if asn in non_public_asns or asn > MAX_ASN:
+                    meta["invalid_as_path_asns"].append(asn)
+                if last_asn == asn:
+                    meta["prepending"] = True
+                    meta["as_path_loop"] = True
+                elif asn in as_path_set:
+                    meta["as_path_loop"] = True
+                as_path_set.add(asn)
+                last_asn = asn
+                if asn in ixps:
+                    meta["ixps_in_as_path"].append(asn)
+                if asn not in bgp_dag.as_dict:
+                    meta["non_caida_asns"].append(asn)
+                    meta["missing_caida_relationship"] = True
+
+                if asn in input_clique_asns:
+                    # if this isn't the first input clique ASN
+                    if (input_clique_asn_in_path
+                        and last_asn is not None
+                            and last_asn not in input_clique_asns):
+                        meta["input_clique_split"] = True
+                    input_clique_asn_in_path = True
+
+                if (last_asn is not None
+                    and asn in bgp_dag.as_dict
+                        and last_asn in bgp_dag.as_dict):
+                    current_as = bgp_dag.as_dict[asn]
+                    last_as = bgp_dag.as_dict[last_asn]
+                    # Go left to right
+                    # From last asn (origin) to next AS (provider), last as is customer
+                    if last_as in current_as.providers:
+                        rel = Relationships.CUSTOMER
+                    elif last_as in current_as.customers:
+                        rel = Relationships.PROVIDER
+                    elif last_as in current_as.peers:
+                        rel = Relationships.PEER
+                    else:
+                        rel = None
+                        meta["missing_caida_relationship"] = True
+                    relationships.append(rel)
+
+
         else:
-            last_non_ixp = asn  # noqa
+            asn = asn_or_set
+            assert isinstance(asn, int)
+            if asn in non_public_asns or asn > MAX_ASN:
+                meta["invalid_as_path_asns"].append(asn)
+            if last_asn == asn:
+                meta["prepending"] = True
+                meta["as_path_loop"] = True
+            elif asn in as_path_set:
+                meta["as_path_loop"] = True
+            as_path_set.add(asn)
+            last_asn = asn
+            if asn in ixps:
+                meta["ixps_in_as_path"].append(asn)
+            if asn not in bgp_dag.as_dict:
+                meta["non_caida_asns"].append(asn)
+
+            if asn in input_clique_asns:
+                # if this isn't the first input clique ASN
+                if (input_clique_asn_in_path
+                    and last_asn is not None
+                        and last_asn not in input_clique_asns):
+                    meta["input_clique_split"] = True
+                input_clique_asn_in_path = True
+
+            if (last_asn is not None
+                and asn in bgp_dag.as_dict
+                    and last_asn in bgp_dag.as_dict):
+                current_as = bgp_dag.as_dict[asn]
+                last_as = bgp_dag.as_dict[last_asn]
+                # Go left to right
+                # From last asn (origin) to next AS (provider), last as is customer
+                if last_as in current_as.providers:
+                    rel = Relationships.CUSTOMER
+                elif last_as in current_as.customers:
+                    rel = Relationships.PROVIDER
+                elif last_as in current_as.peers:
+                    rel = Relationships.PEER
+                else:
+                    rel = None
+                    meta["missing_caida_relationship"] = True
+                relationships.append(rel)
+
+    if relationships:
+        no_more_customers = False
+        no_more_peers = False
+        last_relationship = relationships[0]
+        if last_relationship == Relationships.PEER:
+            no_more_peers = True
+
+        for relationship in relationships[1:]:
+            if no_more_peers and relationship == Relationships.PEER:
+                meta["valley_free_caida_path"] = False
+                break
+           if no_more_customers and relationship == Relationships.CUSTOMER:
+                meta["valley_free_caida_path"] = False
+                break
+
+            if relationship == Relationships.PEER:
+                no_more_peers = True
+            if (last_relationship == Relationships.CUSTOMER
+                and relationship != last_relationship:
+                no_more_customers = True
+
+            last_relationship = relationship
 
     return meta
+
+
+def convert_as_path_str(as_path_str: str) -> list[int | list[int]]:
+    """Converts as path string to as path
+
+    NOTE: must account for AS sets
+    """
+
+    as_path = list()
+    as_set: Optional[list[int]] = None
+    for chars in as_path_str.split(" "):
+        # Start of AS set
+        if "{" in chars:
+            as_set = [int(chars.replace("{", ""))]
+        # End of AS set
+        elif "}" in chars:
+            as_set.append(int(chars.replace("}", "")))
+            as_path.append(as_set)
+            as_set = None
+        # We're in AS set
+        elif as_set is not None:
+            as_set.append(int(chars.replace("}", "")))
+        else:
+            as_path.append(int(chars))
+    return as_path
+
 
 
 def fieldnames() -> tuple[str, ...]:
@@ -244,7 +375,7 @@ def fieldnames() -> tuple[str, ...]:
         # "next_hop",  # ip addr
         "only_to_customer",
         "origin",  # IGP or
-        # "origin_asns",            ############ No longer present
+        "origin_asns",
         # "peer_asn",  # ASN that is connected to vantage point
         # "peer_ip",  # IP of AS connected to vantage point
         "prefix",
@@ -287,7 +418,6 @@ def fieldnames() -> tuple[str, ...]:
         "outage_number_prefixes_affected",
         "outage_percent_prefixes_affected",
         # AS Path data ###
-        "origin_asn",
         "collector_asn",
         "invalid_as_path_asns",
         "ixps_in_as_path",
@@ -297,6 +427,8 @@ def fieldnames() -> tuple[str, ...]:
         "input_clique_split",
         "as_path_loop",
         "ixps_in_as_path",
+        "as_sets",
+        "missing_caida_relationship",
         # Other ###
         "url",
     )

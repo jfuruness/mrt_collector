@@ -13,6 +13,10 @@
 * [Development/Contributing](#developmentcontributing)
 * [Licence](#license)
 
+## TODO:
+
+A big refactor
+
 
 ## Package Description
 
