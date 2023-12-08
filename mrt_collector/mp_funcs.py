@@ -563,42 +563,44 @@ def analyze(mrt_file, max_block_size, single_proc: bool = False):
                 ################
 
                 roa_validity = row["roa_validity"]
-                if roa_validity == ROAValidity.UNKNOWN.value:
+                if roa_validity == str(ROAValidity.UNKNOWN.value):
                     stats["ann_not_covered_by_roa"] += 1
-                elif roa_validity == ROAValidity.VALID.value:
+                elif roa_validity == str(ROAValidity.VALID.value):
                     stats["ann_covered_by_roa"] += 1
                     stats["ann_valid_by_roa"] += 1
                 elif roa_validity in (
-                    ROAValidity.INVALID_LENGTH.value,
-                    ROAValidity.INVALID_ORIGIN.value,
-                    ROAValidity.INVALID_LENGTH_AND_ORIGIN.value,
+                    str(ROAValidity.INVALID_LENGTH.value),
+                    str(ROAValidity.INVALID_ORIGIN.value),
+                    str(ROAValidity.INVALID_LENGTH_AND_ORIGIN.value),
                 ):
                     stats["ann_covered_by_roa"] += 1
                     stats["ann_invalid_by_roa"] += 1
-                    if row["roa_routed"] == ROARouted.ROUTED.value:
+                    if row["roa_routed"] == str(ROARouted.ROUTED.value):
                         stats["ann_invalid_by_routed_roa"] += 1
-                        if roa_validity == ROAValidity.INVALID_LENGTH.value:
+                        if roa_validity == str(ROAValidity.INVALID_LENGTH.value):
                             stats["ann_invalid_by_length_routed_roa"] == 1
-                        elif roa_validity == ROAValidity.INVALID_ORIGIN.value:
+                        elif roa_validity == str(ROAValidity.INVALID_ORIGIN.value):
                             stats["ann_invalid_by_origin_routed_roa"] += 1
                         elif (
-                            roa_validity == ROAValidity.INVALID_LENGTH_AND_ORIGIN.value
+                            roa_validity == str(ROAValidity.INVALID_LENGTH_AND_ORIGIN.value)
                         ):
                             stats["ann_invalid_by_origin_routed_and_length_roa"] += 1
-                    elif row["roa_routed"] == ROARouted.NON_ROUTED.value:
+                    elif row["roa_routed"] == str(ROARouted.NON_ROUTED.value):
                         stats["ann_invalid_by_non_routed_roa"] += 1
-                        if roa_validity == ROAValidity.INVALID_LENGTH.value:
+                        if roa_validity == str(ROAValidity.INVALID_LENGTH.value):
                             stats["ann_invalid_by_length_non_routed_roa"] == 1
-                        elif roa_validity == ROAValidity.INVALID_ORIGIN.value:
+                        elif roa_validity == str(ROAValidity.INVALID_ORIGIN.value):
                             stats["ann_invalid_by_origin_non_routed_roa"] += 1
                         elif (
-                            roa_validity == ROAValidity.INVALID_LENGTH_AND_ORIGIN.value
+                            roa_validity == str(ROAValidity.INVALID_LENGTH_AND_ORIGIN.value)
                         ):
                             stats[
                                 "ann_invalid_by_origin_and_length_non_routed_roa"
                             ] += 1
                     else:
                         raise NotImplementedError("this should never happen")
+                else:
+                    raise NotImplementedError(f"This should never happen {roa_validity}")
 
                 #############
                 # BGPStream #
@@ -675,24 +677,22 @@ def analyze(mrt_file, max_block_size, single_proc: bool = False):
                 ###########
                 # AS Path #
                 ###########
-                if row["invalid_as_path_asns"]:
-                    input("this is really a list")
+                if row["invalid_as_path_asns"] != "[]":
                     stats["invalid_as_path_asns"] += 1
                     stats["invalid_as_path_asns_set"].update(
-                        row["invalid_as_path_asns"]
+                        row["invalid_as_path_asns"][1:-1].split(",")
                     )
-                if row["ixps_in_as_path"]:
-                    input("this is really a list")
+                if row["ixps_in_as_path"] != "[]":
                     stats["ixps_in_as_path"] += 1
-                    stats["ixps_in_as_path_set"].update(row["ixps_in_as_path"])
+                    stats["ixps_in_as_path_set"].update(row["ixps_in_as_path"][1:-1].split(","))
+
 
                 stats["prepending"] += int(bool(row["prepending"]))
                 if not row["valley_free_caida_path"]:
                     stats["not_valley_free_caida_path"] += 1
-                if row["non_caida_asns"]:
-                    input("This is really a list")
+                if row["non_caida_asns"] != "[]":
                     stats["non_caida_asns"] += 1
-                    stats["non_caida_asns_set"].update(row["non_caida_asns"])
+                    stats["non_caida_asns_set"].update(row["non_caida_asns"][1:-1].split(","))
 
                 stats["input_clique_split"] += int(bool(row["input_clique_split"]))
 
