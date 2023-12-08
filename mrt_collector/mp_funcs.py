@@ -13,6 +13,7 @@ from typing import Any, Callable, Optional
 
 from bgpy.caida_collector import CaidaCollector
 from bgpy.enums import Relationships, ASGroups
+from roa_checker import ROARouted, ROAValidity
 
 from .mrt_file import MRTFile
 from .prefix_origin_metadata import PrefixOriginMetadata
@@ -493,7 +494,9 @@ def analyze(mrt_file, max_block_size):
     stats = {
         "ann_not_covered_by_roa": 0,
         "ann_covered_by_roa": 0,
+        "ann_valid_by_roa": 0,
         "ann_invalid_by_roa": 0,
+        "ann_invalid_by_routed_roa": 0,
         "ann_invalid_by_length_routed_roa": 0,
         "ann_invalid_by_origin_routed_roa": 0,
         "ann_invalid_by_origin_routed_and_length_roa": 0,
@@ -503,13 +506,20 @@ def analyze(mrt_file, max_block_size):
         "ann_invalid_by_origin_non_routed_roa": 0,
         "ann_invalid_by_origin_and_length_non_routed_roa": 0,
         # bgpstream
+        "ann_on_bgpstream": 0,
         "ann_on_bgpstream_set": set(),
+        "ann_invalid_by_roa_and_on_bgpstream": 0,
         "ann_invalid_by_roa_and_on_bgpstream_set": set(),
+        "ann_valid_by_roa_and_on_bgpstream": 0,
         "ann_valid_by_roa_and_on_bgpstream_set": set(),
+        "ann_not_covered_by_roa_and_on_bgpstream": 0,
+        "ann_not_covered_by_roa_and_on_bgpstream_set": set(),
         # Prefix aggregation
+        "aggregator_asns": 0,
         "aggregator_asns_set": set(),
         "ann_atomic": 0,
         # community is a tuple of ASN that set it, and community_attr
+        "communities": 0,
         "communities_set": set(),
         "local_pref_set": set(),
         "only_to_customer": 0,
@@ -526,13 +536,130 @@ def analyze(mrt_file, max_block_size):
         "non_caida_asns_set": set(),
         "input_clique_split": 0,
         "as_path_loop": 0,
-        "as_sets": 0,
-        "as_sets_set": set(),
+        "as_s_ets": 0,
+        "as_s_ets_set": set(),
         "missing_caida_relationship": 0,
         "missing_as_path": 0,
     }
     for formatted_path in (mrt_file.formatted_dir / str(max_block_size)).glob("*.tsv"):
         with formatted_path.open() as f:
-            reader = csv.DictReader(f)
-            print(reader)
-            raise NotImplementedError("calculate each statistic listed above")
+            for row in csv.DictReader(f):
+
+                ################
+                # ROA Validity #
+                ################
+
+                roa_validity = row["roa_validity"]
+                if roa_validity == ROAValidity.UNKNOWN.value:
+                    stats["ann_not_covered_by_roa"] += 1
+                elif roa_validity == ROAValidity.VALID.value:
+                    stats["ann_covered_by_roa"] += 1
+                    stats["ann_valid_by_roa"] += 1
+                elif roa_validity in (
+                    ROAValidity.INVALID_LENGTH.value,
+                    ROAValidity.INVALID_ORIGIN.value,
+                    ROAValidity.INVALID_LENGTH_AND_ORIGIN.value,
+                ):
+                    stats["ann_covered_by_roa"] += 1
+                    stats["ann_invalid_by_roa"] += 1
+                    if row["roa_routed"] == ROARouted.ROUTED.value:
+                        stats["ann_invalid_by_routed_roa"] += 1
+                        if roa_validity == ROAValidity.INVALID_LENGTH.value:
+                            stats["ann_invalid_by_length_routed_roa"] == 1
+                        elif roa_validity == ROAValidity.INVALID_ORIGIN.value:
+                            stats["ann_invalid_by_origin_routed_roa"] += 1
+                        elif roa_validity == ROAValidity.INVALID_LENGTH_AND_ORIGIN.value:
+                            stats["ann_invalid_by_origin_routed_and_length_roa"] += 1
+                    elif row["roa_routed"] == ROARouted.NON_ROUTED.value:
+                        stats["ann_invalid_by_non_routed_roa"] += 1
+                        if roa_validity == ROAValidity.INVALID_LENGTH.value:
+                            stats["ann_invalid_by_length_non_routed_roa"] == 1
+                        elif roa_validity == ROAValidity.INVALID_ORIGIN.value:
+                            stats["ann_invalid_by_origin_non_routed_roa"] += 1
+                        elif roa_validity == ROAValidity.INVALID_LENGTH_AND_ORIGIN.value:
+                            stats["ann_invalid_by_origin_and_length_non_routed_roa"] += 1
+                    else:
+                        raise NotImplementedError("this should never happen")
+
+                #############
+                # BGPStream #
+                #############
+                if (row["bgpstream_url"]
+                    # We don't care about outages
+                    and (row["hijack_detected_origin_number"]
+                         or row["leaked_prefix"])):
+                    stats["ann_on_bgpstream"] += 1
+                    stats["ann_on_bgpstream_set"].add(row["bgpstream_url"])
+                    if row["roa_validity"] == ROAValidity.VALID.value:
+                        stats["ann_valid_by_roa_and_on_bgpstream"] += 1
+                        stats["ann_valid_by_roa_and_on_bgpstream_set"].add(
+                            row["bgpstream_url"]
+                        )
+                    elif row["roa_validity"] == ROAValidity.UNKNOWN.value:
+                        stats["ann_not_covered_by_roa_and_on_bgpstream"] += 1
+                        stats["ann_not_covered_by_roa_and_on_bgpstream_set"] += 1
+                    else:
+                        stats["ann_invalid_by_roa_and_on_bgpstream"] += 1
+                        stats["ann_invalid_by_roa_and_on_bgpstream_set"].add(
+                            row["bgpstream_url"]
+                        )
+
+                ######################
+                # Prefix Aggregation #
+                ######################
+                if row["aggr_asn"]:
+                    stats["aggregator_asns"] += 1
+                    stats["aggregator_asns_set"].add(row["aggr_asn"])
+                if row["atomic"]:
+                    stats["ann_atomic"] += 1
+
+                ###############
+                # Communities #
+                ###############
+                if row["communities"]:
+                    stats["communities"] += 1
+                    stats["communities_set"].add(row["communities"])
+                if row["only_to_customer"]:
+                    stats["only_to_customer"] += 1
+
+                ########
+                # Misc #
+                ########
+                stats["local_pref_set"].add(row["local_pref"])
+                if row["origin"] == "ibgp":
+                    stats["ibgp"] += 1
+                elif row["origin"] == "ebgp":
+                    stats["ebgp"] += 1
+                else:
+                    raise NotImplementedError(str(row["origin"]))
+
+                ###########
+                # AS Path #
+                ###########
+
+                if row["invalid_as_path_asns"]:
+                    stats["invalid_as_path_asns"] += 1
+                    stats["invalid_as_path_asns_set"].update(
+                        row["invalid_as_path_asns"]
+                    )
+                if row["ixps_in_as_path"]:
+                    stats["ixps_in_as_path"] += 1
+                    stats["ixps_in_as_path_set"].update(
+                        row["ixps_in_as_path"]
+                    )
+
+                stats["prepending"] += bool(row["prepending"])
+                if not row["valley_free_caida_path"]:
+                    stats["not_valley_free_caida_path"] += 1
+                if row["non_caida_asns"]:
+                    stats["non_caida_asns"] += 1
+                    stats["non_caida_asns_set"].update(row["non_caida_asns"])
+
+                stats["input_clique_split"] += bool(row["input_clique_split"])
+
+                stats["as_path_loop"] += bool(row["as_path_loop"])
+
+                if row["as_sets"]:
+                    stats["as_s_ets"] += 1
+                    stats["as_s_ets_set"].update(row["as_sets"])
+                stats["missing_caida_relationship"] += bool(row["missing_caida_relationship"])
