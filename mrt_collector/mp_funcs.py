@@ -675,13 +675,14 @@ def analyze(mrt_file, max_block_size, single_proc: bool = False):
                 ###########
                 # AS Path #
                 ###########
-
                 if row["invalid_as_path_asns"]:
+                    input("this is really a list")
                     stats["invalid_as_path_asns"] += 1
                     stats["invalid_as_path_asns_set"].update(
                         row["invalid_as_path_asns"]
                     )
                 if row["ixps_in_as_path"]:
+                    input("this is really a list")
                     stats["ixps_in_as_path"] += 1
                     stats["ixps_in_as_path_set"].update(row["ixps_in_as_path"])
 
@@ -689,6 +690,7 @@ def analyze(mrt_file, max_block_size, single_proc: bool = False):
                 if not row["valley_free_caida_path"]:
                     stats["not_valley_free_caida_path"] += 1
                 if row["non_caida_asns"]:
+                    input("This is really a list")
                     stats["non_caida_asns"] += 1
                     stats["non_caida_asns_set"].update(row["non_caida_asns"])
 

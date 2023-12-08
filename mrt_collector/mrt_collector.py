@@ -27,7 +27,7 @@ class MRTCollector:
     def __init__(
         self,
         dl_time: datetime = datetime(2023, 11, 1, 0, 0, 0),
-        cpus: int = cpu_count(),
+        cpus: int = 1,#cpu_count(),
         base_dir: Optional[Path] = None,
     ) -> None:
         """Creates directories"""
@@ -66,7 +66,7 @@ class MRTCollector:
         # self.parse_mrts(mrt_files, parse_mrt_func)
         # if store_prefixes:
         #     self.store_prefixes(mrt_files)
-        # self.format_parsed_dumps(mrt_files, max_block_size, format_parsed_dumps_func)
+        self.format_parsed_dumps(mrt_files, max_block_size, format_parsed_dumps_func)
 
         if analyze_formatted_dumps:
             self.analyze_formatted_dumps(mrt_files, max_block_size)
