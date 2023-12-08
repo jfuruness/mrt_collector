@@ -544,7 +544,6 @@ def analyze(mrt_file, max_block_size):
     for formatted_path in (mrt_file.formatted_dir / str(max_block_size)).glob("*.tsv"):
         with formatted_path.open() as f:
             for row in csv.DictReader(f):
-
                 ################
                 # ROA Validity #
                 ################
@@ -568,7 +567,9 @@ def analyze(mrt_file, max_block_size):
                             stats["ann_invalid_by_length_routed_roa"] == 1
                         elif roa_validity == ROAValidity.INVALID_ORIGIN.value:
                             stats["ann_invalid_by_origin_routed_roa"] += 1
-                        elif roa_validity == ROAValidity.INVALID_LENGTH_AND_ORIGIN.value:
+                        elif (
+                            roa_validity == ROAValidity.INVALID_LENGTH_AND_ORIGIN.value
+                        ):
                             stats["ann_invalid_by_origin_routed_and_length_roa"] += 1
                     elif row["roa_routed"] == ROARouted.NON_ROUTED.value:
                         stats["ann_invalid_by_non_routed_roa"] += 1
@@ -576,18 +577,23 @@ def analyze(mrt_file, max_block_size):
                             stats["ann_invalid_by_length_non_routed_roa"] == 1
                         elif roa_validity == ROAValidity.INVALID_ORIGIN.value:
                             stats["ann_invalid_by_origin_non_routed_roa"] += 1
-                        elif roa_validity == ROAValidity.INVALID_LENGTH_AND_ORIGIN.value:
-                            stats["ann_invalid_by_origin_and_length_non_routed_roa"] += 1
+                        elif (
+                            roa_validity == ROAValidity.INVALID_LENGTH_AND_ORIGIN.value
+                        ):
+                            stats[
+                                "ann_invalid_by_origin_and_length_non_routed_roa"
+                            ] += 1
                     else:
                         raise NotImplementedError("this should never happen")
 
                 #############
                 # BGPStream #
                 #############
-                if (row["bgpstream_url"]
+                if (
+                    row["bgpstream_url"]
                     # We don't care about outages
-                    and (row["hijack_detected_origin_number"]
-                         or row["leaked_prefix"])):
+                    and (row["hijack_detected_origin_number"] or row["leaked_prefix"])
+                ):
                     stats["ann_on_bgpstream"] += 1
                     stats["ann_on_bgpstream_set"].add(row["bgpstream_url"])
                     if row["roa_validity"] == ROAValidity.VALID.value:
@@ -644,9 +650,7 @@ def analyze(mrt_file, max_block_size):
                     )
                 if row["ixps_in_as_path"]:
                     stats["ixps_in_as_path"] += 1
-                    stats["ixps_in_as_path_set"].update(
-                        row["ixps_in_as_path"]
-                    )
+                    stats["ixps_in_as_path_set"].update(row["ixps_in_as_path"])
 
                 stats["prepending"] += bool(row["prepending"])
                 if not row["valley_free_caida_path"]:
@@ -662,4 +666,6 @@ def analyze(mrt_file, max_block_size):
                 if row["as_sets"]:
                     stats["as_s_ets"] += 1
                     stats["as_s_ets_set"].update(row["as_sets"])
-                stats["missing_caida_relationship"] += bool(row["missing_caida_relationship"])
+                stats["missing_caida_relationship"] += bool(
+                    row["missing_caida_relationship"]
+                )
