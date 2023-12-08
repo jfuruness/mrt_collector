@@ -543,6 +543,7 @@ def analyze(mrt_file, max_block_size):
         "as_s_ets_set": set(),
         "missing_caida_relationship": 0,
         "missing_as_path": 0,
+        "total_anns": 0,
     }
     for formatted_path in (mrt_file.formatted_dir / str(max_block_size)).glob("*.tsv"):
         with formatted_path.open() as f:
@@ -635,6 +636,7 @@ def analyze(mrt_file, max_block_size):
                 # Misc #
                 ########
                 stats["local_pref_set"].add(row["local_pref"])
+                stats["total_anns"] += 1
                 if row["origin"] == "ibgp":
                     stats["ibgp"] += 1
                 elif row["origin"] == "ebgp":
@@ -672,3 +674,6 @@ def analyze(mrt_file, max_block_size):
                 stats["missing_caida_relationship"] += int(
                     row["missing_caida_relationship"]
                 )
+
+    with mrt_file.analysis_path.open("w") as f:
+        json.dump(stats, f, indent=4)

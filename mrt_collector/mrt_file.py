@@ -22,6 +22,7 @@ class MRTFile:
         parsed_dir: Path,
         prefixes_dir: Path,
         formatted_dir: Path,
+        analysis_dir: Path,
     ) -> None:
         self.url: str = url
         self.source: Source = source
@@ -49,6 +50,9 @@ class MRTFile:
         )
 
         self.formatted_dir: Path = formatted_dir / self._url_to_fname(self.url)
+        self.analysis_path: Path = analysis_dir / self._url_to_fname(
+            self.url, ext="json"
+        )
 
     def __lt__(self, other) -> bool:
         """For sorting by file size

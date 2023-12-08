@@ -1,6 +1,7 @@
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
 import gc
+import json
 from multiprocessing import cpu_count
 from pathlib import Path
 from subprocess import check_call
@@ -16,6 +17,7 @@ from .mp_funcs import PARSE_FUNC, bgpkit_parser
 from .mp_funcs import download_mrt
 from .mp_funcs import store_prefixes
 from .mp_funcs import FORMAT_FUNC, format_psv_into_tsv
+from .mp_funcs import analyze
 from .prefix_origin_metadata import PrefixOriginMetadata
 from .mrt_file import MRTFile
 from .sources import Source
@@ -67,7 +69,7 @@ class MRTCollector:
         self.format_parsed_dumps(mrt_files, max_block_size, format_parsed_dumps_func)
 
         if analyze_formatted_dumps:
-            self.analyze_formatted_dumps(mrt_files)
+            self.analyze_formatted_dumps(mrt_files, max_block_size)
 
     def get_mrt_files(
         self,
@@ -88,6 +90,7 @@ class MRTCollector:
                         parsed_dir=self.parsed_dir,
                         prefixes_dir=self.prefixes_dir,
                         formatted_dir=self.formatted_dir,
+                        analysis_dir=self.analysis_dir,
                     )
                 )
         return tuple(mrt_files)
@@ -229,10 +232,30 @@ class MRTCollector:
 
         print("Count func will break with mx block size changing")
 
-    def analyze_formatted_dumps(self, mrt_files: tuple[MRTFile, ...]) -> None:
+    def analyze_formatted_dumps(
+        self, mrt_files: tuple[MRTFile, ...], max_block_size: int
+    ) -> None:
         """Analyzes the formatted BGP dumps"""
 
-        raise NotImplementedError
+        # NOTE: not putting a thing to not run this part of the pipeline here
+        # since why would you even run this func if you didn't want analysis
+        # simply set the bool to do analysis to False
+        # Remove MRT files that failed to format
+        mrt_files = tuple([x for x in mrt_files if x.unique_prefixes_path.exists()])
+        args = tuple([(x, max_block_size) for x in mrt_files])
+        desc = "Analyzing MRTs"
+        self._mp_tqdm(args, analyze, desc=desc)
+
+        stats = dict()  # type: ignore
+        for mrt_file in tqdm(mrt_files, total=len(mrt_files), desc="Joining stats"):
+            with mrt_file.analysis_path.open() as f:
+                for k, v in json.load(f).items():
+                    if isinstance(v, int):
+                        stats[k] += v  # type: ignore
+                    else:
+                        stats[k] = stats.get(k, set()) | set(v)  # type: ignore
+        with (self.analysis_dir / "final.json").open() as f:
+            json.dump(stats, f, indent=4)
 
     def _get_parsed_lines(self) -> int:
         """Gets the total number of lines in parsed dir"""
