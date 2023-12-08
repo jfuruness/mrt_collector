@@ -174,6 +174,7 @@ def format_psv_into_tsv(
 
         if not meta["as_path"]:
             print("missing_as_path")
+            meta["url"] = mrt_file.url
             pprint(meta)
             continue
 
@@ -493,7 +494,7 @@ def fieldnames() -> tuple[str, ...]:
 
 # TODO: Fix this later. split stats into sets and ints
 @typing.no_type_check
-def analyze(mrt_file, max_block_size):
+def analyze(mrt_file, max_block_size, single_proc: bool = False):
     stats: dict[str, int | set[Any]] = {
         "ann_not_covered_by_roa": 0,
         "ann_covered_by_roa": 0,
@@ -527,8 +528,9 @@ def analyze(mrt_file, max_block_size):
         "local_pref_set": set(),
         "only_to_customer": 0,
         # Origin
-        "ibgp": 0,
-        "ebgp": 0,
+        "origin_is_ibgp": 0,
+        "origin_is_ebgp": 0,
+        "origin_is_incomplete": 0,
         "invalid_as_path_asns": 0,
         "invalid_as_path_asns_set": set(),
         "ixps_in_as_path": 0,
@@ -547,7 +549,7 @@ def analyze(mrt_file, max_block_size):
     }
     for formatted_path in (mrt_file.formatted_dir / str(max_block_size)).glob("*.tsv"):
         with formatted_path.open() as f:
-            for row in csv.DictReader(f):
+            for row in csv.DictReader(f, delimiter="\t"):
                 ################
                 # ROA Validity #
                 ################
@@ -637,10 +639,12 @@ def analyze(mrt_file, max_block_size):
                 ########
                 stats["local_pref_set"].add(row["local_pref"])
                 stats["total_anns"] += 1
-                if row["origin"] == "ibgp":
-                    stats["ibgp"] += 1
-                elif row["origin"] == "ebgp":
-                    stats["ebgp"] += 1
+                if row["origin"].lower() in ["ibgp", "igp"]:
+                    stats["origin_is_ibgp"] += 1
+                elif row["origin"].lower() in ["ebgp", "egp"]:
+                    stats["origin_is_ebgp"] += 1
+                elif row["origin"].lower() in ["incomplete"]:
+                    stats["origin_is_incomplete"] += 1
                 else:
                     raise NotImplementedError(str(row["origin"]))
 
@@ -657,23 +661,29 @@ def analyze(mrt_file, max_block_size):
                     stats["ixps_in_as_path"] += 1
                     stats["ixps_in_as_path_set"].update(row["ixps_in_as_path"])
 
-                stats["prepending"] += int(row["prepending"])
+                stats["prepending"] += int(bool(row["prepending"]))
                 if not row["valley_free_caida_path"]:
                     stats["not_valley_free_caida_path"] += 1
                 if row["non_caida_asns"]:
                     stats["non_caida_asns"] += 1
                     stats["non_caida_asns_set"].update(row["non_caida_asns"])
 
-                stats["input_clique_split"] += int(row["input_clique_split"])
+                stats["input_clique_split"] += int(bool(row["input_clique_split"]))
 
-                stats["as_path_loop"] += int(row["as_path_loop"])
+                stats["as_path_loop"] += int(bool(row["as_path_loop"]))
 
                 if row["as_sets"]:
                     stats["as_s_ets"] += 1
                     stats["as_s_ets_set"].update(row["as_sets"])
                 stats["missing_caida_relationship"] += int(
-                    row["missing_caida_relationship"]
+                    bool(row["missing_caida_relationship"])
                 )
 
     with mrt_file.analysis_path.open("w") as f:
-        json.dump(stats, f, indent=4)
+        # https://stackoverflow.com/a/22281062/8903959
+        def set_default(obj):
+            if isinstance(obj, set):
+                return list(obj)
+            raise TypeError
+
+        json.dump(stats, f, indent=4, default=set_default)

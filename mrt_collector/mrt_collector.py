@@ -61,12 +61,12 @@ class MRTCollector:
         """See README package description"""
 
         mrt_files = mrt_files if mrt_files else self.get_mrt_files(sources)
-        if download_raw_mrts:
-            self.download_raw_mrts(mrt_files)
-        self.parse_mrts(mrt_files, parse_mrt_func)
-        if store_prefixes:
-            self.store_prefixes(mrt_files)
-        self.format_parsed_dumps(mrt_files, max_block_size, format_parsed_dumps_func)
+        # if download_raw_mrts:
+        #     self.download_raw_mrts(mrt_files)
+        # self.parse_mrts(mrt_files, parse_mrt_func)
+        # if store_prefixes:
+        #     self.store_prefixes(mrt_files)
+        # self.format_parsed_dumps(mrt_files, max_block_size, format_parsed_dumps_func)
 
         if analyze_formatted_dumps:
             self.analyze_formatted_dumps(mrt_files, max_block_size)
@@ -221,7 +221,9 @@ class MRTCollector:
                             # reraise any exceptions from the processes
                             future.result()
                         # Increment pbar
-                        pbar.n = self._get_count_formatted()
+                        pbar.n = self._get_count(
+                            self.formatted_dir / str(max_block_size)
+                        )
                         pbar.refresh()
                         time.sleep(10)
 
@@ -229,8 +231,6 @@ class MRTCollector:
         with completed_path.open("w") as f:
             for mrt_file in mrt_files:
                 f.write(mrt_file.url + "\n")
-
-        print("Count func will break with mx block size changing")
 
     def analyze_formatted_dumps(
         self, mrt_files: tuple[MRTFile, ...], max_block_size: int
@@ -243,19 +243,47 @@ class MRTCollector:
         # Remove MRT files that failed to format
         mrt_files = tuple([x for x in mrt_files if x.unique_prefixes_path.exists()])
         args = tuple([(x, max_block_size) for x in mrt_files])
+        iterable = args
         desc = "Analyzing MRTs"
-        self._mp_tqdm(args, analyze, desc=desc)
+        func = analyze
+        # Starts the progress bar in another thread
+        if self.cpus == 1:
+            for args in tqdm(iterable, total=len(iterable), desc=desc):
+                func(*args, single_proc=True)  # type: ignore
+        else:
+            total = self._get_formatted_lines(mrt_files, max_block_size)
+            # https://stackoverflow.com/a/63834834/8903959
+            with ProcessPoolExecutor(max_workers=self.cpus // 2) as executor:
+                futures = [executor.submit(func, *x) for x in iterable]
+                with tqdm(total=total, desc=desc) as pbar:
+                    while futures:
+                        # Non blocking check for completion
+                        completed = [x for x in futures if x.done()]
+                        futures = [x for x in futures if x not in completed]
+                        for future in completed:
+                            # reraise any exceptions from the processes
+                            future.result()
+                        # Increment pbar
+                        pbar.n = self._get_count(self.analysis_dir)
+                        pbar.refresh()
+                        time.sleep(5)
 
         stats = dict()  # type: ignore
         for mrt_file in tqdm(mrt_files, total=len(mrt_files), desc="Joining stats"):
             with mrt_file.analysis_path.open() as f:
                 for k, v in json.load(f).items():
                     if isinstance(v, int):
-                        stats[k] += v  # type: ignore
+                        stats[k] = stats.get(k, 0) + v  # type: ignore
                     else:
                         stats[k] = stats.get(k, set()) | set(v)  # type: ignore
-        with (self.analysis_dir / "final.json").open() as f:
-            json.dump(stats, f, indent=4)
+        with (self.analysis_dir / "final.json").open("w") as f:
+            # https://stackoverflow.com/a/22281062/8903959
+            def set_default(obj):
+                if isinstance(obj, set):
+                    return list(obj)
+                raise TypeError
+
+            json.dump(stats, f, indent=4, default=set_default)
 
     def _get_parsed_lines(self) -> int:
         """Gets the total number of lines in parsed dir"""
@@ -286,11 +314,45 @@ class MRTCollector:
             f.write(str(count))
         return count
 
-    def _get_count_formatted(self) -> int:
-        """Returns the total number of lines that have been formatted so far"""
+    def _get_formatted_lines(self, mrt_files, max_block_size: int) -> int:
+        """Gets the total number of lines in formatted dir"""
+
+        formatted_dirs = [
+            mrt_file.formatted_dir / str(max_block_size) for mrt_file in mrt_files
+        ]
+        formatted_count_path = self.formatted_dir / f"total_lines_{max_block_size}.txt"
+        if formatted_count_path.exists():
+            with formatted_count_path.open() as f:
+                return int(f.read().strip())
+
+        print("Getting formatted lines")
+        count = 0
+        for dir_ in formatted_dirs:
+            # Define the command to be executed
+            command = f"find {dir_} -name '*.tsv' | xargs wc -l"
+
+            # Run the command
+            result = subprocess.run(command, shell=True, text=True, capture_output=True)
+
+            # Check if the command was successful
+            if result.returncode != 0:
+                print("Error running command:", result.stderr)
+                raise Exception
+
+            # Process the output to get the total number of lines
+            output = result.stdout.strip()
+            lines = output.split("\n")
+            count += int(lines[-1].strip().split(" ")[0])
+
+        with formatted_count_path.open("w") as f:
+            f.write(str(count))
+        return count
+
+    def _get_count(self, dir_) -> int:
+        """Returns the total number of lines in a directories count files"""
 
         total_sum = 0
-        for file_path in self.formatted_dir.rglob("count.txt"):
+        for file_path in dir_.rglob("count.txt"):
             try:
                 with file_path.open() as f:
                     number = int(f.read().strip())
