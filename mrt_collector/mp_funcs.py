@@ -495,6 +495,9 @@ def fieldnames() -> tuple[str, ...]:
 # TODO: Fix this later. split stats into sets and ints
 @typing.no_type_check
 def analyze(mrt_file, max_block_size, single_proc: bool = False):
+    count_file_path = Path(str(mrt_file.analysis_path).replace(".json", "_count.txt"))
+    count = 0
+
     stats: dict[str, int | set[Any]] = {
         "ann_not_covered_by_roa": 0,
         "ann_covered_by_roa": 0,
@@ -510,14 +513,19 @@ def analyze(mrt_file, max_block_size, single_proc: bool = False):
         "ann_invalid_by_origin_non_routed_roa": 0,
         "ann_invalid_by_origin_and_length_non_routed_roa": 0,
         # bgpstream
-        "ann_on_bgpstream": 0,
-        "ann_on_bgpstream_set": set(),
-        "ann_invalid_by_roa_and_on_bgpstream": 0,
-        "ann_invalid_by_roa_and_on_bgpstream_set": set(),
-        "ann_valid_by_roa_and_on_bgpstream": 0,
-        "ann_valid_by_roa_and_on_bgpstream_set": set(),
-        "ann_not_covered_by_roa_and_on_bgpstream": 0,
-        "ann_not_covered_by_roa_and_on_bgpstream_set": set(),
+        "hijacker_ann_on_bgpstream_hijacks": 0,
+        "hijacker_ann_on_bgpstream_hijacks_set": set(),
+        "hijacker_ann_invalid_by_roa_and_on_bgpstream_hijacks": 0,
+        "hijacker_ann_invalid_by_roa_and_on_bgpstream_hijacks_set": set(),
+        "hijacker_ann_valid_by_roa_and_on_bgpstream_hijacks": 0,
+        "hijacker_ann_valid_by_roa_and_on_bgpstream_hijacks_set": set(),
+        "hijacker_ann_not_covered_by_roa_and_on_bgpstream_hijacks": 0,
+        "hijacker_ann_not_covered_by_roa_and_on_bgpstream_hijacks_set": set(),
+        # Leaks
+        "ann_on_bgpstream_route_leaks": 0,
+        "ann_on_bgpstream_route_leaks_set": set(),
+        "ann_on_bgpstream_route_leaks_and_not_caida_valley_free": 0,
+        "ann_on_bgpstream_route_leaks_and_not_caida_valley_free_set": set(),
         # Prefix aggregation
         "aggregator_asns": 0,
         "aggregator_asns_set": set(),
@@ -598,21 +606,37 @@ def analyze(mrt_file, max_block_size, single_proc: bool = False):
                 if (
                     row["bgpstream_url"]
                     # We don't care about outages
-                    and (row["hijack_detected_origin_number"] or row["leaked_prefix"])
+                    and (
+                        row["hijack_detected_origin_number"]
+                        # We don't care if it's the victim's ann
+                        and row["hijack_detected_origin_number"] in row["origin_asns"]
+                    )
                 ):
-                    stats["ann_on_bgpstream"] += 1
-                    stats["ann_on_bgpstream_set"].add(row["bgpstream_url"])
+                    stats["hijacker_ann_on_bgpstream_hijacks"] += 1
+                    stats["hijacker_ann_on_bgpstream_hijacks_set"].add(row["bgpstream_url"])
                     if row["roa_validity"] == ROAValidity.VALID.value:
-                        stats["ann_valid_by_roa_and_on_bgpstream"] += 1
-                        stats["ann_valid_by_roa_and_on_bgpstream_set"].add(
+                        stats["hijacker_ann_valid_by_roa_and_on_bgpstream_hijacks"] += 1
+                        stats["hijacker_ann_valid_by_roa_and_on_bgpstream_hijacks_set"].add(
                             row["bgpstream_url"]
                         )
                     elif row["roa_validity"] == ROAValidity.UNKNOWN.value:
-                        stats["ann_not_covered_by_roa_and_on_bgpstream"] += 1
-                        stats["ann_not_covered_by_roa_and_on_bgpstream_set"] += 1
+                        stats["hijacker_ann_not_covered_by_roa_and_on_bgpstream_hijacks"] += 1
+                        stats["hijacker_ann_not_covered_by_roa_and_on_bgpstream_hijacks_set"] += 1
                     else:
-                        stats["ann_invalid_by_roa_and_on_bgpstream"] += 1
-                        stats["ann_invalid_by_roa_and_on_bgpstream_set"].add(
+                        stats["hijacker_ann_invalid_by_roa_and_on_bgpstream_hijacks"] += 1
+                        stats["hijacker_ann_invalid_by_roa_and_on_bgpstream_hijacks_set"].add(
+                            row["bgpstream_url"]
+                        )
+
+                if (row["bgpstream_url"]
+                    and row["leaked_prefix"]
+                        and row["leaker_as_number"] in row["as_path"]):
+
+                    stats["ann_on_bgpstream_route_leaks"] += 1
+                    stats["ann_on_bgpstream_route_leaks_set"].add(row["bgpstream_url"])
+                    if not row["valley_free_caida_path"]:
+                        stats["ann_on_bgpstream_route_leaks_and_not_caida_valley_free"] += 1
+                        stats["ann_on_bgpstream_route_leaks_and_not_caida_valley_free_set"].add(
                             row["bgpstream_url"]
                         )
 
@@ -678,6 +702,13 @@ def analyze(mrt_file, max_block_size, single_proc: bool = False):
                 stats["missing_caida_relationship"] += int(
                     bool(row["missing_caida_relationship"])
                 )
+                if stats["total_anns"] % 10000 == 0:
+                    with count_file_path.open("w") as f:
+                        f.write(str(stats["total_anns"]))
+
+    with count_file_path.open("w") as f:
+        f.write(str(stats["total_anns"]))
+
 
     with mrt_file.analysis_path.open("w") as f:
         # https://stackoverflow.com/a/22281062/8903959

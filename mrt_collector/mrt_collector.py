@@ -342,7 +342,12 @@ class MRTCollector:
             # Process the output to get the total number of lines
             output = result.stdout.strip()
             lines = output.split("\n")
-            count += int(lines[-1].strip().split(" ")[0])
+            # Subtract the header line from every file
+            num_files = len([x for x in dir_.glob('*') if x.is_file()])
+            count += int(lines[-1].strip().split(" ")[0]) - num_files
+
+        # Not sure why we need to add one extra line per dir, but we do
+        count += len(formatted_dirs)
 
         with formatted_count_path.open("w") as f:
             f.write(str(count))
@@ -352,7 +357,7 @@ class MRTCollector:
         """Returns the total number of lines in a directories count files"""
 
         total_sum = 0
-        for file_path in dir_.rglob("count.txt"):
+        for file_path in dir_.rglob("*count.txt"):
             try:
                 with file_path.open() as f:
                     number = int(f.read().strip())
