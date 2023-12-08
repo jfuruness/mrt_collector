@@ -10,6 +10,7 @@ import re
 from subprocess import check_call
 import subprocess
 from typing import Any, Callable, Optional
+import typing
 
 from bgpy.caida_collector import CaidaCollector
 from bgpy.enums import Relationships, ASGroups
@@ -490,8 +491,10 @@ def fieldnames() -> tuple[str, ...]:
     )
 
 
+# TODO: Fix this later. split stats into sets and ints
+@typing.no_type_check
 def analyze(mrt_file, max_block_size):
-    stats = {
+    stats: dict[str, int | set[Any]] = {
         "ann_not_covered_by_roa": 0,
         "ann_covered_by_roa": 0,
         "ann_valid_by_roa": 0,
@@ -652,20 +655,20 @@ def analyze(mrt_file, max_block_size):
                     stats["ixps_in_as_path"] += 1
                     stats["ixps_in_as_path_set"].update(row["ixps_in_as_path"])
 
-                stats["prepending"] += bool(row["prepending"])
+                stats["prepending"] += int(row["prepending"])
                 if not row["valley_free_caida_path"]:
                     stats["not_valley_free_caida_path"] += 1
                 if row["non_caida_asns"]:
                     stats["non_caida_asns"] += 1
                     stats["non_caida_asns_set"].update(row["non_caida_asns"])
 
-                stats["input_clique_split"] += bool(row["input_clique_split"])
+                stats["input_clique_split"] += int(row["input_clique_split"])
 
-                stats["as_path_loop"] += bool(row["as_path_loop"])
+                stats["as_path_loop"] += int(row["as_path_loop"])
 
                 if row["as_sets"]:
                     stats["as_s_ets"] += 1
                     stats["as_s_ets_set"].update(row["as_sets"])
-                stats["missing_caida_relationship"] += bool(
+                stats["missing_caida_relationship"] += int(
                     row["missing_caida_relationship"]
                 )
