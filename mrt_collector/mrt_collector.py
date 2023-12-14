@@ -1,8 +1,9 @@
 from concurrent.futures import ProcessPoolExecutor, as_completed
+import csv
 from datetime import datetime
 import gc
 import json
-from multiprocessing import cpu_count
+from multiprocessing import cpu_count  # noqa
 from pathlib import Path
 from subprocess import check_call
 import subprocess
@@ -27,7 +28,10 @@ class MRTCollector:
     def __init__(
         self,
         dl_time: datetime = datetime(2023, 11, 1, 0, 0, 0),
-        cpus: int = cpu_count(),
+        # for a full run, just using 1 core since we don't want to run out of RAM
+        # now that we're using the CAIDA collector for pypy
+        # jk, use 2 since we want the nice counter, and each core appears to take 5gb
+        cpus: int = 1,#2,  # cpu_count(),
         base_dir: Optional[Path] = None,
     ) -> None:
         """Creates directories"""
@@ -54,22 +58,24 @@ class MRTCollector:
         download_raw_mrts: bool = True,
         parse_mrt_func: PARSE_FUNC = bgpkit_parser,
         store_prefixes: bool = True,
-        max_block_size: int = 10000,  # Used for extrapolator
+        max_block_size: int = 1000,  # Used for extrapolator
         format_parsed_dumps_func: FORMAT_FUNC = format_psv_into_tsv,
         analyze_formatted_dumps: bool = True,
     ) -> None:
         """See README package description"""
 
         mrt_files = mrt_files if mrt_files else self.get_mrt_files(sources)
-        # if download_raw_mrts:
-        #     self.download_raw_mrts(mrt_files)
-        # self.parse_mrts(mrt_files, parse_mrt_func)
-        # if store_prefixes:
-        #     self.store_prefixes(mrt_files)
-        # self.format_parsed_dumps(mrt_files, max_block_size, format_parsed_dumps_func)
+        ###############################################
+        if download_raw_mrts:
+            self.download_raw_mrts(mrt_files)
+        self.parse_mrts(mrt_files, parse_mrt_func)
+        if store_prefixes:
+            self.store_prefixes(mrt_files)
+        self.format_parsed_dumps(mrt_files, max_block_size, format_parsed_dumps_func)
 
         if analyze_formatted_dumps:
             self.analyze_formatted_dumps(mrt_files, max_block_size)
+            self.get_multihomed_preference(mrt_files, max_block_size)
 
     def get_mrt_files(
         self,
@@ -203,6 +209,10 @@ class MRTCollector:
         iterable = args
         desc = "Formatting (~3hrs)"
         func = format_func
+
+        # Directories containing the count files
+        # must do it this way since there's no central dir for a max block size
+        count_dirs = [x.formatted_dir / str(max_block_size) for x in mrt_files]
         # Starts the progress bar in another thread
         if self.cpus == 1:
             for args in tqdm(iterable, total=len(iterable), desc=desc):
@@ -220,10 +230,9 @@ class MRTCollector:
                         for future in completed:
                             # reraise any exceptions from the processes
                             future.result()
+
                         # Increment pbar
-                        pbar.n = self._get_count(
-                            self.formatted_dir / str(max_block_size)
-                        )
+                        pbar.n = sum(self._get_count(x) for x in count_dirs)
                         pbar.refresh()
                         time.sleep(10)
 
@@ -276,7 +285,7 @@ class MRTCollector:
                         stats[k] = stats.get(k, 0) + v  # type: ignore
                     else:
                         stats[k] = stats.get(k, set()) | set(v)  # type: ignore
-        with (self.analysis_dir / "final.json").open("w") as f:
+        with (self.analysis_dir / "final_analysis.json").open("w") as f:
             # https://stackoverflow.com/a/22281062/8903959
             def set_default(obj):
                 if isinstance(obj, set):
@@ -284,6 +293,57 @@ class MRTCollector:
                 raise TypeError
 
             json.dump(stats, f, indent=4, default=set_default)
+
+    def get_multihomed_preference(
+        self, mrt_files: tuple[MRTFile, ...], max_block_size: int
+    ) -> None:
+        """Analyzes the formatted BGP dumps for multihomed preference"""
+
+        mrt_files = tuple([x for x in mrt_files if x.unique_prefixes_path.exists()])
+        print("caching caida")
+        bgp_dag = CaidaCollector().run(tsv_path=None)
+        mh_as_pref_dict = dict()
+        for as_obj in bgp_dag.as_dict.values():
+            if len(as_obj.providers) > 1 and len(as_obj.customers) == 0:
+                mh_as_pref_dict[as_obj.asn] = {x.asn: 0 for x in as_obj.providers}
+        print("cached caida")
+
+        total_files = 0
+        for mrt_file in mrt_files:
+            for formatted_path in (
+                mrt_file.formatted_dir / str(max_block_size)
+                    ).glob("*.tsv"):
+                total_files += 1
+
+        # TODO: refactor this, this should be multiprocessed
+        with tqdm(total=total_files, desc="getting pref") as pbar:
+            for mrt_file in mrt_files:
+                for formatted_path in (
+                    mrt_file.formatted_dir / str(max_block_size)
+                        ).glob("*.tsv"):
+                    with formatted_path.open() as f:
+                        for row in csv.DictReader(f, delimiter="\t"):
+                            # No AS sets
+                            if "}" in row["as_path"]:
+                                continue
+                            as_path = [int(x) for x in row["as_path"][1:-1].split()]
+                            # Origin only
+                            if len(as_path) < 2:
+                                continue
+                            if as_path[-1] not in mh_as_pref_dict:
+                                continue
+                            if as_path[-2] not in mh_as_pref_dict[as_path[-1]]:
+                                continue
+
+                            mh_as_pref_dict[as_path[-1]][as_path[-2]] += 1
+                        pbar.update()
+        for k, inner_dict in mh_as_pref_dict.copy().items():
+            # This multihomed AS never originated an announcement
+            # So we aren't interested in it
+            if sum(inner_dict.values()) == 0:
+                del mh_as_pref_dict[k]
+        with (self.analysis_dir / "mh_pref.json").open("w") as f:
+            json.dump(mh_as_pref_dict, f, indent=4)
 
     def _get_parsed_lines(self) -> int:
         """Gets the total number of lines in parsed dir"""
@@ -357,7 +417,11 @@ class MRTCollector:
         """Returns the total number of lines in a directories count files"""
 
         total_sum = 0
-        for file_path in dir_.rglob("*count.txt"):
+        # TODO: fix
+        paths = list(dir_.rglob("*count.txt"))
+        if len(paths) == 0:
+            paths = list(dir_.rglob("count.txt"))
+        for file_path in paths:
             try:
                 with file_path.open() as f:
                     number = int(f.read().strip())

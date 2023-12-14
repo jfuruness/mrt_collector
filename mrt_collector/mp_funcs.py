@@ -265,6 +265,7 @@ def _get_path_data(
         # and in the non as set
         if isinstance(asn_or_set, list):
             for asn in asn_or_set:
+                assert isinstance(asn, int)
                 if asn in non_public_asns or asn > MAX_ASN:
                     meta["invalid_as_path_asns"].append(asn)
                 if last_asn == asn:
@@ -273,7 +274,7 @@ def _get_path_data(
                 elif asn in as_path_set:
                     meta["as_path_loop"] = True
                 as_path_set.add(asn)
-                last_asn = asn
+
                 if asn in ixps:
                     meta["ixps_in_as_path"].append(asn)
                 if asn not in bgp_dag.as_dict:
@@ -294,9 +295,12 @@ def _get_path_data(
                     last_asn is not None
                     and asn in bgp_dag.as_dict
                     and last_asn in bgp_dag.as_dict
+                    # Don't do this if there's prepending
+                    and last_asn != asn
                 ):
                     current_as = bgp_dag.as_dict[asn]
                     last_as = bgp_dag.as_dict[last_asn]
+
                     # Go left to right
                     # From last asn (origin) to next AS (provider), last as is customer
                     if last_as in current_as.providers:
@@ -304,11 +308,13 @@ def _get_path_data(
                     elif last_as in current_as.customers:
                         rel = Relationships.PROVIDERS
                     elif last_as in current_as.peers:
-                        rel = Relationships.PEER
+                        rel = Relationships.PEERS
                     else:
                         rel = None
                         meta["missing_caida_relationship"] = True
                     relationships.append(rel)
+
+                last_asn = asn
 
         else:
             asn = asn_or_set
@@ -321,7 +327,7 @@ def _get_path_data(
             elif asn in as_path_set:
                 meta["as_path_loop"] = True
             as_path_set.add(asn)
-            last_asn = asn
+
             if asn in ixps:
                 meta["ixps_in_as_path"].append(asn)
             if asn not in bgp_dag.as_dict:
@@ -341,6 +347,7 @@ def _get_path_data(
                 last_asn is not None
                 and asn in bgp_dag.as_dict
                 and last_asn in bgp_dag.as_dict
+                and last_asn != asn
             ):
                 current_as = bgp_dag.as_dict[asn]
                 last_as = bgp_dag.as_dict[last_asn]
@@ -351,12 +358,27 @@ def _get_path_data(
                 elif last_as in current_as.customers:
                     rel = Relationships.PROVIDERS
                 elif last_as in current_as.peers:
-                    rel = Relationships.PEER
+                    rel = Relationships.PEERS
                 else:
                     rel = None
                     meta["missing_caida_relationship"] = True
+                # print("")
+                # print("")
+                # print("")
+                # print(rel)
+                # print(list(reversed(as_path)))
+                # print(f"current asn of {current_as.asn}")
+                # print(f"current as providers {[x.asn for x in current_as.providers]}")
+                # print(f"current as peers {[x.asn for x in current_as.peers]}")
+                # print(f"current as customers {[x.asn for x in current_as.customers]}")
+                # print(f"last is {last_asn}")
+
                 relationships.append(rel)
 
+            last_asn = asn
+
+    # Remove None from this
+    relationships = [x for x in relationships if x is not None]
     if relationships:
         no_more_customers = False
         no_more_peers = False
@@ -496,7 +518,6 @@ def fieldnames() -> tuple[str, ...]:
 @typing.no_type_check
 def analyze(mrt_file, max_block_size, single_proc: bool = False):
     count_file_path = Path(str(mrt_file.analysis_path).replace(".json", "_count.txt"))
-    count = 0
 
     stats: dict[str, int | set[Any]] = {
         "ann_not_covered_by_roa": 0,
@@ -535,6 +556,7 @@ def analyze(mrt_file, max_block_size, single_proc: bool = False):
         "communities_set": set(),
         "local_pref_set": set(),
         "only_to_customer": 0,
+        "only_to_customer_set": set(),
         # Origin
         "origin_is_ibgp": 0,
         "origin_is_ebgp": 0,
@@ -636,7 +658,7 @@ def analyze(mrt_file, max_block_size, single_proc: bool = False):
 
                     stats["ann_on_bgpstream_route_leaks"] += 1
                     stats["ann_on_bgpstream_route_leaks_set"].add(row["bgpstream_url"])
-                    if not row["valley_free_caida_path"]:
+                    if row["valley_free_caida_path"] == "False":
                         stats["ann_on_bgpstream_route_leaks_and_not_caida_valley_free"] += 1
                         stats["ann_on_bgpstream_route_leaks_and_not_caida_valley_free_set"].add(
                             row["bgpstream_url"]
@@ -648,17 +670,23 @@ def analyze(mrt_file, max_block_size, single_proc: bool = False):
                 if row["aggr_asn"]:
                     stats["aggregator_asns"] += 1
                     stats["aggregator_asns_set"].add(row["aggr_asn"])
-                if row["atomic"]:
+                if row["atomic"] == "true":
                     stats["ann_atomic"] += 1
+                elif row["atomic"] == "false":
+                    pass
+                else:
+                    raise NotImplementedError("Should never happen")
 
                 ###############
                 # Communities #
                 ###############
                 if row["communities"]:
                     stats["communities"] += 1
-                    stats["communities_set"].add(row["communities"])
+                    stats["communities_set"].update(row["communities"].split(" "))
                 if row["only_to_customer"]:
                     stats["only_to_customer"] += 1
+                    # THE ORIGINATOR OF THE COMMUNITY!!!!
+                    stats["only_to_customer_set"].add(row["only_to_customer"])
 
                 ########
                 # Misc #
@@ -677,40 +705,71 @@ def analyze(mrt_file, max_block_size, single_proc: bool = False):
                 ###########
                 # AS Path #
                 ###########
-                if row["invalid_as_path_asns"] != "[]":
+                if row["invalid_as_path_asns"] not in ["[]", "", None]:
                     stats["invalid_as_path_asns"] += 1
                     stats["invalid_as_path_asns_set"].update(
                         row["invalid_as_path_asns"][1:-1].split(",")
                     )
-                if row["ixps_in_as_path"] != "[]":
+                if row["ixps_in_as_path"] not in ["[]", "", None]:
                     stats["ixps_in_as_path"] += 1
                     stats["ixps_in_as_path_set"].update(row["ixps_in_as_path"][1:-1].split(","))
 
+                if row["prepending"] == "True":
+                    stats["prepending"] += 1
+                elif row["prepending"] == "False":
+                    pass
+                else:
+                    raise NotImplementedError
 
-                stats["prepending"] += int(bool(row["prepending"]))
-                if not row["valley_free_caida_path"]:
+                if row["valley_free_caida_path"] == "True":
+                    pass
+                elif row["valley_free_caida_path"] == "False":
                     stats["not_valley_free_caida_path"] += 1
-                if row["non_caida_asns"] != "[]":
+                else:
+                    raise NotImplementedError
+
+                if row["non_caida_asns"] not in ["[]", "", None]:
                     stats["non_caida_asns"] += 1
                     stats["non_caida_asns_set"].update(row["non_caida_asns"][1:-1].split(","))
 
-                stats["input_clique_split"] += int(bool(row["input_clique_split"]))
+                if row["input_clique_split"] == "True":
+                    stats["input_clique_split"] += 1
+                elif row["input_clique_split"] == "False":
+                    pass
+                else:
+                    raise NotImplementedError
 
-                stats["as_path_loop"] += int(bool(row["as_path_loop"]))
+                if row["as_path_loop"] == "True":
+                    stats["as_path_loop"] += 1
+                elif row["as_path_loop"] == "False":
+                    pass
+                else:
+                    raise NotImplementedError
 
-                if row["as_sets"]:
+                if row["as_sets"] not in ["[]", "", None]:
+                    # Remove brackets []; remove single quotes
+                    # Then split based on ', '
+                    # Can' split just on comma, since that includes the AS
+                    # set itself
+                    # but you can split on ', ' which separates each AS set
+                    # from the other AS sets
+                    as_sets = row["as_sets"][1:-1].replace("'", "").split(", ")
                     stats["as_s_ets"] += 1
-                    stats["as_s_ets_set"].update(row["as_sets"])
-                stats["missing_caida_relationship"] += int(
-                    bool(row["missing_caida_relationship"])
-                )
+                    stats["as_s_ets_set"].update(as_sets)
+
+                if row["missing_caida_relationship"] == "True":
+                    stats["missing_caida_relationship"] += 1
+                elif row["missing_caida_relationship"] == "False":
+                    pass
+                else:
+                    raise NotImplementedError
+
                 if stats["total_anns"] % 10000 == 0:
                     with count_file_path.open("w") as f:
                         f.write(str(stats["total_anns"]))
 
     with count_file_path.open("w") as f:
         f.write(str(stats["total_anns"]))
-
 
     with mrt_file.analysis_path.open("w") as f:
         # https://stackoverflow.com/a/22281062/8903959

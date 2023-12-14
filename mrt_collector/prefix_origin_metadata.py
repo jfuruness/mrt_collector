@@ -112,7 +112,7 @@ class PrefixOriginMetadata:
         """Returns all bgpstream rows"""
 
         # TODO: have this as a property somewhere...
-        pickle_path = Path("/tmp/bgpstream_rows.pickle")
+        pickle_path = Path.home() / "bgpstream_rows.pickle"
 
         # Cache result if not exists. requests_cache too slow for this...
         if not pickle_path.exists():
@@ -124,6 +124,9 @@ class PrefixOriginMetadata:
             rows: list[dict[str, Any]] = collector.run(self.dl_time.date())
             with pickle_path.open("wb") as f:
                 pickle.dump(rows, f)
+            print("Caching bgpstream_rows")
+        else:
+            print("\nReusing the bgpstream_rows from pickle\n")
 
         with pickle_path.open("rb") as f:
             rows = pickle.load(f)
