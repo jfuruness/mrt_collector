@@ -318,7 +318,7 @@ class MRTCollector:
                 total_files += 1
 
         # TODO: refactor this, this should be multiprocessed
-        with tqdm(total=total_files, desc="getting pref") as pbar:
+        with tqdm(total=total_files, desc="getting mh pref") as pbar:
             for mrt_file in mrt_files:
                 for formatted_path in (
                     mrt_file.formatted_dir / str(max_block_size)
