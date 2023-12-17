@@ -31,7 +31,7 @@ class MRTCollector:
         # for a full run, just using 1 core since we don't want to run out of RAM
         # now that we're using the CAIDA collector for pypy
         # jk, use 2 since we want the nice counter, and each core appears to take 5gb
-        cpus: int = 1,#2,  # cpu_count(),
+        cpus: int = 1,  # 2,  # cpu_count(),
         base_dir: Optional[Path] = None,
     ) -> None:
         """Creates directories"""
@@ -66,15 +66,15 @@ class MRTCollector:
 
         mrt_files = mrt_files if mrt_files else self.get_mrt_files(sources)
         ###############################################
-        if download_raw_mrts:
-            self.download_raw_mrts(mrt_files)
-        self.parse_mrts(mrt_files, parse_mrt_func)
-        if store_prefixes:
-            self.store_prefixes(mrt_files)
-        self.format_parsed_dumps(mrt_files, max_block_size, format_parsed_dumps_func)
+        # if download_raw_mrts:
+        #     self.download_raw_mrts(mrt_files)
+        # self.parse_mrts(mrt_files, parse_mrt_func)
+        # if store_prefixes:
+        #     self.store_prefixes(mrt_files)
+        # self.format_parsed_dumps(mrt_files, max_block_size, format_parsed_dumps_func)
 
         if analyze_formatted_dumps:
-            self.analyze_formatted_dumps(mrt_files, max_block_size)
+            # self.analyze_formatted_dumps(mrt_files, max_block_size)
             self.get_multihomed_preference(mrt_files, max_block_size)
 
     def get_mrt_files(
@@ -305,7 +305,9 @@ class MRTCollector:
         mh_as_pref_dict = dict()
         for as_obj in bgp_dag.as_dict.values():
             if len(as_obj.providers) > 1 and len(as_obj.customers) == 0:
-                mh_as_pref_dict[as_obj.asn] = {x.asn: 0 for x in as_obj.providers}
+                mh_as_pref_dict[as_obj.asn] = {
+                    x.asn: {"general": 0, "no_path_poison": 0} for x in as_obj.providers
+                }
         print("cached caida")
 
         total_files = 0
@@ -335,12 +337,24 @@ class MRTCollector:
                             if as_path[-2] not in mh_as_pref_dict[as_path[-1]]:
                                 continue
 
-                            mh_as_pref_dict[as_path[-1]][as_path[-2]] += 1
+                            # If no path poisoning
+                            if (
+                                row["invalid_as_path_asns"] in [None, "", "[]"]
+                                # and row["ixps_in_as_path"] not in [None, "", "[]"]
+                                and row["prepending"] == "False"
+                                and row["as_path_loop"] == "False"
+                                and row["input_clique_split"] == "False"
+                            ):
+                                dct = mh_as_pref_dict[as_path[-1]][as_path[-2]]
+                                dct["no_path_poison"] += 1
+                            mh_as_pref_dict[as_path[-1]][as_path[-2]]["general"] += 1
+
                         pbar.update()
         for k, inner_dict in mh_as_pref_dict.copy().items():
             # This multihomed AS never originated an announcement
             # So we aren't interested in it
-            if sum(inner_dict.values()) == 0:
+            values = [v["general"] for v in inner_dict.values()]
+            if sum(values) == 0:
                 del mh_as_pref_dict[k]
         with (self.analysis_dir / "mh_pref.json").open("w") as f:
             json.dump(mh_as_pref_dict, f, indent=4)
