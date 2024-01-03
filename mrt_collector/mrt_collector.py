@@ -398,10 +398,10 @@ class MRTCollector:
             vantage_points = mrtc.get_vantage_points(relevant_paths)
             with vantage_points_csv.open("w") as f:
                 writer = csv.writer(f)
-                writer.writerows(vantage_points)
+                writer.writerows([[x] for x in vantage_points])
         with vantage_points_csv.open() as f:
             vantage_points = list(sorted([int(x) for x in f]))
-
+        input(vantage_points)
 
         print("Getting statistics on each vantage point")
         print("caching caida")
@@ -416,9 +416,11 @@ class MRTCollector:
             # Get AS Rank, by default higher than total number of ASes by far
             as_obj = bgp_dag.as_dict.get(vantage_point)
             as_rank = as_obj.as_rank if as_obj else 500000
-
-            vantage_point_stat = mrtc.get_vantage_point_stat(vantage_point)
-
+            print("here")
+            vantage_point_stat = mrtc.get_vantage_point_stat(
+                vantage_point, as_rank, relevant_paths
+            )
+            print("got stat")
             with stat_path.open() as f:
                 data = json.load(f)
 

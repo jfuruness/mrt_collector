@@ -60,6 +60,7 @@ set(MRTC_SOURCES
     mrtc/src/progress_bar.cpp
     mrtc/src/vantage_point_stats/get_vantage_points.cpp
     mrtc/src/vantage_point_stats/vantage_point_stat.cpp
+    mrtc/src/vantage_point_stats/get_vantage_point_stat.cpp
     mrtc/src/main.cpp
 )
 
