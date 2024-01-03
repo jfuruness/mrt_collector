@@ -485,7 +485,6 @@ class MRTCollector:
                                 row["prefix_id"], path_poisoning
                             )
 
-                        break
                         pbar.update()
 
         json_stats = {x.asn: x.to_json() for x in sorted(vantage_point_stats.values())}
