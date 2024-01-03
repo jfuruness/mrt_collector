@@ -12,8 +12,8 @@ import subprocess
 from typing import Any, Callable, Optional
 import typing
 
-from bgpy.caida_collector import CaidaCollector
-from bgpy.enums import Relationships, ASGroups
+from bgpy.as_graphs import CAIDAASGraphConstructor
+from bgpy.enums import PyRelationships, ASGroups
 from roa_checker import ROARouted, ROAValidity
 
 from .mrt_file import MRTFile
@@ -110,7 +110,7 @@ def format_psv_into_tsv(
 ) -> None:
     """Formats PSV into a TSV"""
 
-    bgp_dag = CaidaCollector().run(tsv_path=None)
+    bgp_dag = CAIDAASGraphConstructor(tsv_path=None).run()
     ixps = bgp_dag.ixp_asns
 
     count = 0
@@ -304,11 +304,11 @@ def _get_path_data(
                     # Go left to right
                     # From last asn (origin) to next AS (provider), last as is customer
                     if last_as in current_as.providers:
-                        rel = Relationships.CUSTOMERS
+                        rel = PyRelationships.CUSTOMERS
                     elif last_as in current_as.customers:
-                        rel = Relationships.PROVIDERS
+                        rel = PyRelationships.PROVIDERS
                     elif last_as in current_as.peers:
-                        rel = Relationships.PEERS
+                        rel = PyRelationships.PEERS
                     else:
                         rel = None
                         meta["missing_caida_relationship"] = True
@@ -354,11 +354,11 @@ def _get_path_data(
                 # Go left to right
                 # From last asn (origin) to next AS (provider), last as is customer
                 if last_as in current_as.providers:
-                    rel = Relationships.CUSTOMERS
+                    rel = PyRelationships.CUSTOMERS
                 elif last_as in current_as.customers:
-                    rel = Relationships.PROVIDERS
+                    rel = PyRelationships.PROVIDERS
                 elif last_as in current_as.peers:
-                    rel = Relationships.PEERS
+                    rel = PyRelationships.PEERS
                 else:
                     rel = None
                     meta["missing_caida_relationship"] = True
@@ -383,21 +383,21 @@ def _get_path_data(
         no_more_customers = False
         no_more_peers = False
         last_relationship = relationships[0]
-        if last_relationship == Relationships.PEERS:
+        if last_relationship == PyRelationships.PEERS:
             no_more_peers = True
 
         for relationship in relationships[1:]:
-            if no_more_peers and relationship == Relationships.PEERS:
+            if no_more_peers and relationship == PyRelationships.PEERS:
                 meta["valley_free_caida_path"] = False
                 break
-            if no_more_customers and relationship == Relationships.CUSTOMERS:
+            if no_more_customers and relationship == PyRelationships.CUSTOMERS:
                 meta["valley_free_caida_path"] = False
                 break
 
-            if relationship == Relationships.PEERS:
+            if relationship == PyRelationships.PEERS:
                 no_more_peers = True
             if (
-                last_relationship == Relationships.CUSTOMERS
+                last_relationship == PyRelationships.CUSTOMERS
                 and relationship != last_relationship
             ):
                 no_more_customers = True

@@ -12,7 +12,7 @@ from typing import Any, Callable, Optional
 
 from tqdm import tqdm
 
-from bgpy.caida_collector import CaidaCollector
+from bgpy.as_graphs import CAIDAASGraphConstructor
 
 from .mp_funcs import PARSE_FUNC, bgpkit_parser
 from .mp_funcs import download_mrt
@@ -66,16 +66,21 @@ class MRTCollector:
 
         mrt_files = mrt_files if mrt_files else self.get_mrt_files(sources)
         ###############################################
-        # if download_raw_mrts:
-        #     self.download_raw_mrts(mrt_files)
-        # self.parse_mrts(mrt_files, parse_mrt_func)
-        # if store_prefixes:
-        #     self.store_prefixes(mrt_files)
-        # self.format_parsed_dumps(mrt_files, max_block_size, format_parsed_dumps_func)
+        if download_raw_mrts:
+            self.download_raw_mrts(mrt_files)
+        self.parse_mrts(mrt_files, parse_mrt_func)
+        if store_prefixes:
+            self.store_prefixes(mrt_files)
+        self.format_parsed_dumps(mrt_files, max_block_size, format_parsed_dumps_func)
 
         if analyze_formatted_dumps:
-            # self.analyze_formatted_dumps(mrt_files, max_block_size)
-            self.get_multihomed_preference(mrt_files, max_block_size)
+            done_path = self.analysis_dir / "done.txt"
+            if not done_path.exists():
+                self._get_vantage_point_stats(mrt_files, max_block_size)
+                # self.analyze_formatted_dumps(mrt_files, max_block_size)
+                # self.get_multihomed_preference(mrt_files, max_block_size)
+            with done_path.open("w") as f:
+                f.write("done!")
 
     def get_mrt_files(
         self,
@@ -173,10 +178,19 @@ class MRTCollector:
         completed_path = self.formatted_dir / f"{max_block_size}_completed.txt"
         if completed_path.exists():
             with completed_path.open() as f:
-                urls = f.read().split("\n")
-                if set(urls) == set(x.url for x in mrt_files):
+
+                existing_mrt_files = tuple(
+                    [x for x in mrt_files if x.unique_prefixes_path.exists()]
+                )
+                urls = [x for x in f.read().split("\n") if x.strip()]
+                if set(urls) == set(x.url for x in existing_mrt_files):
                     print("Already formatted, not reformatting")
                     return
+                else:
+                    print(set(urls) == set(x.url for x in existing_mrt_files))
+                    print(set(x.url for x in existing_mrt_files).difference(set(urls)))
+                    print(set(urls).difference(set(x.url for x in existing_mrt_files)))
+                    input("redoing this? waiting for input")
 
         print("Starting prefix origin metadata")
         # Initialize prefix origin metadata
@@ -199,7 +213,7 @@ class MRTCollector:
         )
         print("prefix origin metadata complete")
         print("caching caida")
-        CaidaCollector().run(tsv_path=None)
+        CAIDAASGraphConstructor(tsv_path=None).run()
         # Collect CAIDA collector (number of unreachable objects is returned
         print(gc.collect())
         print("cached caida")
@@ -301,7 +315,7 @@ class MRTCollector:
 
         mrt_files = tuple([x for x in mrt_files if x.unique_prefixes_path.exists()])
         print("caching caida")
-        bgp_dag = CaidaCollector().run(tsv_path=None)
+        bgp_dag = CAIDAASGraphConstructor(tsv_path=None)
         mh_as_pref_dict = dict()
         for as_obj in bgp_dag.as_dict.values():
             if len(as_obj.providers) > 1 and len(as_obj.customers) == 0:
@@ -358,6 +372,125 @@ class MRTCollector:
                 del mh_as_pref_dict[k]
         with (self.analysis_dir / "mh_pref.json").open("w") as f:
             json.dump(mh_as_pref_dict, f, indent=4)
+
+    def _get_vantage_point_stats(
+        self, mrt_files: tuple[MRTFile, ...], max_block_size: int
+    ) -> None:
+        """Analyzes the formatted BGP dumps for various vantage point statistics"""
+
+        mrt_files = tuple([x for x in mrt_files if x.unique_prefixes_path.exists()])
+        print("caching caida")
+        bgp_dag = CAIDAASGraphConstructor(tsv_path=None).run()
+        print("cached caida")
+
+        from collections import defaultdict
+        from dataclasses import dataclass, field
+        @dataclass
+        class VantagePointStats:
+            asn: int
+            prefix_id_set: set[int] = field(default_factory=set)
+            no_path_poisoning_prefix_id_set: set[int] = field(default_factory=set)
+            ann_count: int = 0
+            as_rank: Optional[int] = None
+
+            def __post_init__(self, *args, **kwargs):
+                as_obj = bgp_dag.as_dict.get(self.asn, None)
+                self.as_rank = as_obj.as_rank if as_obj else None
+
+            def __lt__(self, other):
+                if isinstance(other, VantagePointStats):
+                    if other.as_rank is None and self.as_rank:
+                        return True
+                    elif self.as_rank is None and other.as_rank:
+                        return False
+                    elif self.as_rank is None and other.as_rank is None:
+                        if self.ann_count > other.ann_count:
+                            return True
+                        elif self.ann_count < other.ann_count:
+                            return False
+                        else:
+                            return self.asn < other.asn
+                    else:
+                        if self.as_rank < other.as_rank:
+                            return True
+                        elif self.as_rank > other.as_rank:
+                            return False
+                        else:
+                            if self.ann_count > other.ann_count:
+                                return True
+                            elif self.ann_count < other.ann_count:
+                                return False
+                            else:
+                                return self.asn < other.asn
+
+
+            def add_ann(self, prefix_id: int, path_poisoning: bool) -> None:
+                self.prefix_id_set.add(prefix_id)
+                self.ann_count += 1
+                if not path_poisoning:
+                    self.no_path_poisoning_prefix_id_set.add(prefix_id)
+
+            def to_json(self):
+                return {
+                    "asn": self.asn,
+                    "as_rank": self.as_rank,
+                    "num_prefixes": len(self.prefix_id_set),
+                    "num_anns": self.ann_count,
+                    "no_path_poisoning_prefix_ids_set": list(self.no_path_poisoning_prefix_id_set)
+                }
+
+
+        def create_vantage(asn):
+            return VantagePointStats(asn)
+
+        vantage_point_stats = dict()
+
+
+        total_files = 0
+        for mrt_file in mrt_files:
+            for formatted_path in (
+                mrt_file.formatted_dir / str(max_block_size)
+                    ).glob("*.tsv"):
+                total_files += 1
+
+        # TODO: refactor this, this should be multiprocessed
+        with tqdm(total=total_files, desc="getting vantage point stats") as pbar:
+            for mrt_file in mrt_files:
+                for formatted_path in (
+                    mrt_file.formatted_dir / str(max_block_size)
+                        ).glob("*.tsv"):
+                    with formatted_path.open() as f:
+                        for row in csv.DictReader(f, delimiter="\t"):
+                            # No AS sets
+                            if "}" in row["as_path"]:
+                                continue
+                            as_path = [int(x) for x in row["as_path"][1:-1].split()]
+                            vantage_point = as_path[0]
+                            if vantage_point not in vantage_point_stats:
+                                vantage_point_stats[vantage_point] = VantagePointStats(vantage_point)
+
+
+                            # If no path poisoning
+                            path_poisoning = True
+                            if (
+                                row["invalid_as_path_asns"] in [None, "", "[]"]
+                                # and row["ixps_in_as_path"] not in [None, "", "[]"]
+                                and row["prepending"] == "False"
+                                and row["as_path_loop"] == "False"
+                                and row["input_clique_split"] == "False"
+                            ):
+                                path_poisoning = False
+
+                            vantage_point_stats[vantage_point].add_ann(
+                                row["prefix_id"], path_poisoning
+                            )
+
+                        break
+                        pbar.update()
+
+        json_stats = {x.asn: x.to_json() for x in sorted(vantage_point_stats.values())}
+        with (self.analysis_dir / "vantage_point_stats.json").open("w") as f:
+            json.dump(json_stats, f, indent=4)
 
     def _get_parsed_lines(self) -> int:
         """Gets the total number of lines in parsed dir"""
