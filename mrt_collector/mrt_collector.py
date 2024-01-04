@@ -25,7 +25,7 @@ from .sources import Source
 
 from mrt_collector import mrtc
 
-def get_vantage_point_json(vantage_point, dirs, as_rank, max_block_size):
+def get_vantage_point_json(vantage_point, dirs, as_rank, max_block_size, get_path_poisoning):
     # NOTE: iterating over all the files is simply wayyy to slow
     # we need to use awk to get only the necessary file info FIRST
     # and only afterwards iterate over it
@@ -48,7 +48,9 @@ def get_vantage_point_json(vantage_point, dirs, as_rank, max_block_size):
         for dir_ in dirs:
             print(f"using awk on {dir_}")
             cmd = ("""find "$ROOT_DIRECTORY" -name '*.tsv' | """
-                   """xargs -P 10 -I {} """
+                    # NOTE: using just 1 core for this
+                    # since we are multiprocessing elsewhere
+                   """xargs -P 1 -I {} """
                    """sh -c 'awk -F"\t" "\$3 ~ /^asn($| )/" {} """
                    """> '"$TMP_DIR"'"/"""
                    """$(echo {} | md5sum | cut -d" " -f1).tmp"'""")
@@ -65,7 +67,7 @@ def get_vantage_point_json(vantage_point, dirs, as_rank, max_block_size):
         print("combined files")
         # input(agg_path)
         vantage_point_stat = mrtc.get_vantage_point_stat(
-            vantage_point, as_rank, [str(agg_path)]
+            vantage_point, as_rank, [str(agg_path)], get_path_poisoning
         )
         agg_path.unlink()
         return {
@@ -483,7 +485,8 @@ class MRTCollector:
             # Get AS Rank, by default higher than total number of ASes by far
             as_obj = bgp_dag.as_dict.get(vantage_point)
             as_rank = as_obj.as_rank if as_obj else 500000
-            iterable.append([vantage_point, dirs, as_rank, max_block_size])
+            get_path_poisoning = False
+            iterable.append([vantage_point, dirs, as_rank, max_block_size, get_path_poisoning])
 
         func = get_vantage_point_json
         if self.cpus == 1 and False:

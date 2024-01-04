@@ -14,7 +14,7 @@ PYBIND11_MODULE(mrtc, m) {
     m.def("get_vantage_points", &get_vantage_points, py::arg("file_paths"));
     m.def("get_vantage_point_stat",
           &get_vantage_point_stat,
-          py::arg("vantage_point"), py::arg("as_rank"), py::arg("file_paths"));
+          py::arg("vantage_point"), py::arg("as_rank"), py::arg("file_paths"), py::arg("get_path_poisoning"));
 
     // Binding for VantagePointStat class
     py::class_<VantagePointStat>(m, "VantagePointStat")

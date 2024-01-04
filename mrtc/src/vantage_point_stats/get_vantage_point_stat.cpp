@@ -6,7 +6,7 @@
 #include <vector>
 #include <string>
 
-VantagePointStat get_vantage_point_stat(int vantage_point, int as_rank, const std::vector<std::string>& file_paths) {
+VantagePointStat get_vantage_point_stat(int vantage_point, int as_rank, const std::vector<std::string>& file_paths, bool get_path_poisoning) {
     if (file_paths.empty()) {
         throw std::runtime_error("No file paths provided.");
     }
@@ -60,14 +60,17 @@ VantagePointStat get_vantage_point_stat(int vantage_point, int as_rank, const st
                 continue;
             }
 
-            // Simplified path poisoning logic
-            bool path_poisoning = !(row[invalid_as_path_asns_index] == "[]" &&
-                                    row[prepending_index] == "False" &&
-                                    row[as_path_loop_index] == "False" &&
-                                    row[input_clique_split_index] == "False");
-
             int prefix_id = std::stoi(row[prefix_id_index]);
-            stat.add_ann(prefix_id, path_poisoning);
+            if (get_path_poisoning){
+                // Simplified path poisoning logic
+                bool path_poisoning = !(row[invalid_as_path_asns_index] == "[]" &&
+                                        row[prepending_index] == "False" &&
+                                        row[as_path_loop_index] == "False" &&
+                                        row[input_clique_split_index] == "False");
+                stat.add_ann(prefix_id, path_poisoning);
+            } else {
+                stat.add_ann(prefix_id, true);
+            }
         }
         //bar.update();
     }
