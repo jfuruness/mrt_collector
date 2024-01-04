@@ -475,9 +475,17 @@ class MRTCollector:
         print("cached caida")
 
         stat_path = self.analysis_dir / "vantage_point_stats.json"
-        with stat_path.open("w") as f:
-            json.dump(dict(), f, indent=4)
-
+        try:
+            with stat_path.open() as f:
+                data = json.load(f)
+            if len(data) == len(vantage_points_to_dirs):
+                return
+            else:
+                raise NotImplementedError("make sure you want to overwrite")
+        except Exception as e:
+            raise NotImplementedError("make sure you want to overwrite")
+            with stat_path.open("w") as f:
+                json.dump(dict(), f, indent=4)
 
         iterable = list()
         for vantage_point, dirs in tqdm(vantage_points_to_dirs.items(), total=len(vantage_points_to_dirs), desc="getting stats for vantage points"):
