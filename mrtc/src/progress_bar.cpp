@@ -2,8 +2,10 @@
 #include <iostream>
 #include <iomanip>
 #include <sstream>
+#include <string>
 
-ProgressBar::ProgressBar(int total) : total(total), completed(0) {
+ProgressBar::ProgressBar(int total, const std::string& desc)
+    : total(total), completed(0), desc(desc) {
     start_time = std::chrono::steady_clock::now();
 }
 
@@ -21,7 +23,7 @@ void ProgressBar::update(int update_total) {
 
         // Display the progress
         std::cout << "\r" // Move to the start of the line
-                  << "Completed: " << completed << "/" << total
+                  << desc << completed << "/" << total
                   << " [" << formatDuration(elapsed) << " elapsed, "
                   << formatDuration(remaining_duration) << " remaining]"
                   << std::flush;

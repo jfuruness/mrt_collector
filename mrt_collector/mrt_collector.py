@@ -25,6 +25,56 @@ from .sources import Source
 
 from mrt_collector import mrtc
 
+def get_vantage_point_json(vantage_point, dirs, as_rank, max_block_size):
+    # NOTE: iterating over all the files is simply wayyy to slow
+    # we need to use awk to get only the necessary file info FIRST
+    # and only afterwards iterate over it
+    from tempfile import TemporaryDirectory
+    with TemporaryDirectory() as tmp_dir:
+        agg_path = Path("/tmp/agg.tsv")
+        agg_path.unlink(missing_ok=True)
+
+        # Get header
+        for dir_ in dirs:
+            for formatted_path in (Path(dir_) / str(max_block_size)).glob("*.tsv"):
+                with formatted_path.open() as f:
+                    with agg_path.open("w") as agg_path_f:
+                        for line in f:
+                            agg_path_f.write(line)
+                            break
+        from subprocess import check_call
+        # Use awk to write temporary files containing the vantage point
+        for dir_ in dirs:
+            print(f"using awk on {dir_}")
+            cmd = ("""find "$ROOT_DIRECTORY" -name '*.tsv' | """
+                   """xargs -P 10 -I {} """
+                   """sh -c 'awk -F"\t" "\$3 ~ /^asn($| )/" {} """
+                   """> '"$TMP_DIR"'"/"""
+                   """$(echo {} | md5sum | cut -d" " -f1).tmp"'""")
+            cmd = cmd.replace("$ROOT_DIRECTORY", str(dir_))
+            cmd = cmd.replace("asn", str(vantage_point))
+            cmd = cmd.replace("$TMP_DIR", str(Path(tmp_dir)))
+            check_call(cmd, shell=True)
+        print("combining files")
+        # Combine the files
+        # Get only unique lines or else it will screw up the counts
+        # uniq too slow https://unix.stackexchange.com/a/581324/477240
+        # check_call(f"cat {tmp_dir}/*.tmp | sort | uniq >> {agg_path}", shell=True)
+        check_call(f"cat {tmp_dir}/*.tmp | awk '!x[$0]++' >> {agg_path}", shell=True)
+        print("combined files")
+        # input(agg_path)
+        vantage_point_stat = mrtc.get_vantage_point_stat(
+            vantage_point, as_rank, [str(agg_path)]
+        )
+        return {
+            "asn": vantage_point,
+            "as_rank": as_rank,
+            "num_prefixes": len(vantage_point_stat.prefix_id_set),
+            "num_anns": vantage_point_stat.ann_count,
+            "no_path_poisoning_prefix_ids_set": list(vantage_point_stat.no_path_poisoning_prefix_id_set)
+        }
+
+
 
 class MRTCollector:
     def __init__(
@@ -382,26 +432,38 @@ class MRTCollector:
 
         mrt_files = tuple([x for x in mrt_files if x.unique_prefixes_path.exists()])
 
-        file_paths = list()
+        dir_to_tsv_paths = dict()
         for mrt_file in mrt_files:
+            dir_to_tsv_paths[str(mrt_file.formatted_dir)] = list()
             for formatted_path in (
                 mrt_file.formatted_dir / str(max_block_size)
                     ).glob("*.tsv"):
-                file_paths.append(formatted_path)
+                dir_to_tsv_paths[str(mrt_file.formatted_dir)].append(
+                    str(formatted_path)
+                )
 
         print("Getting relevant paths")
-        relevant_paths = mrtc.get_relevant_paths([str(x) for x in file_paths])
+        relevant_paths = mrtc.get_relevant_paths(dir_to_tsv_paths)
+        # from pprint import pprint
+        # pprint(relevant_paths)
+        # input("waiting")
 
         print("Getting vantage points")
-        vantage_points_csv = self.analysis_dir / "vantage_points.csv"
-        if not vantage_points_csv.exists():
-            vantage_points = mrtc.get_vantage_points(relevant_paths)
-            with vantage_points_csv.open("w") as f:
-                writer = csv.writer(f)
-                writer.writerows([[x] for x in vantage_points])
-        with vantage_points_csv.open() as f:
-            vantage_points = list(sorted([int(x) for x in f]))
-        input(vantage_points)
+        # NOTE: this assumes that vantage points only exist at one
+        # collector, this should have an assertion in the future
+        vantage_points_json = self.analysis_dir / "vantage_points.json"
+        if not vantage_points_json.exists():
+            data = mrtc.get_vantage_points(relevant_paths)
+            # sort the keys for consistent runs
+            data = {k: data[k] for k in sorted(data)}
+            vantage_points_to_dirs = dict()
+            for vantage_point, dirs in data.items():
+                vantage_points_to_dirs[int(vantage_point)] = list(sorted(dirs))
+            with vantage_points_json.open("w") as f:
+                json.dump(vantage_points_to_dirs, f, indent=4)
+        with vantage_points_json.open() as f:
+            vantage_points_to_dirs = {int(k): v for k, v in json.load(f).items()}
+            assert all(isinstance(k, int) for k in vantage_points_to_dirs), "not ints"
 
         print("Getting statistics on each vantage point")
         print("caching caida")
@@ -411,26 +473,20 @@ class MRTCollector:
         stat_path = self.analysis_dir / "vantage_point_stats.json"
         with stat_path.open("w") as f:
             json.dump(dict(), f, indent=4)
-
-        for vantage_point in vantage_points:
+        for vantage_point, dirs in tqdm(vantage_points_to_dirs.items(), total=len(vantage_points_to_dirs), desc="getting stats for vantage points"):
+            # print(f"{vantage_point} has {len(dirs)} dirs")
             # Get AS Rank, by default higher than total number of ASes by far
             as_obj = bgp_dag.as_dict.get(vantage_point)
             as_rank = as_obj.as_rank if as_obj else 500000
-            print("here")
-            vantage_point_stat = mrtc.get_vantage_point_stat(
-                vantage_point, as_rank, relevant_paths
-            )
+            # NOTE: iterating over all the files is simply wayyy to slow
+            # we need to use awk to get only the necessary file info FIRST
+            # and only afterwards iterate over it
+            vantage_point_json = get_vantage_point_json(vantage_point, dirs, as_rank, max_block_size)
             print("got stat")
             with stat_path.open() as f:
                 data = json.load(f)
 
-            data[vantage_point] = {
-                "asn": vantage_point,
-                "as_rank": as_rank,
-                "num_prefixes": len(vantage_point_stat.prefix_id_set),
-                "num_anns": len(vantage_point_stat.ann_count),
-                "no_path_poisoning_prefix_ids_set": list(self.no_path_poisoning_prefix_id_set)
-            }
+            data[vantage_point_json["asn"]] = vantage_point_json
             with stat_path.open("w") as f:
                 json.dump(data, f, indent=4)
 
