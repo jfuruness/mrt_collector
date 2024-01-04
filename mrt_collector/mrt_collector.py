@@ -31,9 +31,10 @@ def get_vantage_point_json(vantage_point, dirs, as_rank, max_block_size):
     # and only afterwards iterate over it
     from tempfile import TemporaryDirectory
     with TemporaryDirectory() as tmp_dir:
-        agg_path = Path("/tmp/agg.tsv")
+        agg_path = Path(f"/tmp/agg_{vantage_point}.tsv")
         agg_path.unlink(missing_ok=True)
 
+        assert dirs
         # Get header
         for dir_ in dirs:
             for formatted_path in (Path(dir_) / str(max_block_size)).glob("*.tsv"):
@@ -66,6 +67,7 @@ def get_vantage_point_json(vantage_point, dirs, as_rank, max_block_size):
         vantage_point_stat = mrtc.get_vantage_point_stat(
             vantage_point, as_rank, [str(agg_path)]
         )
+        agg_path.unlink()
         return {
             "asn": vantage_point,
             "as_rank": as_rank,
@@ -473,22 +475,42 @@ class MRTCollector:
         stat_path = self.analysis_dir / "vantage_point_stats.json"
         with stat_path.open("w") as f:
             json.dump(dict(), f, indent=4)
+
+
+        iterable = list()
         for vantage_point, dirs in tqdm(vantage_points_to_dirs.items(), total=len(vantage_points_to_dirs), desc="getting stats for vantage points"):
             # print(f"{vantage_point} has {len(dirs)} dirs")
             # Get AS Rank, by default higher than total number of ASes by far
             as_obj = bgp_dag.as_dict.get(vantage_point)
             as_rank = as_obj.as_rank if as_obj else 500000
-            # NOTE: iterating over all the files is simply wayyy to slow
-            # we need to use awk to get only the necessary file info FIRST
-            # and only afterwards iterate over it
-            vantage_point_json = get_vantage_point_json(vantage_point, dirs, as_rank, max_block_size)
-            print("got stat")
-            with stat_path.open() as f:
-                data = json.load(f)
+            iterable.append([vantage_point, dirs, as_rank, max_block_size])
 
-            data[vantage_point_json["asn"]] = vantage_point_json
-            with stat_path.open("w") as f:
-                json.dump(data, f, indent=4)
+        func = get_vantage_point_json
+        if self.cpus == 1 and False:
+            for args in tqdm(iterable, total=len(iterable), desc="getting vpoint stats"):
+                vantage_point_json = func(*args)
+                with stat_path.open() as f:
+                    data = json.load(f)
+                data[vantage_point_json["asn"]] = vantage_point_json
+                with stat_path.open("w") as f:
+                    json.dump(data, f, indent=4)
+
+        else:
+            # https://stackoverflow.com/a/63834834/8903959
+            with ProcessPoolExecutor(max_workers=9) as executor:
+                futures = [executor.submit(func, *x) for x in iterable]
+                for future in tqdm(
+                    as_completed(futures),
+                    total=len(iterable),
+                    desc="Getting vantage point stats",
+                ):
+                    # reraise any exceptions from the processes
+                    vantage_point_json = future.result()
+                    with stat_path.open() as f:
+                        data = json.load(f)
+                    data[vantage_point_json["asn"]] = vantage_point_json
+                    with stat_path.open("w") as f:
+                        json.dump(data, f, indent=4)
 
     def _get_parsed_lines(self) -> int:
         """Gets the total number of lines in parsed dir"""

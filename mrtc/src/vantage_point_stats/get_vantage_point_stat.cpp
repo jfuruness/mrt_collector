@@ -11,7 +11,7 @@ VantagePointStat get_vantage_point_stat(int vantage_point, int as_rank, const st
         throw std::runtime_error("No file paths provided.");
     }
 
-    ProgressBar bar(file_paths.size());
+    //ProgressBar bar(file_paths.size());
 
     // Open the first file to read the header and find column indices
     std::ifstream first_file(file_paths.front());
@@ -69,8 +69,8 @@ VantagePointStat get_vantage_point_stat(int vantage_point, int as_rank, const st
             int prefix_id = std::stoi(row[prefix_id_index]);
             stat.add_ann(prefix_id, path_poisoning);
         }
-        bar.update();
+        //bar.update();
     }
-    bar.close();
+    //bar.close();
     return stat;
 }
