@@ -67,7 +67,7 @@ def get_vantage_point_json(vantage_point, dirs, as_rank, max_block_size, get_pat
         print("combined files")
         # input(agg_path)
         vantage_point_stat = mrtc.get_vantage_point_stat(
-            vantage_point, as_rank, [str(agg_path)], get_path_poisoning
+            int(vantage_point), int(as_rank), [str(agg_path)], get_path_poisoning
         )
         agg_path.unlink()
         return {
@@ -434,6 +434,74 @@ class MRTCollector:
     ) -> None:
         """Analyzes the formatted BGP dumps for various vantage point statistics"""
 
+        vantage_points_to_dirs = self.get_vantage_points_to_dirs(
+            mrt_files, max_block_size
+        )
+
+        print("Getting statistics on each vantage point")
+        print("caching caida")
+        bgp_dag = CAIDAASGraphConstructor(tsv_path=None).run()
+        print("cached caida")
+
+        stat_path = self.analysis_dir / "vantage_point_stats.json"
+        try:
+            with stat_path.open() as f:
+                data = {int(k): v for k, v in json.load(f).items()}
+        except Exception as e:
+            print(e)
+            data = dict()
+            input("ensure that this exception is handled")
+
+        iterable = list()
+        for vantage_point, dirs in tqdm(vantage_points_to_dirs.items(), total=len(vantage_points_to_dirs), desc="getting stats for vantage points"):
+            if int(vantage_point) in data:
+                print(f"skipping {vantage_point} since it's already been parsed")
+                continue
+            # print(f"{vantage_point} has {len(dirs)} dirs")
+            # Get AS Rank, by default higher than total number of ASes by far
+            as_obj = bgp_dag.as_dict.get(vantage_point)
+            as_rank = as_obj.as_rank if as_obj else 500000
+            get_path_poisoning = False
+            iterable.append([vantage_point, dirs, as_rank, max_block_size, get_path_poisoning])
+
+        func = get_vantage_point_json
+        if self.cpus == 1 and False:
+            for args in tqdm(iterable, total=len(iterable), desc="getting vpoint stats"):
+                vantage_point_json = func(*args)
+                try:
+                    with stat_path.open() as f:
+                        data = json.load(f)
+                except Exception as e:
+                    print(e)
+                    data = dict()
+                data[vantage_point_json["asn"]] = vantage_point_json
+                with stat_path.open("w") as f:
+                    json.dump(data, f, indent=4)
+
+        else:
+            # https://stackoverflow.com/a/63834834/8903959
+            with ProcessPoolExecutor(max_workers=9) as executor:
+                futures = [executor.submit(func, *x) for x in iterable]
+                for future in tqdm(
+                    as_completed(futures),
+                    total=len(iterable),
+                    desc="Getting vantage point stats",
+                ):
+                    # reraise any exceptions from the processes
+                    vantage_point_json = future.result()
+                    try:
+                        with stat_path.open() as f:
+                            data = json.load(f)
+                    except Exception as e:
+                        print(e)
+                        data = dict()
+                    data[vantage_point_json["asn"]] = vantage_point_json
+                    with stat_path.open("w") as f:
+                        json.dump(data, f, indent=4)
+
+    def get_vantage_points_to_dirs(
+        self, mrt_files: tuple[MRTFile, ...], max_block_size: int
+    ) -> dict[int, list[str]]:
         mrt_files = tuple([x for x in mrt_files if x.unique_prefixes_path.exists()])
 
         dir_to_tsv_paths = dict()
@@ -468,60 +536,7 @@ class MRTCollector:
         with vantage_points_json.open() as f:
             vantage_points_to_dirs = {int(k): v for k, v in json.load(f).items()}
             assert all(isinstance(k, int) for k in vantage_points_to_dirs), "not ints"
-
-        print("Getting statistics on each vantage point")
-        print("caching caida")
-        bgp_dag = CAIDAASGraphConstructor(tsv_path=None).run()
-        print("cached caida")
-
-        stat_path = self.analysis_dir / "vantage_point_stats.json"
-        try:
-            with stat_path.open() as f:
-                data = json.load(f)
-            if len(data) == len(vantage_points_to_dirs):
-                return
-            else:
-                raise NotImplementedError("make sure you want to overwrite")
-        except Exception as e:
-            raise NotImplementedError("make sure you want to overwrite")
-            with stat_path.open("w") as f:
-                json.dump(dict(), f, indent=4)
-
-        iterable = list()
-        for vantage_point, dirs in tqdm(vantage_points_to_dirs.items(), total=len(vantage_points_to_dirs), desc="getting stats for vantage points"):
-            # print(f"{vantage_point} has {len(dirs)} dirs")
-            # Get AS Rank, by default higher than total number of ASes by far
-            as_obj = bgp_dag.as_dict.get(vantage_point)
-            as_rank = as_obj.as_rank if as_obj else 500000
-            get_path_poisoning = False
-            iterable.append([vantage_point, dirs, as_rank, max_block_size, get_path_poisoning])
-
-        func = get_vantage_point_json
-        if self.cpus == 1 and False:
-            for args in tqdm(iterable, total=len(iterable), desc="getting vpoint stats"):
-                vantage_point_json = func(*args)
-                with stat_path.open() as f:
-                    data = json.load(f)
-                data[vantage_point_json["asn"]] = vantage_point_json
-                with stat_path.open("w") as f:
-                    json.dump(data, f, indent=4)
-
-        else:
-            # https://stackoverflow.com/a/63834834/8903959
-            with ProcessPoolExecutor(max_workers=9) as executor:
-                futures = [executor.submit(func, *x) for x in iterable]
-                for future in tqdm(
-                    as_completed(futures),
-                    total=len(iterable),
-                    desc="Getting vantage point stats",
-                ):
-                    # reraise any exceptions from the processes
-                    vantage_point_json = future.result()
-                    with stat_path.open() as f:
-                        data = json.load(f)
-                    data[vantage_point_json["asn"]] = vantage_point_json
-                    with stat_path.open("w") as f:
-                        json.dump(data, f, indent=4)
+        return vantage_points_to_dirs
 
     def _get_parsed_lines(self) -> int:
         """Gets the total number of lines in parsed dir"""
