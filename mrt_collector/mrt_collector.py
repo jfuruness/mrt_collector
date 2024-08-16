@@ -114,7 +114,7 @@ class MRTCollector:
         download_raw_mrts: bool = True,
         parse_mrt_func: PARSE_FUNC = bgpkit_parser,
         store_prefixes: bool = True,
-        max_block_size: int = 1000,  # Used for extrapolator
+        max_block_size: int = 100,  # Used for extrapolator
         format_parsed_dumps_func: FORMAT_FUNC = format_psv_into_tsv,
         analyze_formatted_dumps: bool = True,
     ) -> None:
@@ -133,8 +133,8 @@ class MRTCollector:
             done_path = self.analysis_dir / "done.txt"
             if not done_path.exists():
                 self._get_vantage_point_stats(mrt_files, max_block_size)
-                # self.analyze_formatted_dumps(mrt_files, max_block_size)
-                # self.get_multihomed_preference(mrt_files, max_block_size)
+                self.analyze_formatted_dumps(mrt_files, max_block_size)
+                self.get_multihomed_preference(mrt_files, max_block_size)
             with done_path.open("w") as f:
                 f.write("done!")
 
@@ -149,6 +149,7 @@ class MRTCollector:
         mrt_files = list()
         for source in tqdm(sources, total=len(sources), desc=f"Parsing {sources}"):
             for url in source.get_urls(self.dl_time, self.requests_cache_dir):
+                print(f"Adding {url}")
                 mrt_files.append(
                     MRTFile(
                         url,
@@ -284,13 +285,13 @@ class MRTCollector:
         # must do it this way since there's no central dir for a max block size
         count_dirs = [x.formatted_dir / str(max_block_size) for x in mrt_files]
         # Starts the progress bar in another thread
-        if self.cpus == 1:
+        if self.cpus == 1 and False:
             for args in tqdm(iterable, total=len(iterable), desc=desc):
                 func(*args, single_proc=True)  # type: ignore
         else:
             total = self._get_parsed_lines()
             # https://stackoverflow.com/a/63834834/8903959
-            with ProcessPoolExecutor(max_workers=self.cpus // 2) as executor:
+            with ProcessPoolExecutor(max_workers=3) as executor:
                 futures = [executor.submit(func, *x) for x in iterable]
                 with tqdm(total=total, desc=desc) as pbar:
                     while futures:

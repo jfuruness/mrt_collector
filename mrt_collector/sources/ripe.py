@@ -18,6 +18,7 @@ class RIPE(Source):
     def get_urls(self, dl_time: datetime, requests_cache_dir: Path) -> tuple[str, ...]:
         """Gets URLs of MRT RIB dumps for RIPE/RIS"""
 
+        print("ripe")
         assert dl_time.hour % 8 == 0, "RIPE/RIS only downloads RIBS every 8hrs"
         prepended_url = "https://data.ris.ripe.net/rrc"
         # Links to collectors
