@@ -1,94 +1,285 @@
 [build-system]
-requires = ["setuptools>=51.0", "wheel", "scikit-build-core>=0.3.3", "pybind11~=2.11"]
-build-backend = "scikit_build_core.build"
-
-[tool.scikit-build]
-wheel.expand-macos-universal-tags = true
-build-dir = "build/{wheel_tag}"
-
-[tool.cibuildwheel]
-build-verbosity = 1
-
+requires = ["setuptools>=69.0.3", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "mrt_collector"
-version = "0.1.0"
-description = "Downloads and analyzes MRT RIB dumps"
+version = "0.0.0"
+requires-python = ">=3.10"
+description = "Collects and analyzes MRT RIB dumps"
 readme = "README.md"
 authors = [
     {name = "Justin Furuness", email = "jfuruness@gmail.com"},
 ]
+maintainers = [
+  {name = "Justin Furuness", email = "jfuruness@gmail.com"}
+]
 license = {file = "LICENSE.txt"}
 keywords = [
-    "Furuness",
+    "BGPy",
+    "mrt_collector",
+    "RIPE",
+    "RouteViews",
+    "PCH",
     "BGP",
-    "Hijack",
-    "ROA",
+    "Caida",
+    "CAIDA",
+    "Peers",
+    "Providers",
+    "Relationships",
+    "AS-Serial",
+    "Customers",
+    "Simulation",
     "ROV",
-    "AS",
-    "MRT",
-    "RIB",
+    "Furuness"
 ]
 classifiers = [
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
     "Environment :: Console",
-    "Intended Audience :: Developers",
     "License :: OSI Approved :: BSD License",
+    "Intended Audience :: Developers",
     "Operating System :: POSIX :: Linux",
-    "Programming Language :: Python :: 3"
+    # "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS",
+    "Operating System :: MacOS :: MacOS X",
+    "Topic :: Security",
 ]
-requires-python = ">=3.10"
 dependencies = [
-    "beautifulsoup4==4.12.2",
-    "tqdm==4.66.1",
-    "requests==2.31.0",
+    "bgpy~=13.0",
 ]
 
 [project.urls]
-homepage = "https://github.com/jfuruness/mrt_collector.git"
-
-
-[project.optional-dependencies]
-test = [
-    "types-requests==2.31.0.10",
-    "black==23.11.0",
-    "pre-commit==3.5.0",
-    "setuptools==68.0.0",
-    "wheel==0.40.0",
-    "pytest==7.4.3",
-    "mypy==1.7.0",
-    "flake8==6.1.0",
-    "tox==4.11.3",
-    "pytest-xdist==3.3.1",
-    "ruff==0.1.5",
-]
-
-[tool.setuptools.package-data]
-mrt_collector = ["py.typed"]
-
-[tool.setuptools]
-include-package-data = true
+Homepage = "https://github.com/jfuruness/mrt_collector"
+Documentation = "https://github.com/jfuruness/mrt_collector/README.md"
 
 [project.scripts]
 mrt_collector = "mrt_collector.__main__:main"
 
+[project.optional-dependencies]
+test = [
+    "bgpy[test]~=13.0",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+# https://stackoverflow.com/a/76214408/8903959
+[tool.setuptools.package-data]
+mrt_collector = ["py.typed"]
+
+# https://stackoverflow.com/a/76214408/8903959
+[tool.setuptools.packages.find]
+where = ["."]
+exclude = ["scripts", "scripts.*", "old", "old./*"]
+
 [tool.pytest.ini_options]
-python_files = "test*"
-python_classes = "Test*"
-python_functions = "test*"
+addopts = "-rxXs -v"  # Shows reasons for skipping, xfailing, etc
 markers = [
-    "slow: All slow tests"
+    "slow: All slow tests",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning:yamlable",
+    "ignore::DeprecationWarning:tqdm",
+    "ignore::DeprecationWarning:dateutil.tz.tz",
 ]
 
 [tool.mypy]
-mypy_path = "mrt_collector"
-check_untyped_defs = true
-disallow_any_generics = true
+strict = true
+# Some extra stuff we might want
 ignore_missing_imports = true
-no_implicit_optional = true
 show_error_codes = true
-strict_equality = true
-warn_redundant_casts = true
-warn_return_any = true
 warn_unreachable = true
-warn_unused_configs = true
-no_implicit_reexport = true
+# These next few are various gradations of forcing use of type annotations
+disallow_untyped_calls = false
+disallow_incomplete_defs = false
+disallow_untyped_defs = false
+
+[mypy-graphviz]
+ignore_missing_imports = true
+
+[tool.flake8]
+max-line-length = 88
+
+[tool.coverage.run]
+branch = true
+omit = [
+    "*tests*",
+    "*__init__*"
+]
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = [
+    # Excludes lines overrides pragma: no cover, so add it back
+    "pragma: no cover",
+    # Code below this is not meant to be tested
+    "raise NotImplementedError",
+    # Code that isn't meant to be run
+    "if __name__ == .__main__.:"
+]
+
+# https://docs.astral.sh/ruff/configuration/
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    ###############################
+    # Not applicable to this repo #
+    ###############################
+    "CPY",  # Catches missing copyright notices
+    "DTZ",  # Forces all datetime calls to contain tzinfo, not necessary for me
+    # "PTH",  # Uncomment this if you don't use pathlib
+    "PD",  # Haven't vetted this since there is no pandas in this repo
+    "NPY",  # Haven't vetted this since there is no numpy in this repo
+    "FAST",  # Haven't vetted this since there is no FastAPI in this repo
+    "AIR",  # Haven't vetted this since there is no AIR in this repo
+
+    ########################################################
+    # Overarching rules that are not applicable in general #
+    ########################################################
+    "C90",  # Mccabe (code complexity checker, not useful imo)
+    # Pydocstyle, I'm fairly lenient for comment style personally
+    # I don't want to make it any harder to comment code
+    # Currently, only D209 and D301 are used
+    "D100", "D101", "D102", "D103", "D104", "D105", "D106", "D107",
+    "D200", "D201", "D202", "D203", "D204", "D205", "D206", "D207",
+    "D208", "D210", "D211", "D212", "D213", "D214", "D215",
+    "D300", "D400", "D401", "D402", "D403", "D404", "D405",
+    "D406", "D407", "D408", "D409", "D410", "D411", "D412",
+    "D413", "D414", "D415", "D416", "D417", "D418", "D419",
+    "YTT",  # flake8 rules for upgrading to 2020, imo outdated
+    "ANN",  # I don't want to restrict comment style
+    "FBT",  # Catches "boolean trap", I don't believe in this myself
+    "COM",  # Forces trailing commas, imo this makes devs type more
+    "EM",  # Forces error message formats, idc
+    "PYI",  # Feels unessecary
+    "Q000", "Q001", "Q002",  # Using 003 and 004, these ones don't matter to me
+    "RET",  # Forces specific types of returns, imo not useful
+    "ARG",  # Catches unused args, however, sometimes they are used in subclasses
+    "TD",  # Forces you to write specific TODOs
+    "FIX",  # Forces you to write specific FIX comments
+    "ERA",  # Forces removal of commented out code, however, in rare cases it's worth keeping
+    "PGH",  # Wnats specific rules when ignoring type issues, noqa etc. idc
+    "PERF",  # Imo not useful
+    "DOC",  # Forces specific type of docstring formatting
+
+    ###################################################
+    # Rule subsets that are not applicable in general #
+    ###################################################
+    # This checks for opening of files using Pathlib
+    # but imo it's fine to open a file and write  to it using builtins
+    "PTH123",
+    "TRY003",  # doesn't allow strings in exceptions
+    "TRY300",  # doesn't allow for returns within exceptions
+    "TRY301",  # doesn't allow for raising within exceptions
+    # S101 checks that you have no asserts at runtime
+    # but imo such asserts can be good so long as you don't depend on them
+    "S101",
+    # Doesn't allow for dict(), wants literals ({})
+    # imo dict and list are more readable, and the speed diff is negligable
+    "C408",
+    # This catches when there are "too many" arguments, branches, returns, etc
+    # imo this should be a case by case basis using context, not a blanket rule
+    "PLR091",
+    # "Magic numbers" are sometimes okay. For me these were all false positives
+    # for example, checking that the response status code is 200, or in testing.
+    # magic numbers are just doing resp.status_code == 200, 200 is magic since it's
+    # not a var
+    "PLR2004",
+    # This rule prevents uppercase variables (since classes are uppercased)
+    # imo this makes sense 99% of the time, __except__ when dealing with variables
+    # that refer to an actual class type. For example, imo
+    # self.GraphFactoryCls = DefaultGraphFactory
+    # graph_factory = self.GraphFactoryCls()
+    # is way more readable than
+    # self.graph_factory_cls = DefaultGraphFactory
+    # graph_factory = self.graph_factory_cls()
+    # Imo leaving class references as uppercase lets the reader know, this var is
+    # referring to a class
+    "N803",
+    # N806 looks at capitalized vars. See N803 explanation
+    "N806",
+    # N802 looks for captilized functions, but if a func is a property that returns
+    # a class, imo it makes sense for it to be capitalized (see N802)
+    "N802",
+    # This turns super(MyClass, self).func() into super().func()
+    # The problem is that the former is actually needed when using
+    # multiple inheritance, resulting in a false positive for every time
+    # for me. Imo not worth having since it requires context and isn't always
+    # right.
+    "UP008",
+    # Catches deprecated imports
+    # However, it seems to think I shouldn't be importing Iterable from typing,
+    # which is wrong. If something is deprecated, it'll raise a DeprecationWarning
+    # Since this only had false positives for me, omitting it
+    "UP035",
+    # Wants to turn isinstance(a, (x, y)) into isinstance(a, x | y)
+    # imo the first version is totally fine and most code will be formatted that way
+    # And the pep doesn't even advocate for switching lol
+    "UP038",
+    # Ensures that you don't have pass in blank funcs that have a docstring
+    # imo blank funcs are more readable with a pass than without a pass
+    # because without a pass, maybe the developer just didn't finish the func
+    # and forgot to write it in. If there's a pass tho, it's an explicit statement
+    # that this func is meant to be blank
+    # Just my opinion though.
+    "PIE790",
+    # Ensures that you don't have empty methods in an abstract class without
+    # an abstract decorator. However - this just raises false positives on hook
+    # methods
+    "B027",
+    # Use `contextlib.suppress(ValueError)` instead of `try`-`except`-`pass`"
+    # imo - most programmers don't know this, and would prefer to read it the other way
+    "SIM105",
+    # Combines if statements in such a way that makes them unreadable imo
+    "SIM103",
+    # Combines multiple if statements into one if they return the same thing
+    # imo makes this less readable in a lot of cases
+    "SIM114",
+    # Combines multiple with statements. Imo makes it less readable
+    "SIM117",
+    # Concatenates multiple strings into one if they are on the same line
+    # It's a good rule, but conflicts with ruff format so had to remove
+    # (it gave an error message surprisingly)
+    "ISC001",
+    # Wants to apply sorting to __all__
+    # For me sometimes __init__ is out of order due to import loops,
+    # and my __all__ tends to follow my __init__ order, so I've disabled this
+    "RUF022",
+    # flake8-logging-format (G)
+    # Removing these since they don't like you adding f strings etc to logging
+    # since f strings are done automatically, whereas passing extra= doesn't format
+    # unless the log level is low enough. Such a pain, idc
+    "G001", "G002", "G003", "G004",
+    # This forces you to split assertions that contain more than one check
+    # (assert A & B) -> assert A; assert B
+    # But sometimes you need both checks on the same line
+    # And even when you don't I feel like this doesn't matter much
+    "PT018",
+]
+
+unfixable = []
+[tool.ruff.lint.per-file-ignores]
+# Don't use isort on these files (which sorts imports)
+# init files are often ordered in a certain way to avoid circular imports
+"**/__init__.py" = ["I"]
+# tests can use private vars
+"**/tests/**/*.py" = ["SLF001"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["mrt_collector"]
+
+[tool.ruff.lint.flake8-bugbear]
+# Allow default arguments like, e.g., `data: frozendict[str, str] = frozendict()
+# Otherwise this tool complains that it's a mutable return
+extend-immutable-calls = [
+    "frozendict.frozendict", "datetime.date.today", "pathlib.Path.home",
+]
+
+[tool.ruff.lint.flake8-pytest-style]
+# Says that using pytest.mark.marker_name shouldn't have parens
+mark-parentheses = false
