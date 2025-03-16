@@ -1,6 +1,7 @@
 """Funcs that parse rib dumps"""
 
 from subprocess import check_call
+from typing import Callable
 
 from .mrt_file import MRTFile
 

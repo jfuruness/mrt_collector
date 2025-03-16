@@ -50,7 +50,7 @@ classifiers = [
     "Topic :: Security",
 ]
 dependencies = [
-    "bgpy~=13.0",
+    "bgpy_pkg~=13.0",
 ]
 
 [project.urls]
@@ -62,7 +62,7 @@ mrt_collector = "mrt_collector.__main__:main"
 
 [project.optional-dependencies]
 test = [
-    "bgpy[test]~=13.0",
+    "bgpy_pkg[test]~=13.0",
 ]
 
 [tool.setuptools]

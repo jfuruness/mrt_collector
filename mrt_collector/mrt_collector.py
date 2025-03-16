@@ -29,7 +29,7 @@ class MRTCollector:
 
         # Set base directory
         if base_dir is None:
-            t_str = str(dl_time).replace(" ", "_")
+            t_str = dl_time.strftime("%Y_%m_%d")
             self.base_dir: Path = Path.home() / "mrt_data" / t_str
         else:
             self.base_dir = base_dir
@@ -59,8 +59,8 @@ class MRTCollector:
         """Gets URLs from sources (cached) and returns MRT File objects"""
 
         mrt_files = list()
-        for source in tqdm(sources, total=len(sources), desc=f"Parsing {sources}"):
-            for url in source.get_urls(self.dl_time, self.requests_cache_dir):
+        for source in tqdm(sources, total=len(sources), desc=f"Getting URLs {sources}"):
+            for url in source.get_urls(self.dl_time, self.requests_cache_path):
                 mrt_files.append(
                     MRTFile(
                         url,
@@ -74,6 +74,7 @@ class MRTCollector:
     def download_raw_mrts(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Downloads raw MRT RIB dumps into raw_dir"""
 
+        print("This can be optimized, get file size before downloading and order")
         args = tuple([(x,) for x in mrt_files])
         self._mp_tqdm(args, download_mrt, desc="Downloading MRTs (~12m)")
 

@@ -28,7 +28,7 @@ class RIPE(Source):
         ]
         # Listed as dead links on their website
         # TODO: don't hardcode this
-        dead_links = [prepended_url + x for x in ("02", "08", "09")]
+        dead_links = [prepended_url + x for x in ("02/", "08/", "09/")]
         links = [x for x in links if x not in dead_links]
         if len(links) != 23:
             warnings.warn(f"Expected 23 collectors from RIPE, got {len(links)}")
