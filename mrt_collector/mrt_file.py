@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import os
 import shutil
+import subprocess
 from subprocess import check_call
 import time
 from urllib.parse import quote
@@ -20,12 +21,16 @@ class MRTFile:
         source: Source,
         raw_dir: Path,
         parsed_dir: Path,
+        parsed_line_count_dir: Path
     ) -> None:
         self.url: str = url
         self.source: Source = source
         self.raw_path: Path = raw_dir / self._url_to_fname(self.url)
         self.parsed_path_psv: Path = parsed_dir / self._url_to_fname(
             self.url, ext="psv"
+        )
+        self.parsed_line_count_path: Path = parsed_line_count_dir / self._url_to_fname(
+            self.url, ext="txt"
         )
 
     def __lt__(self, other) -> bool:
@@ -102,6 +107,32 @@ class MRTFile:
             fname = f"{base_name}.{ext}"
         return fname
 
+    def count_parsed_lines(self) -> int:
+        if not self.parsed_path_psv.exists():
+            return 0
+        if self.parsed_line_count_path.exists():
+            with self.parsed_line_count_path.open() as f:
+                return int(f.read())
+        else:
+            command = f"wc -l {self.parsed_path_psv}"
+            # Run the command
+            result = subprocess.run(command, shell=True, text=True, capture_output=True)
+
+            # Check if the command was successful
+            if result.returncode != 0:
+                print("Error running command:", result.stderr)
+                raise Exception
+
+            # Process the output to get the total number of lines
+            output = result.stdout.strip()
+            lines = output.split("\n")
+            count = int(lines[-1].strip().split(" ")[0])
+            with self.parsed_line_count_path.open("w") as f:
+                # Remove header
+                count = int(count) - 1
+                f.write(str(count))
+                return int(count)
+
     @property
     def downloaded(self) -> bool:
         """Returns True if file downloaded else False"""
@@ -122,3 +153,7 @@ class MRTFile:
         """String that is stored within a file if download errors"""
 
         return "ERROR"
+
+    @property
+    def total_parsed_lines(self) -> int:
+        return self.count_parsed_lines()

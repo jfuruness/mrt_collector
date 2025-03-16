@@ -15,6 +15,10 @@ def download_mrt(mrt_file: MRTFile) -> None:
     mrt_file.download_raw()
 
 
+def count_parsed_lines(mrt_file: MRTFile) -> None:
+    mrt_file.count_parsed_lines()
+
+
 class MRTCollector:
     def __init__(
         self,
@@ -49,6 +53,8 @@ class MRTCollector:
         mrt_files = mrt_files if mrt_files else self.get_mrt_files(sources)
         self.download_raw_mrts(mrt_files)
         self.parse_mrts(mrt_files)
+        self.count_parsed_lines(mrt_files)
+        return mrt_files
 
     def get_mrt_files(
         self,
@@ -67,6 +73,7 @@ class MRTCollector:
                         source,
                         raw_dir=self.raw_dir,
                         parsed_dir=self.parsed_dir,
+                        parsed_line_count_dir=self.parsed_line_count_dir,
                     )
                 )
         return tuple(mrt_files)
@@ -76,7 +83,7 @@ class MRTCollector:
 
         print("This can be optimized, get file size before downloading and order")
         args = tuple([(x,) for x in mrt_files])
-        self._mp_tqdm(args, download_mrt, desc="Downloading MRTs (~12m)")
+        self._mp_tqdm(args, download_mrt, desc="Downloading MRTs (~5m)")
 
     def parse_mrts(
         self, mrt_files: tuple[MRTFile, ...], parse_func: PARSE_FUNC = bgpkit_parser
@@ -86,8 +93,16 @@ class MRTCollector:
         # Remove MRT files that failed to download, and sort by file size
         mrt_files = tuple(list(sorted(x for x in mrt_files if x.download_succeeded)))
         args = tuple([(x,) for x in mrt_files])
-        desc = "Parsing MRTs (largest first)"
+        desc = "Parsing MRTs (largest first), ~13m"
         self._mp_tqdm(args, parse_func, desc=desc)
+
+    def count_parsed_lines(self, mrt_files: tuple[MRTFile, ...]) -> None:
+        """Counts parsed lines from MRT files and stores them"""
+
+        mrt_files = tuple(list(sorted(x for x in mrt_files if x.download_succeeded)))
+        args = tuple([(x,) for x in mrt_files])
+        desc = "Counting lines in MRTs (largest first), ~2m"
+        self._mp_tqdm(args, count_parsed_lines, desc=desc)
 
     def _mp_tqdm(
         self,
@@ -125,6 +140,7 @@ class MRTCollector:
             self.base_dir,
             self.raw_dir,
             self.parsed_dir,
+            self.parsed_line_count_dir,
         ):
             dir_.mkdir(parents=True, exist_ok=True)
 
@@ -147,3 +163,8 @@ class MRTCollector:
     def parsed_dir(self) -> Path:
         """Directory in which MRTs are parsed using available tools"""
         return self.base_dir / "parsed"
+
+    @property
+    def parsed_line_count_dir(self) -> Path:
+        """Directory in which MRTs are parsed using available tools"""
+        return self.base_dir / "parsed_line_count"
