@@ -18,8 +18,8 @@ mpl.use("Agg")
 
 
 @dataclass(frozen=True)
-class NextHopData:
-    asn: int
+class PrefixData:
+    prefix: str
     prepending: bool
 
 
@@ -31,22 +31,30 @@ class SetEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
-class BGPExportAnalyzer:
+class MHExportAnalyzer:
     def run(self, mrt_files: tuple[MRTFile, ...]):
         og_start = time.perf_counter()
         start = og_start
-        # Aggregates data into {current_asn: {prefix: set_of_next_hops}}
-        as_path_data = self.get_as_path_data(mrt_files)
+        mh_data = self._init_data()
+        # Aggregates data into {current_asn: {provider_asn: {set of prefix data}}
+        mh_data = self.get_mh_data(mrt_files, mh_data)
         print("Make the above multiprocessing")
         print(f"got AS path data in {time.perf_counter() - start}")
         start = time.perf_counter()
-        as_path_data_w_only_providers = self.remove_non_providers(as_path_data)
-        print(f"filtered AS path data in {time.perf_counter() - start}")
-        self.create_graphs(as_path_data_w_only_providers)
+        self.create_graphs(mh_data)
+        print(f"got graph data in {time.perf_counter() - start}")
         print(time.perf_counter() - og_start)
 
-    def get_as_path_data(
-        self, mrt_files: tuple[MRTFile, ...]
+    def _init_data(self):
+        bgp_dag = CAIDAASGraphConstructor().run()
+        data = dict()
+        for as_obj in bgp_dag:
+            if as_obj.multihomed:
+                data[as_obj.asn] = {x: set() for x in as_obj.provider_asns}
+        return data
+
+    def get_mh_data(
+        self, mrt_files: tuple[MRTFile, ...], mh_data
     ) -> defaultdict[int, defaultdict[str, set[int]]]:
         """Aggregates data into {current_asn: {prefix: set_of_next_hops}}"""
 
@@ -54,7 +62,7 @@ class BGPExportAnalyzer:
         print("Add multiprocessing? Potentially? If you have enough ram?")
         data = defaultdict(lambda: defaultdict(set))
         total_lines = sum(x.total_parsed_lines for x in mrt_files)
-        with tqdm(total=total_lines, desc="Extracting AS-Path data") as pbar:
+        with tqdm(total=total_lines, desc="Extracting Mulithomed Export data") as pbar:
             for mrt_file in sorted(mrt_files):
                 if not mrt_file.parsed_path_psv.exists():
                     continue
@@ -68,48 +76,59 @@ class BGPExportAnalyzer:
                             except ValueError:
                                 # print("Encountered AS set")
                                 continue
-                            # print(as_path)
-                            reversed_as_path = list(reversed(as_path))
-                            prepending = len(set(as_path)) != len(as_path)
-                            for i, asn in enumerate(reversed_as_path):
-                                try:
-                                    next_asn = reversed_as_path[i + 1]
-                                    # This will add an empty set to the end
-                                    data[asn][row["prefix"]]
-                                except IndexError:
-                                    break
-                                data[asn][row["prefix"]].add(
-                                    NextHopData(asn=next_asn, prepending=prepending)
+
+                            if len(as_path) <= 1:
+                                continue
+                            else:
+                                origin = as_path[-1]
+                                if origin not in mh_data:
+                                    continue
+                                provider_asn = as_path[-2]
+                                prepending = provider_asn == origin
+                                if prepending:
+                                    reversed_as_path = list(reversed(as_path))
+                                    for asn in reversed_as_path:
+                                        if asn != origin:
+                                            provider_asn = asn
+                                            break
+                                # This was just prepending and nothing else
+                                if provider_asn == origin:
+                                    continue
+                                # Provider is not in CAIDA, skip
+                                if provider_asn not in data[asn]:
+                                    continue
+                                data[asn][provider_asn].add(
+                                    PrefixData(
+                                        prefix=row["prefix"], prepending=prepending
+                                    )
                                 )
         return data
 
-    def remove_non_providers(
-        self,
-        as_path_data: defaultdict[int, defaultdict[str, set[int]]],
-    ) -> defaultdict[int, defaultdict[str, set[int]]]:
-        filtered_data = defaultdict(lambda: defaultdict(set))
-        bgp_dag = CAIDAASGraphConstructor().run()
-        for asn, inner_dict in tqdm(
-            as_path_data.items(),
-            total=len(as_path_data),
-            desc="Filtering AS path data",
-        ):
-            as_obj = bgp_dag.as_dict.get(asn)
-            if as_obj is None:
-                continue
-            provider_asns = as_obj.provider_asns
-            if not provider_asns:
-                continue
-            for prefix, set_of_next_hops in inner_dict.items():
-                filtered_data[asn][prefix] = set(
-                    [x for x in set_of_next_hops if x.asn in provider_asns]
-                )
-        return filtered_data
-
     def create_graphs(
         self,
-        filtered_as_path_data: defaultdict[int, defaultdict[str, set[int]]],
+        mh_data,
     ) -> None:
+        with Path(
+            "~/Desktop/mh_export_to_some_prefixes.json"
+        ).expanduser().open("w") as f:
+            # This is horrible, fix
+            export_to_some_prefixes = {
+                origin: {
+                    k: v.prefix for k, v in inner_dict.items()
+                } for origin, inner_dict in mh_data.items()
+            }
+            json.dump(export_to_some_prefixes, f, indent=4, cls=SetEncoder)
+        with Path(
+            "~/Desktop/mh_export_to_some_prepending.json"
+        ).expanduser().open("w") as f:
+            # This is horrible, fix
+            export_to_some_prepending = {
+                origin: {
+                    k: v.prepending for k, v in inner_dict.items()
+                } for origin, inner_dict in mh_data.items()
+            }
+            json.dump(export_to_some_prepending, f, indent=4, cls=SetEncoder)
+
         total = 0
         total_export_to_some = 0
         total_export_to_some_prefix = 0
@@ -117,31 +136,33 @@ class BGPExportAnalyzer:
         total_export_to_all = 0
         total_only_one_provider = 0
         bgp_dag = CAIDAASGraphConstructor().run()
-        export_to_some_ases = set()
-        for asn, prefix_dict in filtered_as_path_data.items():
+        for asn, provider_prefix_dict in mh_data.items():
             total += 1
-            provider_lengths = [len(v) for v in prefix_dict.values()]
+            provider_lengths = [len(v) for v in provider_prefix_dict.values()]
+            export_to_some_prefix = False
+            export_to_some = False
             prepending = False
-            for prefix, set_of_next_hops in prefix_dict.items():
-                prepending_list = [x.prepending for x in set_of_next_hops]
-                if len(set(prepending_list)) == 2:
+            export_to_all = False
+            for provider, set_of_prefix_datas in provider_prefix_dict.items():
+                if any(x.prepending for x in set_of_prefix_datas):
                     prepending = True
-                    total_export_to_some_prepending += 1
-                    total_export_to_some += 1
-                    export_to_some_ases.add(asn)
+                    export_to_some = True
                     break
             assert any(len(x) > 0 for x in provider_lengths), "No providers?"
             if len(set(provider_lengths)) > 1:
-                if not prepending:
-                    total_export_to_some += 1
-                total_export_to_some_prefix += 1
-                export_to_some_ases.add(asn)
+                export_to_some = True
+                export_to_some_prefix = True
             if len(bgp_dag.as_dict[asn].provider_asns) == 1:
                 total_only_one_provider += 1
+                continue
             if len(set(provider_lengths)) <= 1:
-                total_export_to_all += 1
-        with Path("~/Desktop/export_to_some.json").expanduser().open("w") as f:
-            json.dump(list(export_to_some_ases), f, indent=4, cls=SetEncoder)
+                export_to_all = True
+
+            total_export_to_some += int(export_to_some)
+            total_export_to_some_prefix += int(export_to_some_prefix)
+            total_export_to_some_prepending += int(prepending)
+            # Sometimes both can be true if there is prepending
+            total_export_to_all = int(export_to_all and not export_to_some)
 
         categories = [
             "Export to Some Prepending",
@@ -172,10 +193,10 @@ class BGPExportAnalyzer:
                 fontweight="bold",
             )
         ax.set_ylabel("Percentage (%)")
-        ax.set_title("Graph of Exporting Behaviors")
+        ax.set_title("Multihomed Export-To-Some Behaviors")
         ax.set_ylim(0, 100)
         plt.tight_layout()
-        plt.savefig(Path("~/Desktop/export_graphs.png").expanduser())
+        plt.savefig(Path("~/Desktop/mh_export_graphs.png").expanduser())
         # https://stackoverflow.com/a/33343289/8903959
         ax.cla()
         plt.cla()
