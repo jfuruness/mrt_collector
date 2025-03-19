@@ -13,7 +13,8 @@ def main():
         cpus=cpu_count(),
         base_dir=Path.home() / "mrt_data" / dl_time.strftime("%Y_%m_%d")
     )
-    mrt_files = collector.run()
+    mrt_files = list(sorted(collector.run()))
+    # mrt_files = [mrt_files[0]]
     MHExportAnalyzer().run(mrt_files)
 
 if __name__ == "__main__":

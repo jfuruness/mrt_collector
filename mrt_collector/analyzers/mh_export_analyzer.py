@@ -49,7 +49,7 @@ class MHExportAnalyzer:
         bgp_dag = CAIDAASGraphConstructor().run()
         data = dict()
         for as_obj in bgp_dag:
-            if as_obj.multihomed:
+            if as_obj.multihomed and len(as_obj.providers) >= 2:
                 data[as_obj.asn] = {x: set() for x in as_obj.provider_asns}
         return data
 
@@ -58,11 +58,13 @@ class MHExportAnalyzer:
     ) -> defaultdict[int, defaultdict[str, set[int]]]:
         """Aggregates data into {current_asn: {prefix: set_of_next_hops}}"""
 
-        print("NOTE: this takes up about XGB of RAM")
+        print("NOTE: this takes up about 5GB of RAM")
         print("Add multiprocessing? Potentially? If you have enough ram?")
-        data = defaultdict(lambda: defaultdict(set))
         total_lines = sum(x.total_parsed_lines for x in mrt_files)
-        with tqdm(total=total_lines, desc="Extracting Mulithomed Export data") as pbar:
+        with tqdm(
+            total=total_lines,
+            desc="Extracting Mulithomed 2+Provider Export data"
+        ) as pbar:
             for mrt_file in sorted(mrt_files):
                 if not mrt_file.parsed_path_psv.exists():
                     continue
@@ -84,7 +86,7 @@ class MHExportAnalyzer:
                                 if origin not in mh_data:
                                     continue
                                 provider_asn = as_path[-2]
-                                prepending = provider_asn == origin
+                                prepending = (provider_asn == origin)
                                 if prepending:
                                     reversed_as_path = list(reversed(as_path))
                                     for asn in reversed_as_path:
@@ -95,36 +97,36 @@ class MHExportAnalyzer:
                                 if provider_asn == origin:
                                     continue
                                 # Provider is not in CAIDA, skip
-                                if provider_asn not in data[asn]:
+                                if provider_asn not in mh_data[origin]:
                                     continue
-                                data[asn][provider_asn].add(
+                                mh_data[origin][provider_asn].add(
                                     PrefixData(
                                         prefix=row["prefix"], prepending=prepending
                                     )
                                 )
-        return data
+        return mh_data
 
     def create_graphs(
         self,
         mh_data,
     ) -> None:
         with Path(
-            "~/Desktop/mh_export_to_some_prefixes.json"
+            "~/Desktop/mh_2p_export_to_some_prefixes.json"
         ).expanduser().open("w") as f:
             # This is horrible, fix
             export_to_some_prefixes = {
                 origin: {
-                    k: v.prefix for k, v in inner_dict.items()
+                    k: set([q.prefix for q in v]) for k, v in inner_dict.items()
                 } for origin, inner_dict in mh_data.items()
             }
             json.dump(export_to_some_prefixes, f, indent=4, cls=SetEncoder)
         with Path(
-            "~/Desktop/mh_export_to_some_prepending.json"
+            "~/Desktop/mh_2p_export_to_some_prepending.json"
         ).expanduser().open("w") as f:
             # This is horrible, fix
             export_to_some_prepending = {
                 origin: {
-                    k: v.prepending for k, v in inner_dict.items()
+                    k: set([q.prepending for q in v]) for k, v in inner_dict.items()
                 } for origin, inner_dict in mh_data.items()
             }
             json.dump(export_to_some_prepending, f, indent=4, cls=SetEncoder)
@@ -136,7 +138,7 @@ class MHExportAnalyzer:
         total_export_to_all = 0
         total_only_one_provider = 0
         bgp_dag = CAIDAASGraphConstructor().run()
-        for asn, provider_prefix_dict in mh_data.items():
+        for origin, provider_prefix_dict in mh_data.items():
             total += 1
             provider_lengths = [len(v) for v in provider_prefix_dict.values()]
             export_to_some_prefix = False
@@ -152,7 +154,7 @@ class MHExportAnalyzer:
             if len(set(provider_lengths)) > 1:
                 export_to_some = True
                 export_to_some_prefix = True
-            if len(bgp_dag.as_dict[asn].provider_asns) == 1:
+            if len(bgp_dag.as_dict[origin].provider_asns) == 1:
                 total_only_one_provider += 1
                 continue
             if len(set(provider_lengths)) <= 1:
@@ -162,23 +164,22 @@ class MHExportAnalyzer:
             total_export_to_some_prefix += int(export_to_some_prefix)
             total_export_to_some_prepending += int(prepending)
             # Sometimes both can be true if there is prepending
-            total_export_to_all = int(export_to_all and not export_to_some)
+            total_export_to_all += int(export_to_all and not export_to_some)
 
         categories = [
             "Export to Some Prepending",
             "Export to Some Prefix",
             "Export to Some",
             "Export to All (more than one provider)",
-            "Only One Provider",
         ]
         values = [
             total_export_to_some_prepending,
             total_export_to_some_prefix,
             total_export_to_some,
             total_export_to_all,
-            total_only_one_provider,
+            # total_only_one_provider,
         ]
-        percentages = [v / total * 100 for v in values]
+        percentages = [0 if total == 0 else v / total * 100 for v in values]
         fig, ax = plt.subplots()
         ax.set_xticklabels(categories, rotation=90, ha="center")
         bars = ax.bar(categories, percentages, color=["blue", "green", "red"])
@@ -193,10 +194,10 @@ class MHExportAnalyzer:
                 fontweight="bold",
             )
         ax.set_ylabel("Percentage (%)")
-        ax.set_title("Multihomed Export-To-Some Behaviors")
+        ax.set_title("Multihomed 2+ Providers Export-To-Some Behaviors")
         ax.set_ylim(0, 100)
         plt.tight_layout()
-        plt.savefig(Path("~/Desktop/mh_export_graphs.png").expanduser())
+        plt.savefig(Path("~/Desktop/mh_2p_export_graphs.png").expanduser())
         # https://stackoverflow.com/a/33343289/8903959
         ax.cla()
         plt.cla()
