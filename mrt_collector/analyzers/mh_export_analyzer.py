@@ -33,6 +33,7 @@ class SetEncoder(json.JSONEncoder):
 
 class MHExportAnalyzer:
     def run(self, mrt_files: tuple[MRTFile, ...]):
+        print("This takes about an hour")
         og_start = time.perf_counter()
         start = og_start
         mh_data = self._init_data()
