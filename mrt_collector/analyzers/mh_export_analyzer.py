@@ -36,13 +36,16 @@ class MHExportAnalyzer:
         print("This takes about an hour")
         og_start = time.perf_counter()
         start = og_start
-        mh_data = self._init_data()
+        # mh_data = self._init_data()
         # Aggregates data into {current_asn: {provider_asn: {set of prefix data}}
-        mh_data = self.get_mh_data(mrt_files, mh_data)
+        print("Turn this back on")
+        # mh_data = self.get_mh_data(mrt_files, mh_data)
         print("Make the above multiprocessing")
         print(f"got AS path data in {time.perf_counter() - start}")
         start = time.perf_counter()
-        self.create_graphs(mh_data)
+        print("Turn this back on")
+        # self.dump_json(mh_data)
+        self.create_graphs()
         print(f"got graph data in {time.perf_counter() - start}")
         print(time.perf_counter() - og_start)
 
@@ -107,13 +110,11 @@ class MHExportAnalyzer:
                                 )
         return mh_data
 
-    def create_graphs(
+    def dump_json(
         self,
         mh_data,
     ) -> None:
-        with Path(
-            "~/Desktop/mh_2p_export_to_some_prefixes.json"
-        ).expanduser().open("w") as f:
+        with self.json_prefixes_path.open("w") as f:
             # This is horrible, fix
             export_to_some_prefixes = {
                 origin: {
@@ -121,9 +122,7 @@ class MHExportAnalyzer:
                 } for origin, inner_dict in mh_data.items()
             }
             json.dump(export_to_some_prefixes, f, indent=4, cls=SetEncoder)
-        with Path(
-            "~/Desktop/mh_2p_export_to_some_prepending.json"
-        ).expanduser().open("w") as f:
+        with self.json_prepending_path.open("w") as f:
             # This is horrible, fix
             export_to_some_prepending = {
                 origin: {
@@ -132,30 +131,47 @@ class MHExportAnalyzer:
             }
             json.dump(export_to_some_prepending, f, indent=4, cls=SetEncoder)
 
+    def create_graphs(
+        self,
+    ) -> None:
+        with self.json_prefixes_path.open() as f:
+            export_to_some_prefixes = json.load(f)
+        with self.json_prepending_path.open() as f:
+            export_to_some_prepending = json.load(f)
+        relevant_origins = sorted(
+            set(
+                list(export_to_some_prefixes) + list(export_to_some_prepending)
+            )
+        )
+
         total = 0
         total_export_to_some = 0
         total_export_to_some_prefix = 0
         total_export_to_some_prepending = 0
         total_export_to_all = 0
         total_only_one_provider = 0
+        total_zero_export = 0
         bgp_dag = CAIDAASGraphConstructor().run()
-        for origin, provider_prefix_dict in mh_data.items():
+        for origin in relevant_origins:
+            provider_prefix_dict = export_to_some_prefixes[origin]
+            provider_prepending_dict = export_to_some_prepending[origin]
             total += 1
             provider_lengths = [len(v) for v in provider_prefix_dict.values()]
             export_to_some_prefix = False
             export_to_some = False
             prepending = False
             export_to_all = False
-            for provider, set_of_prefix_datas in provider_prefix_dict.items():
-                if any(x.prepending for x in set_of_prefix_datas):
+            for provider, set_of_prepending_bools in provider_prepending_dict.items():
+                if any(x for x in set_of_prepending_bools):
                     prepending = True
                     export_to_some = True
                     break
-            assert any(len(x) > 0 for x in provider_lengths), "No providers?"
+            if not any(x > 0 for x in provider_lengths):
+                total_zero_export += 1
             if len(set(provider_lengths)) > 1:
                 export_to_some = True
                 export_to_some_prefix = True
-            if len(bgp_dag.as_dict[origin].provider_asns) == 1:
+            if len(bgp_dag.as_dict[int(origin)].provider_asns) == 1:
                 total_only_one_provider += 1
                 continue
             if len(set(provider_lengths)) <= 1:
@@ -172,18 +188,20 @@ class MHExportAnalyzer:
             "Export to Some Prefix",
             "Export to Some",
             "Export to All (more than one provider)",
+            "Export to None"
         ]
         values = [
             total_export_to_some_prepending,
             total_export_to_some_prefix,
             total_export_to_some,
             total_export_to_all,
+            total_zero_export,
             # total_only_one_provider,
         ]
         percentages = [0 if total == 0 else v / total * 100 for v in values]
         fig, ax = plt.subplots()
         ax.set_xticklabels(categories, rotation=90, ha="center")
-        bars = ax.bar(categories, percentages, color=["blue", "green", "red"])
+        bars = ax.bar(categories, percentages, color=["blue", "green", "red", "yellow", "brown"])
         for bar, value in zip(bars, values):
             ax.text(
                 bar.get_x() + bar.get_width() / 2,
@@ -208,3 +226,15 @@ class MHExportAnalyzer:
         # comment above
         plt.close(fig)
         gc.collect()
+
+    @property
+    def json_prefixes_path(self) -> Path:
+        return Path(
+            "~/Desktop/mh_2p_export_to_some_prefixes.json"
+        ).expanduser()
+
+    @property
+    def json_prepending_path(self) -> Path:
+        return Path(
+            "~/Desktop/mh_2p_export_to_some_prepending.json"
+        ).expanduser()
