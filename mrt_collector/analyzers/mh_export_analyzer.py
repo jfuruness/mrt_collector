@@ -145,6 +145,7 @@ class MHExportAnalyzer:
         total = 0
         total_export_to_some = 0
         total_export_to_some_prefix = 0
+        total_export_to_some_zero_to_one_provider = 0
         total_export_to_some_prepending = 0
         total_export_to_all = 0
         total_only_one_provider = 0
@@ -159,6 +160,7 @@ class MHExportAnalyzer:
             export_to_some = False
             prepending = False
             export_to_all = False
+            export_to_some_zero_to_one_provider = False
             for provider, set_of_prepending_bools in provider_prepending_dict.items():
                 if any(x for x in set_of_prepending_bools):
                     prepending = True
@@ -166,9 +168,12 @@ class MHExportAnalyzer:
                     break
             if not any(x > 0 for x in provider_lengths):
                 total_zero_export += 1
+            if any(x == 0 for x in provider_lengths):
+                export_to_some_zero_to_one_provider = True
             if len(set(provider_lengths)) > 1:
                 export_to_some = True
                 export_to_some_prefix = True
+
             if len(bgp_dag.as_dict[int(origin)].provider_asns) == 1:
                 total_only_one_provider += 1
                 continue
@@ -177,6 +182,7 @@ class MHExportAnalyzer:
 
             total_export_to_some += int(export_to_some)
             total_export_to_some_prefix += int(export_to_some_prefix)
+            total_export_to_some_zero_to_one_provider += int(export_to_some_zero_to_one_provider)
             total_export_to_some_prepending += int(prepending)
             # Sometimes both can be true if there is prepending
             total_export_to_all += int(export_to_all and not export_to_some)
@@ -187,6 +193,7 @@ class MHExportAnalyzer:
             "Export to Some",
             "Export to All (more than one provider)",
             "Export to None"
+            "Export to Some Excluding 1+ Providers",
         ]
         values = [
             total_export_to_some_prepending,
@@ -194,12 +201,13 @@ class MHExportAnalyzer:
             total_export_to_some,
             total_export_to_all,
             total_zero_export,
+            total_export_to_some_zero_to_one_provider,
             # total_only_one_provider,
         ]
         percentages = [0 if total == 0 else v / total * 100 for v in values]
         fig, ax = plt.subplots()
         ax.set_xticklabels(categories, rotation=90, ha="center")
-        bars = ax.bar(categories, percentages, color=["blue", "green", "red", "yellow", "brown"])
+        bars = ax.bar(categories, percentages, color=["blue", "green", "red", "yellow", "brown", "orange"])
         for bar, value in zip(bars, values):
             ax.text(
                 bar.get_x() + bar.get_width() / 2,
