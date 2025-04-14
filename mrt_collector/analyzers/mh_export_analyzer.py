@@ -152,6 +152,8 @@ class MHExportAnalyzer:
         total_zero_export = 0
         bgp_dag = CAIDAASGraphConstructor().run()
         for origin in relevant_origins:
+            if int(origin) not in bgp_dag.as_dict:
+                continue
             provider_prefix_dict = export_to_some_prefixes[origin]
             provider_prepending_dict = export_to_some_prepending[origin]
             total += 1
@@ -192,7 +194,7 @@ class MHExportAnalyzer:
             "Export to Some Prefix",
             "Export to Some",
             "Export to All (more than one provider)",
-            "Export to None"
+            "Export to None",
             "Export to Some Excluding 1+ Providers",
         ]
         values = [
