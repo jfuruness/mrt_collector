@@ -51,6 +51,9 @@ class MRTCollector:
         """Downloads MRTs and then extracts data from them"""
 
         mrt_files = mrt_files if mrt_files else self.get_mrt_files(sources)
+        # TODO: create funcs to get file sizes and sort mrt_files by file sizes
+        self.get_mrt_file_sizes(mrt_files)
+        self.sort_mrt_files(mrt_files)
         self.download_raw_mrts(mrt_files)
         self.parse_mrts(mrt_files)
         self.count_parsed_lines(mrt_files)
@@ -77,6 +80,14 @@ class MRTCollector:
                     )
                 )
         return tuple(mrt_files)
+
+    def get_mrt_file_sizes(
+        self,
+        mrt_files: tuple[MRTFile, ...]
+    ) -> None:
+        """Gets file size of each MRT"""
+
+        pass
 
     def download_raw_mrts(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Downloads raw MRT RIB dumps into raw_dir"""
