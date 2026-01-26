@@ -52,7 +52,7 @@ class MRTCollector:
 
         mrt_files = mrt_files if mrt_files else self.get_mrt_files(sources)
         # TODO: create funcs to get file sizes and sort mrt_files by file sizes
-        self.get_expected_mrt_file_sizes(mrt_files)
+        self.set_expected_mrt_file_sizes(mrt_files)
         mrt_files = self.sort_mrt_files(mrt_files)
         self.download_raw_mrts(mrt_files)
         self.parse_mrts(mrt_files)
@@ -81,14 +81,14 @@ class MRTCollector:
                 )
         return tuple(mrt_files)
 
-    def get_expected_mrt_file_sizes(
+    def set_expected_mrt_file_sizes(
         self,
         mrt_files: tuple[MRTFile, ...]
     ) -> None:
         """Gets the expected file size of each MRT"""
 
         for mrt_file in mrt_files:
-            mrt_file.get_expected_file_size
+            mrt_file.set_expected_file_size
 
     def sort_mrt_files(
         self,
@@ -97,6 +97,21 @@ class MRTCollector:
         """Wrapper method for sorting mrt_files based on expected file size"""
 
         return tuple(sorted(mrt_files, key=attrgetter('estimated_file_size'), reverse=True))
+
+    def get_total_expected_mrt_file_size(
+        self,
+        mrt_files: tuple[MRTFile, ...]
+    ) -> int:
+        """Returns in bytes (int) the total sum of expected mrt file sizes"""
+
+        total_bytes = 0
+
+        for mrt_file in mrt_files:
+            if hasattr(mrt_file, 'get_expected_file_size'):
+                file_size = mrt_file.get_expected_file_size()
+                total_bytes += file_size
+
+        return total_bytes
 
     def download_raw_mrts(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Downloads raw MRT RIB dumps into raw_dir"""

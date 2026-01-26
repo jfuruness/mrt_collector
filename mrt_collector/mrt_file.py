@@ -58,14 +58,19 @@ class MRTFile:
                         return False
         return NotImplemented
     
-    def get_expected_file_size(self) -> None:
-        """Gets the expected file size prior to downloading"""
+    def set_expected_file_size(self) -> None:
+        """Sets the expected file size prior to downloading"""
         try:
             r = requests.head(self.url, timeout=60)
             if r.status_code == 200:
                 self.expected_file_size = response.headers.get('Content-Length', 0))
         except Exception as e:
             pass
+
+    def get_expected_file_size(self) -> int:
+        """Returns expected_file_size member attr"""
+
+        return self.expected_file_size
 
     def download_raw(self, retries: int = 3) -> None:
         """Downloads the raw file if you haven't already"""
