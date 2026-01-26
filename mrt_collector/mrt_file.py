@@ -22,6 +22,7 @@ class MRTFile:
         raw_dir: Path,
         parsed_dir: Path,
         parsed_line_count_dir: Path
+        file_size: int = 0
     ) -> None:
         self.url: str = url
         self.source: Source = source
@@ -32,6 +33,7 @@ class MRTFile:
         self.parsed_line_count_path: Path = parsed_line_count_dir / self._url_to_fname(
             self.url, ext="txt"
         )
+        self.file_size = file_size #defaults to zero for now
 
     def __lt__(self, other) -> bool:
         """For sorting by file size
@@ -55,6 +57,10 @@ class MRTFile:
                     else:
                         return False
         return NotImplemented
+    
+    def get_file_size(self) -> None:
+        """Gets the file size prior to downloading"""
+        pass
 
     def download_raw(self, retries: int = 3) -> None:
         """Downloads the raw file if you haven't already"""
