@@ -42,7 +42,10 @@ class MRTFile:
         By starting with the largest files first, it takes significantly less time
         """
 
+        
         if isinstance(other, MRTFile):
+            return self.get_expected_file_size() < other.get_expected_file_size()
+        """
             for path_attr in ["parsed_path_psv", "raw_path"]:
                 # Save the paths to variables
                 self_path = getattr(self, path_attr)
@@ -56,6 +59,7 @@ class MRTFile:
                         return True
                     else:
                         return False
+        """
         return NotImplemented
     
     def set_expected_file_size(self) -> None:
