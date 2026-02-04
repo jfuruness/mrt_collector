@@ -11,7 +11,7 @@ def main():
     print("HERE")
 
     parser = argparse.ArgumentParser(prog='MRT Collector')
-
+    #for use with running with limited files
     parser.add_argument('-lf', '--limit_files', type=int, help='Number of files to process; Leave blank for all')
 
     args = parser.parse_args()
