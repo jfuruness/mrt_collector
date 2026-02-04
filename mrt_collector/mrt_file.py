@@ -33,7 +33,7 @@ class MRTFile:
         self.parsed_line_count_path: Path = parsed_line_count_dir / self._url_to_fname(
             self.url, ext="txt"
         )
-        self.expected_file_size = expected_file_size #defaults to zero for now
+        self.expected_file_size: int = expected_file_size #defaults to zero for now
 
     def __lt__(self, other) -> bool:
         """For sorting by file size
@@ -61,11 +61,14 @@ class MRTFile:
     def set_expected_file_size(self) -> None:
         """Sets the expected file size prior to downloading"""
         try:
-            r = requests.head(self.url, timeout=60)
-            if r.status_code == 200:
-                self.expected_file_size = response.headers.get('Content-Length', 0))
+            with requests.head(self.url, timeout=60) as r:
+                status_code = r.status_code
+                if r.status_code == 200:
+                    self.expected_file_size = response.headers.get('Content-Length', 0))
         except Exception as e:
-            pass
+            print(f"URL {self.url} : Head Request failed due to {e} {type(e)}")
+            raise
+            # not sure if we want to raise an exception here, or just throw out this file, for now I'll raise
 
     def get_expected_file_size(self) -> int:
         """Returns expected_file_size member attr"""
@@ -87,7 +90,8 @@ class MRTFile:
             try:
                 with requests.get(self.url, stream=True, timeout=60) as r:
                     status_code = r.status_code  # type: ignore
-                    if status_code == 200:
+                   #r.raise_status - maybe add this here, look it up later
+                   if status_code == 200:
                         with self.raw_path.open("wb") as f:
                             shutil.copyfileobj(r.raw, f)  # type: ignore
                             return
