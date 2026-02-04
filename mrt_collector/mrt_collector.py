@@ -54,13 +54,13 @@ class MRTCollector:
         """Downloads MRTs and then extracts data from them"""
 
         mrt_files = mrt_files if mrt_files else self.get_mrt_files(sources)
-        # TODO: create funcs to get file sizes and sort mrt_files by file sizes
         self.set_expected_mrt_file_sizes(mrt_files)
         mrt_files = self.sort_mrt_files(mrt_files)
         if limit_files_to != 0:
             mrt_files = self.limit_mrt_files(mrt_files)
         self.download_raw_mrts(mrt_files)
-        #line to get rid of bad downloads
+        # TODO:  method to get rid of bad downloads, should also allow us to
+        # remove some of the download checking logic from parse_mrts() and count_parsed_lines()
         self.parse_mrts(mrt_files)
         self.count_parsed_lines(mrt_files)
         return mrt_files
@@ -129,7 +129,6 @@ class MRTCollector:
     def download_raw_mrts(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Downloads raw MRT RIB dumps into raw_dir"""
 
-        # actively working on this: print("This can be optimized, get file size before downloading and order")
         args = tuple([(x,) for x in mrt_files])
         self._mp_tqdm(args, download_mrt, desc="Downloading MRTs (~5m)")
 
