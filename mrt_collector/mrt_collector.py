@@ -57,6 +57,8 @@ class MRTCollector:
         # TODO: create funcs to get file sizes and sort mrt_files by file sizes
         self.set_expected_mrt_file_sizes(mrt_files)
         mrt_files = self.sort_mrt_files(mrt_files)
+        if limit_files_to != 0:
+            mrt_files = self.limit_mrt_files(mrt_files)
         self.download_raw_mrts(mrt_files)
         #line to get rid of bad downloads
         self.parse_mrts(mrt_files)
