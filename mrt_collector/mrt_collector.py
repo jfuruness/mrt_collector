@@ -97,7 +97,7 @@ class MRTCollector:
     ) -> tuple[MRTFile, ...]
         """Wrapper method for sorting mrt_files based on expected file size"""
 
-        return tuple(sorted(mrt_files, key=attrgetter('estimated_file_size'), reverse=True))
+        return tuple(sorted(mrt_files, reverse=True))
 
     def get_total_expected_mrt_file_size(
         self,
