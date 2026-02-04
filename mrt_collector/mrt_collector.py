@@ -55,6 +55,7 @@ class MRTCollector:
         self.set_expected_mrt_file_sizes(mrt_files)
         mrt_files = self.sort_mrt_files(mrt_files)
         self.download_raw_mrts(mrt_files)
+        #line to get rid of bad downloads
         self.parse_mrts(mrt_files)
         self.count_parsed_lines(mrt_files)
         return mrt_files
@@ -88,7 +89,7 @@ class MRTCollector:
         """Gets the expected file size of each MRT"""
 
         for mrt_file in mrt_files:
-            mrt_file.set_expected_file_size
+            mrt_file.set_expected_file_size()
 
     def sort_mrt_files(
         self,
@@ -107,9 +108,8 @@ class MRTCollector:
         total_bytes = 0
 
         for mrt_file in mrt_files:
-            if hasattr(mrt_file, 'get_expected_file_size'):
-                file_size = mrt_file.get_expected_file_size()
-                total_bytes += file_size
+            file_size = mrt_file.get_expected_file_size()
+            total_bytes += file_size
 
         return total_bytes
 
