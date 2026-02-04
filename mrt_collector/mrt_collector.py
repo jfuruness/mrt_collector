@@ -25,6 +25,7 @@ class MRTCollector:
         dl_time: datetime = datetime(2025, 3, 1, 0, 0, 0),
         cpus: int = cpu_count(),
         base_dir: Path | None = None,
+        limit_files_to: int = 0
     ) -> None:
         """Creates directories"""
 
@@ -39,6 +40,8 @@ class MRTCollector:
             self.base_dir = base_dir
 
         self._initialize_dirs()
+
+        self.limit_files_to = limit_files_to
 
     def run(
         self,
@@ -98,6 +101,14 @@ class MRTCollector:
         """Wrapper method for sorting mrt_files based on expected file size"""
 
         return tuple(sorted(mrt_files, reverse=True))
+    
+    def limit_mrt_files(
+        self,
+        mrt_files: tuple[MRTFile, ...]
+    ) -> tuple[MRTFile, ...]
+        """Creates a new tuple containing as many files as defined by limit_files_to"""
+
+        return mrt_files[-limit_files_to:]
 
     def get_total_expected_mrt_file_size(
         self,
