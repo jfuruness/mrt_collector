@@ -32,6 +32,8 @@ class SetEncoder(json.JSONEncoder):
 
 
 class MHExportAnalyzer:
+    # not that I really know what I'm talking abt but I get the sense this func needs work/restructuring
+    # some of the calls, IE self.create_graphs() appear in main() as well as here, but main calls this.
     def run(self, mrt_files: tuple[MRTFile, ...]):
         print("This takes about an hour")
         og_start = time.perf_counter()
@@ -46,7 +48,8 @@ class MHExportAnalyzer:
         self.create_graphs()
         print(f"got graph data in {time.perf_counter() - start}")
         print(time.perf_counter() - og_start)
-
+    
+    # *** Is this deprecated? it appears to be
     def _init_data(self):
         bgp_dag = CAIDAASGraphConstructor().run()
         data = dict()
@@ -128,7 +131,8 @@ class MHExportAnalyzer:
                 } for origin, inner_dict in mh_data.items()
             }
             json.dump(export_to_some_prepending, f, indent=4, cls=SetEncoder)
-
+    # create graphs doesnt even appear to define what f is, appears to be removed
+    # considering there is a leading comma following self
     def create_graphs(
         self,
     ) -> None:
