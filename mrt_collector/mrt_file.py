@@ -71,7 +71,7 @@ class MRTFile:
             # not sure if we want to raise an exception here, or just throw out this file, for now I'll raise
 
     def get_expected_file_size(self) -> int:
-        """Returns expected_file_size member attr"""
+        """Returns expected file size in bytes"""
 
         return self.expected_file_size
 
@@ -96,12 +96,7 @@ class MRTFile:
                             shutil.copyfileobj(r.raw, f)  # type: ignore
                             return
             except Exception as e:
-                if status_code == 404:
-                    print(f"URL {self.url} failed due to 404 {i + 1}/{retries}")
-                else:
-                    print(
-                        f"URL {self.url} failed due to {e} {type(e)} {i + 1}/{retries}"
-                    )
+                print(f"URL {self.url} failed due to {e} {type(e)} {i + 1}/{retries}")
                 if i == retries - 1:
                     raise
 
