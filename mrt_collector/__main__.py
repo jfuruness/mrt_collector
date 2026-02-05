@@ -22,7 +22,7 @@ def main():
         dl_time=dl_time,
         cpus=cpu_count(),
         base_dir=Path.home() / "mrt_data" / dl_time.strftime("%Y_%m_%d"),
-        limit_files_to
+        limit_files_to=limit_files_to
     )
 
     mrt_files = collector.run()
