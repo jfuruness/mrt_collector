@@ -143,7 +143,7 @@ class MRTFile:
                 raise Exception
 
             # Process the output to get the total number of lines
-            outp∫ut = result.stdout.strip()
+            output = result.stdout.strip()
             lines = output.split("\n")
             count = int(lines[-1].strip().split(" ")[0])
             with self.parsed_line_count_path.open("w") as f:
