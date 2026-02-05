@@ -100,7 +100,7 @@ class MRTCollector:
     def sort_mrt_files(
         self,
         mrt_files: tuple[MRTFile, ...]
-    ) -> tuple[MRTFile, ...]
+    ) -> tuple[MRTFile, ...]:
         """Wrapper method for sorting mrt_files based on expected file size"""
 
         return tuple(sorted(mrt_files, reverse=True))
@@ -108,7 +108,7 @@ class MRTCollector:
     def limit_mrt_files(
         self,
         mrt_files: tuple[MRTFile, ...]
-    ) -> tuple[MRTFile, ...]
+    ) -> tuple[MRTFile, ...]:
         """Creates a new tuple containing as many files as defined by limit_files_to"""
 
         return mrt_files[-limit_files_to:]
@@ -130,7 +130,7 @@ class MRTCollector:
     def strip_failed_downloads(
         self,
         mrt_files: tuple[MRTFile, ...]
-    ) -> None:
+    ) -> tuple[MRTFile, ...]:
         """Removes any MRTFile where download_succeeded is false"""
 
         return tuple(mrt_file for mrt_file in mrt_files if mrt_file.download_succeeded)
