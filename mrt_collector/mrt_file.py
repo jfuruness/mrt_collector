@@ -95,7 +95,7 @@ class MRTFile:
                 with requests.get(self.url, stream=True, timeout=60) as r:
                     status_code = r.status_code  # type: ignore
                    #r.raise_status - maybe add this here, look it up later
-                   if status_code == 200:
+                    if status_code == 200:
                         with self.raw_path.open("wb") as f:
                             shutil.copyfileobj(r.raw, f)  # type: ignore
                             return
@@ -143,7 +143,7 @@ class MRTFile:
                 raise Exception
 
             # Process the output to get the total number of lines
-            output = result.stdout.strip()
+            outp∫ut = result.stdout.strip()
             lines = output.split("\n")
             count = int(lines[-1].strip().split(" ")[0])
             with self.parsed_line_count_path.open("w") as f:
