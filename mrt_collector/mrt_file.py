@@ -84,47 +84,65 @@ class MRTFile:
     def download_raw(self, retries: int = 3) -> None:
         """Downloads the raw file if you haven't already"""
 
-        if self.downloaded:
-            return
+        if self.download_succeded or self.downloaded: # I question if we still want this here
+            return False
 
         # I tried using proper backoff strategies, such as:
         # https://stackoverflow.com/a/35504626/8903959
         # But this actually doesn't capture incomplete read
         # errors in URL lib. So I need to write my own.
         status_code = 0
+        succeeded = False
         for i in range(retries):
             try:
-                with requests.get(self.url, stream=True, timeout=60) as r:
-                    status_code = r.status_code  # type: ignore
-                   #r.raise_status - maybe add this here, look it up later
-                    if status_code == 200:
-                        with self.raw_path.open("wb") as f:
-                            shutil.copyfileobj(r.raw, f)  # type: ignore
-                            return
+                succeeded = self.attempt_download_raw()
+                if succeeded:
+                    break
             except Exception as e:
-                print(f"URL {self.url} failed due to {e} {type(e)} {i + 1}/{retries}")
                 if i == retries - 1:
                     raise
-
             time.sleep((i + 1) * 10)
 
+        return succeeded # in my mind we should propogate back up and
+                         # use this information to pop this file off the list
+        
+        # below logic should no longer be neccesary
+
         # Don't error, sometiems files fail due to not found errors (404)
-        warnings.warn(
-            f"status of {status_code} for {self.url}, download failed but didn't err"
-        )
+        # warnings.warn(
+        #     f"status of {status_code} for {self.url}, download failed but didn't err"
+        # )
+
+        # below logic should no longer be neccesary
+
         # Write the file so that you don't go back to it later
-        with self.raw_path.open("wb") as f:
-            f.write(self.dl_err_str.encode("utf-8"))
+        # with self.raw_path.open("wb") as f:
+        #    f.write(self.dl_err_str.encode("utf-8"))
+
+    def attempt_download_raw(self) -> bool:
+        """Attempts to download the raw MRT file"""
+
+        try:
+            with requests.get(self.url, stream=True, timeout=60) as r:
+                status_code = r.status_code  # type: ignore
+                r.raise_status # raises an error if we get a less than ideal status code
+                if status_code == 200:
+                    with self.raw_path.open("wb") as f:
+                        shutil.copyfileobj(r.raw, f)  # type: ignore
+                    return self.download_succeeded
+         except Exception as e:
+            print(f"URL {self.url} failed due to {e} {type(e)} {i + 1}/{retries}")
+            raise
 
     def validate_file_size(self) -> bool:
         """Returns true if expected_file_size is equal to actual file size. Assumes the filepath and file exist."""
-        stat_info = raw_path.stat()
+        stat_info = self.raw_path.stat()
         actual_file_size = stat_info.st_size
 
         if actual_file_size == 0:
             return False
 
-        return actual_file_size == _expected_file_size
+        return actual_file_size == self._expected_file_size
 
     def _url_to_fname(self, url: str, ext: str = "") -> str:
         """Converts a URL into a file name"""
@@ -180,10 +198,10 @@ class MRTFile:
     def download_succeeded(self) -> bool:
         """Returns true if the raw file exists and matches the expected size"""
 
-        if not downloaded:
+        if not self.downloaded:
             return False
 
-        return validate_file_size()
+        return self.validate_file_size()
         
         """Returns true if download errored out. Just checks first line"""
         """
