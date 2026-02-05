@@ -116,6 +116,16 @@ class MRTFile:
         with self.raw_path.open("wb") as f:
             f.write(self.dl_err_str.encode("utf-8"))
 
+    def validate_file_size(self) -> bool:
+        """Returns true if expected_file_size is equal to actual file size. Assumes the filepath and file exist."""
+        stat_info = raw_path.stat()
+        actual_file_size = stat_info.st_size
+
+        if actual_file_size == 0:
+            return False
+
+        return actual_file_size == _expected_file_size
+
     def _url_to_fname(self, url: str, ext: str = "") -> str:
         """Converts a URL into a file name"""
 
@@ -159,9 +169,6 @@ class MRTFile:
         """Returns expected file size in bytes"""
 
         return self._expected_file_size
-
-    def fetch_expected_file_size(self) -> None:
-        """Tries to set expected_file_size with a HEAD request"""
          
     @property
     def downloaded(self) -> bool:
@@ -171,13 +178,20 @@ class MRTFile:
 
     @property
     def download_succeeded(self) -> bool:
-        """Returns true if download errored out. Just checks first line"""
+        """Returns true if the raw file exists and matches the expected size"""
 
+        if not downloaded:
+            return False
+
+        return validate_file_size()
+        
+        """Returns true if download errored out. Just checks first line"""
+        """
         with self.raw_path.open("rb") as f:
             for line in f:
                 return line != self.dl_err_str.encode("utf-8")
         raise NotImplementedError("Empty file?")
-
+        """
     @property
     def dl_err_str(self) -> str:
         """String that is stored within a file if download errors"""
