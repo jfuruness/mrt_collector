@@ -59,10 +59,11 @@ class MRTCollector:
         if limit_files_to != 0:
             mrt_files = self.limit_mrt_files(mrt_files)
         self.download_raw_mrts(mrt_files)
+        mrt_files = self.strip_failed_downloads(mrt_files)
         # TODO:  method to get rid of bad downloads, should also allow us to
         # remove some of the download checking logic from parse_mrts() and count_parsed_lines()
-        self.parse_mrts(mrt_files)
-        self.count_parsed_lines(mrt_files)
+        #self.parse_mrts(mrt_files)
+        #self.count_parsed_lines(mrt_files)
         return mrt_files
 
     def get_mrt_files(
@@ -125,6 +126,14 @@ class MRTCollector:
             total_bytes += file_size
 
         return total_bytes
+
+    def strip_failed_downloads(
+        self,
+        mrt_files: tuple[MRTFile, ...]
+    ) -> None:
+        """Removes any MRTFile where download_succeeded is false"""
+
+        return tuple(mrt_file for mrt_file in mrt_files if mrt_file.download_succeeded)
 
     def download_raw_mrts(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Downloads raw MRT RIB dumps into raw_dir"""

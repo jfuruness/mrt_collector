@@ -102,6 +102,9 @@ class MRTFile:
                 if i == retries - 1:
                     raise
             time.sleep((i + 1) * 10)
+        
+        if not succeeded and self.downloaded:
+            self.raw_path.unlink(missing_ok = True)
 
         return succeeded # in my mind we should propogate back up and
                          # use this information to pop this file off the list
