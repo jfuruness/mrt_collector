@@ -24,6 +24,10 @@ def main():
         base_dir=Path.home() / "mrt_data" / dl_time.strftime("%Y_%m_%d"),
         limit_files_to
     )
+
+    mrt_files = collector.run()
+    #need some kind of check for if all the files are valid
+
     # for now, I'm going to avoid trying to even run the multihome analyzer
     # there appear to be multiple program breaking bugs, such as in create_graphs (no definition
     # for f, I'm assuming thats supposed to be the file path of the json we dump to) and in mh.run()

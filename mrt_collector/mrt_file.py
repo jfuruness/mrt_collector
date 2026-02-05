@@ -62,23 +62,6 @@ class MRTFile:
         """
         return NotImplemented
     
-    def set_expected_file_size(self) -> None:
-        """Sets the expected file size prior to downloading"""
-        try:
-            with requests.head(self.url, timeout=60) as r:
-                status_code = r.status_code
-                if r.status_code == 200:
-                    self.expected_file_size = response.headers.get('Content-Length', 0))
-        except Exception as e:
-            print(f"URL {self.url} : Head Request failed due to {e} {type(e)}")
-            raise
-            # not sure if we want to raise an exception here, or just throw out this file, for now I'll raise
-
-    def get_expected_file_size(self) -> int:
-        """Returns expected file size in bytes"""
-
-        return self.expected_file_size
-
     def download_raw(self, retries: int = 3) -> None:
         """Downloads the raw file if you haven't already"""
 
@@ -151,6 +134,32 @@ class MRTFile:
                 count = int(count) - 1
                 f.write(str(count))
                 return int(count)
+
+    @property
+    def expected_file_size(self) -> int:
+        """Returns expected file size in bytes"""
+
+        return self.expected_file_size
+
+    @expected_file_size.setter
+    def expected_file_size(self) -> None:
+        """Tries to set expected_file_size with a HEAD request"""
+         
+        try:
+            with requests.head(self.url, timeout=60) as r:
+                status_code = r.status_code
+                if r.status_code == 200:
+                    self.expected_file_size = response.headers.get('Content-Length', 0))
+        except Exception as e:
+            print(f"URL {self.url} : Head Request failed due to {e} {type(e)}")
+            raise
+            # not sure if we want to raise an exception here, or just throw out this file, for now I'll raise
+            # the more I look at this the more I just need to add retry logic,
+            # and if all retries are exceeded then we just need to remove this file, not kill the entire
+            # program. This will, however, require me to rework the set_all_expected_sizes func
+            # because it currently returns nothing, so we have no current way to communicate
+            # which files need to be removed. maybe I'll create a separate tuple of files_to_remove and
+            # create a new tuple [MRTFiles for x in MRTFiles not in files_toRemove]
 
     @property
     def downloaded(self) -> bool:
