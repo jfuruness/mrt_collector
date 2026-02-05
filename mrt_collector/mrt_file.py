@@ -21,7 +21,7 @@ class MRTFile:
         source: Source,
         raw_dir: Path,
         parsed_dir: Path,
-        parsed_line_count_dir: Path
+        parsed_line_count_dir: Path,
         expected_file_size: int = 0
     ) -> None:
         self.url: str = url
@@ -69,7 +69,7 @@ class MRTFile:
             with requests.head(self.url, timeout=60) as r:
                 status_code = r.status_code
                 if r.status_code == 200:
-                    self._expected_file_size = response.headers.get('Content-Length', 0))
+                    self._expected_file_size = r.headers.get('Content-Length', 0)
         except Exception as e:
             print(f"URL {self.url} : Head Request failed due to {e} {type(e)}")
             raise
@@ -133,7 +133,7 @@ class MRTFile:
                     with self.raw_path.open("wb") as f:
                         shutil.copyfileobj(r.raw, f)  # type: ignore
                     return self.download_succeeded
-         except Exception as e:
+        except Exception as e:
             print(f"URL {self.url} failed due to {e} {type(e)} {i + 1}/{retries}")
             raise
 
