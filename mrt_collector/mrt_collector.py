@@ -6,7 +6,7 @@ from typing import Any, Callable
 
 from tqdm import tqdm
 
-#from .rib_dump_parse_funcs import PARSE_FUNC, bgpkit_parser
+from .rib_dump_parse_funcs import PARSE_FUNC, bgpkit_parser
 from .mrt_file import MRTFile
 from .sources import Source
 
