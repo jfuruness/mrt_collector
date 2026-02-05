@@ -33,7 +33,7 @@ class MRTFile:
         self.parsed_line_count_path: Path = parsed_line_count_dir / self._url_to_fname(
             self.url, ext="txt"
         )
-        self.expected_file_size: int = expected_file_size #defaults to zero for now
+        self._expected_file_size: int = expected_file_size #defaults to zero for now
 
     def __lt__(self, other) -> bool:
         """For sorting by file size
@@ -44,7 +44,7 @@ class MRTFile:
 
         
         if isinstance(other, MRTFile):
-            return self.get_expected_file_size() < other.get_expected_file_size()
+            return self._expected_file_size < other.expected_file_size
         """
             for path_attr in ["parsed_path_psv", "raw_path"]:
                 # Save the paths to variables
@@ -61,7 +61,26 @@ class MRTFile:
                         return False
         """
         return NotImplemented
-    
+ 
+    def fetch_expected_file_size(self) -> None:
+        """Tries to set expected_file_size with a HEAD request"""
+         
+        try:
+            with requests.head(self.url, timeout=60) as r:
+                status_code = r.status_code
+                if r.status_code == 200:
+                    self._expected_file_size = response.headers.get('Content-Length', 0))
+        except Exception as e:
+            print(f"URL {self.url} : Head Request failed due to {e} {type(e)}")
+            raise
+            # not sure if we want to raise an exception here, or just throw out this file, for now I'll raise
+            # the more I look at this the more I just need to add retry logic,
+            # and if all retries are exceeded then we just need to remove this file, not kill the entire
+            # program. This will, however, require me to rework the set_all_expected_sizes func
+            # because it currently returns nothing, so we have no current way to communicate
+            # which files need to be removed. maybe I'll create a separate tuple of files_to_remove and
+            # create a new tuple [MRTFiles for x in MRTFiles not in files_toRemove]
+
     def download_raw(self, retries: int = 3) -> None:
         """Downloads the raw file if you haven't already"""
 
@@ -139,28 +158,11 @@ class MRTFile:
     def expected_file_size(self) -> int:
         """Returns expected file size in bytes"""
 
-        return self.expected_file_size
+        return self._expected_file_size
 
-    @expected_file_size.setter
-    def expected_file_size(self) -> None:
+    def fetch_expected_file_size(self) -> None:
         """Tries to set expected_file_size with a HEAD request"""
          
-        try:
-            with requests.head(self.url, timeout=60) as r:
-                status_code = r.status_code
-                if r.status_code == 200:
-                    self.expected_file_size = response.headers.get('Content-Length', 0))
-        except Exception as e:
-            print(f"URL {self.url} : Head Request failed due to {e} {type(e)}")
-            raise
-            # not sure if we want to raise an exception here, or just throw out this file, for now I'll raise
-            # the more I look at this the more I just need to add retry logic,
-            # and if all retries are exceeded then we just need to remove this file, not kill the entire
-            # program. This will, however, require me to rework the set_all_expected_sizes func
-            # because it currently returns nothing, so we have no current way to communicate
-            # which files need to be removed. maybe I'll create a separate tuple of files_to_remove and
-            # create a new tuple [MRTFiles for x in MRTFiles not in files_toRemove]
-
     @property
     def downloaded(self) -> bool:
         """Returns True if file downloaded else False"""
