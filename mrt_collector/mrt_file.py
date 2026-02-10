@@ -213,11 +213,6 @@ class MRTFile:
                 return line != self.dl_err_str.encode("utf-8")
         raise NotImplementedError("Empty file?")
         """
-    @property
-    def dl_err_str(self) -> str:
-        """String that is stored within a file if download errors"""
-
-        return "ERROR"
 
     @property
     def total_parsed_lines(self) -> int:
