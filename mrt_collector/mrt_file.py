@@ -33,7 +33,7 @@ class MRTFile:
         self.parsed_line_count_path: Path = parsed_line_count_dir / self._url_to_fname(
             self.url, ext="txt"
         )
-        self._expected_file_size: int = expected_file_size #defaults to zero for now
+        self._expected_cmprsed_file_size: int = expected_file_size #defaults to zero for now
 
     def __lt__(self, other) -> bool:
         """For sorting by file size
@@ -44,7 +44,7 @@ class MRTFile:
 
         
         if isinstance(other, MRTFile):
-            return self._expected_file_size < other.expected_file_size
+            return self._expected_cmprsed_file_size < other.expected_cmprsed_file_size
         """
             for path_attr in ["parsed_path_psv", "raw_path"]:
                 # Save the paths to variables
@@ -186,10 +186,10 @@ class MRTFile:
                 return int(count)
 
     @property
-    def expected_file_size(self) -> int:
-        """Returns expected file size in bytes"""
+    def expected_cmprsed_file_size(self) -> int:
+        """Returns expected compressed file size in bytes"""
 
-        return self._expected_file_size
+        return self._expected_cmprsed_file_size
          
     @property
     def downloaded(self) -> bool:
