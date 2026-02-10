@@ -128,7 +128,7 @@ class MRTFile:
         try:
             with requests.get(self.url, stream=True, timeout=60) as r:
                 status_code = r.status_code  # type: ignore
-                r.raise_status # raises an error if we get a less than ideal status code
+                r.raise_for_status() # raises an error if we get a less than ideal status code
                 if status_code == 200:
                     with self.raw_path.open("wb") as f:
                         shutil.copyfileobj(r.raw, f)  # type: ignore
@@ -143,7 +143,7 @@ class MRTFile:
         actual_file_size = stat_info.st_size
 
         if actual_file_size == 0:
-            return False
+            raise NotImplementedError("Expected cmprsd size 0 at " + self.raw_dir)
 
         return actual_file_size == self._expected_file_size
 
