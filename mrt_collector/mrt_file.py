@@ -41,27 +41,23 @@ class MRTFile:
         This is useful when doing long operations with multiprocessing.
         By starting with the largest files first, it takes significantly less time
         """
-
-        
+ 
         if isinstance(other, MRTFile):
-            return self._expected_cmprsed_file_size < other.expected_cmprsed_file_size
-        """
             for path_attr in ["parsed_path_psv", "raw_path"]:
-                # Save the paths to variables
+                
                 self_path = getattr(self, path_attr)
                 other_path = getattr(other, path_attr)
-                # If both parsed paths exist
+                
                 if self_path.exists() and other_path.exists():
                     # Check the file size, sort in descending order
                     # That way largest files are done first
                     # https://stackoverflow.com/a/2104107/8903959
-                    if self_path.stat().st_size > other_path.stat().st_size:
-                        return True
-                    else:
-                        return False
-        """
+                    return self_path.stat().st_size < other_path.stat().st_size
+        
+            return self._expected_cmprsed_file_size < other.expected_cmprsed_file_size
+        
         return NotImplemented
- 
+
     def fetch_expected_file_size(self) -> None:
         """Tries to set expected_file_size with a HEAD request"""
          
