@@ -133,7 +133,7 @@ class MRTCollector:
     ) -> tuple[MRTFile, ...]:
         """Removes any MRTFile where download_succeeded is false"""
 
-        return tuple(mrt_file for mrt_file in mrt_files if mrt_file.download_succeeded)
+        return tuple([mrt_file for mrt_file in mrt_files if mrt_file.download_succeeded])
 
     def download_raw_mrts(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Downloads raw MRT RIB dumps into raw_dir"""
