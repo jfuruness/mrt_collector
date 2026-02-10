@@ -80,14 +80,13 @@ class MRTFile:
     def download_raw(self, retries: int = 3) -> None:
         """Downloads the raw file if you haven't already"""
 
-        if self.download_succeded or self.downloaded: # I question if we still want this here
+        if self.download_succeded:
             return False
 
         # I tried using proper backoff strategies, such as:
         # https://stackoverflow.com/a/35504626/8903959
         # But this actually doesn't capture incomplete read
         # errors in URL lib. So I need to write my own.
-        status_code = 0
         succeeded = False
         for i in range(retries):
             try:
@@ -99,24 +98,8 @@ class MRTFile:
                     raise
             time.sleep((i + 1) * 10)
         
-        if not succeeded and self.downloaded:
-            self.raw_path.unlink(missing_ok = True)
-
-        return succeeded # in my mind we should propogate back up and
-                         # use this information to pop this file off the list
-        
-        # below logic should no longer be neccesary
-
-        # Don't error, sometiems files fail due to not found errors (404)
-        # warnings.warn(
-        #     f"status of {status_code} for {self.url}, download failed but didn't err"
-        # )
-
-        # below logic should no longer be neccesary
-
-        # Write the file so that you don't go back to it later
-        # with self.raw_path.open("wb") as f:
-        #    f.write(self.dl_err_str.encode("utf-8"))
+        if not succeeded and self.raw_path.exists():
+            self.raw_path.unlink(missing_ok = True) 
 
     def attempt_download_raw(self) -> bool:
         """Attempts to download the raw MRT file"""
@@ -188,16 +171,10 @@ class MRTFile:
         return self._expected_cmprsed_file_size
          
     @property
-    def downloaded(self) -> bool:
-        """Returns True if file downloaded else False"""
-
-        return self.raw_path.exists()
-
-    @property
     def download_succeeded(self) -> bool:
         """Returns true if the raw file exists and matches the expected size"""
 
-        if not self.downloaded:
+        if not self.raw_path.exists():
             return False
 
         return self.validate_file_size()
