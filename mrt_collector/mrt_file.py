@@ -10,6 +10,8 @@ from urllib.parse import quote
 import warnings
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from .sources import Source
 
@@ -65,7 +67,7 @@ class MRTFile:
             with requests.head(self.url, timeout=60) as r:
                 status_code = r.status_code
                 if r.status_code == 200:
-                    self._expected_file_size = r.headers.get('Content-Length', 0)
+                    self._expected_cmrpsed_file_size = r.headers.get('Content-Length', 0)
         except Exception as e:
             print(f"URL {self.url} : Head Request failed due to {e} {type(e)}")
             raise
