@@ -34,7 +34,7 @@ class MRTFile:
         self.parsed_line_count_path: Path = parsed_line_count_dir / self._url_to_fname(
             self.url, ext="txt"
         )
-        self._expected_cmprsed_file_size: int = expected_file_size #defaults to zero for now
+        self._expected_cmprsed_file_size: int = expected_file_size
 
     def __lt__(self, other) -> bool:
         """For sorting by file size
@@ -66,19 +66,12 @@ class MRTFile:
             with RetrySession() as session:
                 with session.head(self.url, timeout=60) as r:
                     status_code = r.status_code
-                    if r.status_code == 200:
+                    if status_code == 200:
                         self._expected_cmrpsed_file_size = r.headers.get('Content-Length', 0)
                         return
         except Exception as e:
             print(f"URL {self.url} : Head Request failed due to {e} {type(e)}")
             raise
-            # not sure if we want to raise an exception here, or just throw out this file, for now I'll raise
-            # the more I look at this the more I just need to add retry logic,
-            # and if all retries are exceeded then we just need to remove this file, not kill the entire
-            # program. This will, however, require me to rework the set_all_expected_sizes func
-            # because it currently returns nothing, so we have no current way to communicate
-            # which files need to be removed. maybe I'll create a separate tuple of files_to_remove and
-            # create a new tuple [MRTFiles for x in MRTFiles not in files_toRemove]
 
     def download_raw(self, retries: int = 3) -> None:
         """Downloads the raw file if you haven't already"""
@@ -102,7 +95,7 @@ class MRTFile:
             time.sleep((i + 1) * 10)
 
         if not succeeded and self.raw_path.exists():
-            self.raw_path.unlink(missing_ok = True) 
+            self.raw_path.unlink(missing_ok = True)
 
     def attempt_download_raw(self) -> bool:
         """Attempts to download the raw MRT file"""
@@ -110,17 +103,20 @@ class MRTFile:
         try:
             with requests.get(self.url, stream=True, timeout=60) as r:
                 status_code = r.status_code  # type: ignore
-                r.raise_for_status() # raises an error if we get a less than ideal status code
+                r.raise_for_status() # raises an error if we get bad status code
+                #honestly probably should swap this out for new Retry Session anyway
                 if status_code == 200:
                     with self.raw_path.open("wb") as f:
                         shutil.copyfileobj(r.raw, f)  # type: ignore
                     return self.download_succeeded
         except Exception as e:
-            print(f"URL {self.url} failed due to {e} {type(e)} {i + 1}/{retries}")
+            print(f"URL {self.url} failed due to {e} {type(e)}")
             raise
 
     def validate_file_size(self) -> bool:
-        """Returns true if expected_file_size is equal to actual file size. Assumes the filepath and file exist."""
+        """Returns true if expected_file_size is equal to actual file size.
+        Assumes the filepath and file exist."""
+
         stat_info = self.raw_path.stat()
         actual_file_size = stat_info.st_size
 
