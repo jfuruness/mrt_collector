@@ -111,7 +111,7 @@ class MRTCollector:
     ) -> tuple[MRTFile, ...]:
         """Creates a new tuple containing as many files as defined by limit_files_to"""
 
-        return mrt_files[-limit_files_to:]
+        return mrt_files[self.-limit_files_to:]
 
     def get_total_expected_mrt_file_size(
         self,

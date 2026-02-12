@@ -14,7 +14,7 @@ class RetrySession(requests.Session):
         self.raise_for_status_codes = raise_for_status_codes
 
         retry = Retry(
-            total=retries
+            total=retries,
             read=retries,
             connect=retries,
             backoff_factor=backoff_factor,
