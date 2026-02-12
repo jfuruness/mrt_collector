@@ -10,8 +10,7 @@ from urllib.parse import quote
 import warnings
 
 import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
+from .retry_session import RetrySession
 
 from .sources import Source
 
@@ -64,10 +63,12 @@ class MRTFile:
         """Tries to set expected_file_size with a HEAD request"""
          
         try:
-            with requests.head(self.url, timeout=60) as r:
-                status_code = r.status_code
-                if r.status_code == 200:
-                    self._expected_cmrpsed_file_size = r.headers.get('Content-Length', 0)
+            with RetrySession() as session:
+                with session.head(self.url, timeout=60) as r:
+                    status_code = r.status_code
+                    if r.status_code == 200:
+                        self._expected_cmrpsed_file_size = r.headers.get('Content-Length', 0)
+                        return
         except Exception as e:
             print(f"URL {self.url} : Head Request failed due to {e} {type(e)}")
             raise
