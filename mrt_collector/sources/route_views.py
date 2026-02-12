@@ -1,5 +1,5 @@
-from datetime import datetime
 import warnings
+from datetime import datetime
 from pathlib import Path
 
 from .source import Source

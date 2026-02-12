@@ -1,3 +1,4 @@
+import argparse
 from datetime import datetime
 from multiprocessing import cpu_count
 from pathlib import Path
@@ -5,7 +6,6 @@ from pathlib import Path
 from .analyzers import MHExportAnalyzer
 from .mrt_collector import MRTCollector
 
-import argparse
 
 def main():
     print("HERE")

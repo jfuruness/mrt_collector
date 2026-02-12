@@ -5,7 +5,6 @@ from typing import Callable
 
 from .mrt_file import MRTFile
 
-
 PARSE_FUNC = Callable[[MRTFile], None]
 
 

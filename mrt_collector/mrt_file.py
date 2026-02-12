@@ -1,17 +1,17 @@
 import csv
 import json
-from pathlib import Path
 import os
 import shutil
 import subprocess
-from subprocess import check_call
 import time
-from urllib.parse import quote
 import warnings
+from pathlib import Path
+from subprocess import check_call
+from urllib.parse import quote
 
 import requests
-from .retry_session import RetrySession
 
+from .retry_session import RetrySession
 from .sources import Source
 
 

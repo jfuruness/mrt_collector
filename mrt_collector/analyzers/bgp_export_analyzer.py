@@ -1,18 +1,17 @@
+import csv
+import gc
+import json
+import time
 from collections import defaultdict
 from dataclasses import dataclass
-import gc
-import csv
-import json
 from pathlib import Path
-import time
 
-from tqdm import tqdm
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-
 from bgpy.as_graphs import CAIDAASGraphConstructor
-from ..mrt_file import MRTFile
+from tqdm import tqdm
 
+from ..mrt_file import MRTFile
 
 mpl.use("Agg")
 
