@@ -26,7 +26,7 @@ def main():
     )
 
     mrt_files = collector.run()
-    
+
     for mrt_file in mrt_files: printf(mrt_file.download_succeeded) 
 
     # for now, I'm going to avoid trying to even run the multihome analyzer

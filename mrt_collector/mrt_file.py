@@ -42,26 +42,26 @@ class MRTFile:
         This is useful when doing long operations with multiprocessing.
         By starting with the largest files first, it takes significantly less time
         """
- 
+
         if isinstance(other, MRTFile):
             for path_attr in ["parsed_path_psv", "raw_path"]:
-                
+
                 self_path = getattr(self, path_attr)
                 other_path = getattr(other, path_attr)
-                
+
                 if self_path.exists() and other_path.exists():
                     # Check the file size, sort in descending order
                     # That way largest files are done first
                     # https://stackoverflow.com/a/2104107/8903959
                     return self_path.stat().st_size < other_path.stat().st_size
-        
+
             return self._expected_cmprsed_file_size < other.expected_cmprsed_file_size
-        
+
         return NotImplemented
 
     def fetch_expected_file_size(self) -> None:
         """Tries to set expected_file_size with a HEAD request"""
-         
+
         try:
             with RetrySession() as session:
                 with session.head(self.url, timeout=60) as r:
@@ -100,7 +100,7 @@ class MRTFile:
                 if i == retries - 1:
                     raise
             time.sleep((i + 1) * 10)
-        
+
         if not succeeded and self.raw_path.exists():
             self.raw_path.unlink(missing_ok = True) 
 
@@ -172,7 +172,7 @@ class MRTFile:
         """Returns expected compressed file size in bytes"""
 
         return self._expected_cmprsed_file_size
-         
+
     @property
     def download_succeeded(self) -> bool:
         """Returns true if the raw file exists and matches the expected size"""
@@ -181,7 +181,7 @@ class MRTFile:
             return False
 
         return self.validate_file_size()
-        
+
         """Returns true if download errored out. Just checks first line"""
         """
         with self.raw_path.open("rb") as f:

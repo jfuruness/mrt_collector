@@ -104,7 +104,7 @@ class MRTCollector:
         """Wrapper method for sorting mrt_files based on expected file size"""
 
         return tuple(sorted(mrt_files, reverse=True))
-    
+
     def limit_mrt_files(
         self,
         mrt_files: tuple[MRTFile, ...]

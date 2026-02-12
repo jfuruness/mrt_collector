@@ -47,7 +47,7 @@ class MHExportAnalyzer:
         self.create_graphs()
         print(f"got graph data in {time.perf_counter() - start}")
         print(time.perf_counter() - og_start)
-    
+
     # *** Is this deprecated? it appears to be
     def _init_data(self):
         bgp_dag = CAIDAASGraphConstructor().run()
