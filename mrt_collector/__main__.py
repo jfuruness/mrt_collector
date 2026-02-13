@@ -11,8 +11,20 @@ def main():
 
     parser = argparse.ArgumentParser(prog='MRT Collector')
     #for use with running with limited files
-    parser.add_argument('-lf', '--limit_files', type=int, help='Number of files to process; Leave blank for all')
-    parser.add_argument('-sp', '--single_process', action='store_true', help='Limits to single processining')
+    parser.add_argument(
+        '-lf',
+        '--limit_files',
+        type=int,
+        help='Number of files to process; Leave blank for all'
+    )
+
+    parser.add_argument(
+        '-sp',
+        '--single_process',
+        action='store_true',
+        help='Limits to single processining'
+    )
+
     args = parser.parse_args()
     limit_files_to = 0 if args.limit_files is None else args.limit_files
     # dl_time=datetime(2025, 3, 20, 0, 0, 0)
@@ -26,7 +38,8 @@ def main():
 
     mrt_files = collector.run()
 
-    for mrt_file in mrt_files: print(mrt_file.download_succeeded)
+    for mrt_file in mrt_files:
+        print(mrt_file.download_succeeded)
 
     # for now, I'm going to avoid trying to even run the multihome analyzer
     # there appear to be multiple program breaking bugs, such as in create_graphs (no definition
