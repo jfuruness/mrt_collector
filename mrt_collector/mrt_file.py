@@ -44,20 +44,30 @@ class MRTFile:
         """
 
         if isinstance(other, MRTFile):
-            for path_attr in ["parsed_path_psv", "raw_path"]:
-
-                self_path = getattr(self, path_attr)
-                other_path = getattr(other, path_attr)
-
-                if self_path.exists() and other_path.exists():
-                    # Check the file size, sort in descending order
-                    # That way largest files are done first
-                    # https://stackoverflow.com/a/2104107/8903959
-                    return self_path.stat().st_size < other_path.stat().st_size
+            afs_comparison = self.compare_afs(other)
+            if afs_comparison is not None:
+                return afs_comparison
 
             return self._expected_cmprsed_file_size < other.expected_cmprsed_file_size
 
         return NotImplemented
+
+    def compare_afs(self, other) -> bool | None:
+        """Tries to compare two MRT Files actual file sizes, first based on parsed_path,
+        and if that doesn't exist then with raw_path. Returns None if neither exist"""
+
+        for path_attr in ["parsed_path_psv", "raw_path"]:
+
+            self_path = getattr(self, path_attr)
+            other_path = getattr(other, path_attr)
+
+            if self_path.exists() and other_path.exists():
+                # Check the file size, sort in descending order
+                # That way largest files are done first
+                # https://stackoverflow.com/a/2104107/8903959
+                return self_path.stat().st_size < other_path.stat().st_size
+
+        return None
 
     def fetch_expected_file_size(self) -> None:
         """Tries to set expected_file_size with a HEAD request"""
