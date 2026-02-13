@@ -23,13 +23,13 @@ class RetrySession(requests.Session):
             raise_on_status=False,
         )
 
-        adapters = HTTPAdapter(max_retries=retry)
+        adapter = HTTPAdapter(max_retries=retry)
         self.mount("http://", adapter)
         self.mount("https://", adapter)
 
     def request(self, *args, **kwargs):
         """Wrapper function for error checking"""
-        reponse = super().request(*args, **kwargs)
+        response = super().request(*args, **kwargs)
         if response.status_code in self.raise_for_status_codes:
             response.raise_for_status()
         return response
