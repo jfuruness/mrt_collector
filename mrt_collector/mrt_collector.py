@@ -46,17 +46,17 @@ class MRTCollector:
     def run(
         self,
         sources: tuple[Source, ...] = tuple(
-            [Cls() for Cls in Source.sources]  # type: ignore
+            [Cls() for Cls in Source.sources]  
         ),
         # Steps
         mrt_files: tuple[MRTFile, ...] = (),
-    ) -> None:
+    ) -> tuple[MRTFile, ...]:
         """Downloads MRTs and then extracts data from them"""
 
         mrt_files = mrt_files if mrt_files else self.get_mrt_files(sources)
         self.set_expected_mrt_file_sizes(mrt_files)
         mrt_files = self.sort_mrt_files(mrt_files)
-        if limit_files_to != 0:
+        if self.limit_files_to != 0:
             mrt_files = self.limit_mrt_files(mrt_files)
         self.download_raw_mrts(mrt_files)
         mrt_files = self.strip_failed_downloads(mrt_files)
@@ -69,7 +69,7 @@ class MRTCollector:
     def get_mrt_files(
         self,
         sources: tuple[Source, ...] = tuple(
-            [Cls() for Cls in Source.sources]  # type: ignore
+            [Cls() for Cls in Source.sources]
         ),
     ) -> tuple[MRTFile, ...]:
         """Gets URLs from sources (cached) and returns MRT File objects"""
@@ -122,7 +122,7 @@ class MRTCollector:
         total_bytes = 0
 
         for mrt_file in mrt_files:
-            file_size = mrt_file.expected_file_size
+            file_size = mrt_file.expected_cmprsed_file_size
             total_bytes += file_size
 
         return total_bytes

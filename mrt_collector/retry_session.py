@@ -7,8 +7,8 @@ class RetrySession(requests.Session):
         self,
         retries: int = 3,
         backoff_factor: float = .3,
-        status_forcelist: (int, ...) = (500, 502, 503, 504),
-        raise_for_status_codes: (int, ...) = (400, 401, 403, 404, 429),
+        status_forcelist: tuple[int, ...] = (500, 502, 503, 504),
+        raise_for_status_codes: tuple[int, ...] = (400, 401, 403, 404, 429),
     ):
         super().__init__()
         self.raise_for_status_codes = raise_for_status_codes

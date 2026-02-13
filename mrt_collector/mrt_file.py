@@ -76,8 +76,8 @@ class MRTFile:
     def download_raw(self, retries: int = 3) -> None:
         """Downloads the raw file if you haven't already"""
 
-        if self.download_succeded:
-            return False
+        if self.download_succeeded:
+            return
 
         # I tried using proper backoff strategies, such as:
         # https://stackoverflow.com/a/35504626/8903959
@@ -102,16 +102,18 @@ class MRTFile:
 
         try:
             with requests.get(self.url, stream=True, timeout=60) as r:
-                status_code = r.status_code  # type: ignore
+                status_code = r.status_code 
                 r.raise_for_status() # raises an error if we get bad status code
                 #honestly probably should swap this out for new Retry Session anyway
                 if status_code == 200:
                     with self.raw_path.open("wb") as f:
-                        shutil.copyfileobj(r.raw, f)  # type: ignore
+                        shutil.copyfileobj(r.raw, f)
                     return self.download_succeeded
         except Exception as e:
             print(f"URL {self.url} failed due to {e} {type(e)}")
             raise
+
+        return False
 
     def validate_file_size(self) -> bool:
         """Returns true if expected_file_size is equal to actual file size.
@@ -121,9 +123,9 @@ class MRTFile:
         actual_file_size = stat_info.st_size
 
         if actual_file_size == 0:
-            raise NotImplementedError("Expected cmprsd size 0 at " + self.raw_dir)
+            raise NotImplementedError("Expected cmprsd size 0 at " + str(self.raw_path))
 
-        return actual_file_size == self._expected_file_size
+        return actual_file_size == self._expected_cmprsed_file_size
 
     def _url_to_fname(self, url: str, ext: str = "") -> str:
         """Converts a URL into a file name"""
