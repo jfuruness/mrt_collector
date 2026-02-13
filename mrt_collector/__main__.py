@@ -3,7 +3,6 @@ from datetime import datetime
 from multiprocessing import cpu_count
 from pathlib import Path
 
-from .analyzers import MHExportAnalyzer
 from .mrt_collector import MRTCollector
 
 
@@ -27,7 +26,7 @@ def main():
 
     mrt_files = collector.run()
 
-    for mrt_file in mrt_files: print(mrt_file.download_succeeded) 
+    for mrt_file in mrt_files: print(mrt_file.download_succeeded)
 
     # for now, I'm going to avoid trying to even run the multihome analyzer
     # there appear to be multiple program breaking bugs, such as in create_graphs (no definition

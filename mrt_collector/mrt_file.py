@@ -1,12 +1,8 @@
-import csv
-import json
 import os
 import shutil
 import subprocess
 import time
-import warnings
 from pathlib import Path
-from subprocess import check_call
 from urllib.parse import quote
 
 import requests
@@ -23,7 +19,7 @@ class MRTFile:
         raw_dir: Path,
         parsed_dir: Path,
         parsed_line_count_dir: Path,
-        expected_file_size: int = 0
+        expected_compressed_file_size: int = 0
     ) -> None:
         self.url: str = url
         self.source: Source = source
@@ -34,7 +30,7 @@ class MRTFile:
         self.parsed_line_count_path: Path = parsed_line_count_dir / self._url_to_fname(
             self.url, ext="txt"
         )
-        self._expected_cmprsed_file_size: int = expected_file_size
+        self._ec_file_size: int = expected_compressed_file_size
 
     def __lt__(self, other) -> bool:
         """For sorting by file size
@@ -48,13 +44,14 @@ class MRTFile:
             if afs_comparison is not None:
                 return afs_comparison
 
-            return self._expected_cmprsed_file_size < other.expected_cmprsed_file_size
+            return self._ec_file_size < other.ec_file_size
 
         return NotImplemented
 
     def compare_afs(self, other) -> bool | None:
         """Tries to compare two MRT Files actual file sizes, first based on parsed_path,
-        and if that doesn't exist then with raw_path. Returns None if neither exist"""
+        and if that doesn't exist then with raw_path. Returns None if neither exist
+        """
 
         for path_attr in ["parsed_path_psv", "raw_path"]:
 
@@ -77,7 +74,7 @@ class MRTFile:
                 with session.head(self.url, timeout=60) as r:
                     status_code = r.status_code
                     if status_code == 200:
-                        self._expected_cmrpsed_file_size = r.headers.get('Content-Length', 0)
+                        self._ec_file_size = r.headers.get('Content-Length', 0)
                         return
         except Exception as e:
             print(f"URL {self.url} : Head Request failed due to {e} {type(e)}")
@@ -112,7 +109,7 @@ class MRTFile:
 
         try:
             with requests.get(self.url, stream=True, timeout=60) as r:
-                status_code = r.status_code 
+                status_code = r.status_code
                 r.raise_for_status() # raises an error if we get bad status code
                 #honestly probably should swap this out for new Retry Session anyway
                 if status_code == 200:
@@ -127,7 +124,8 @@ class MRTFile:
 
     def validate_file_size(self) -> bool:
         """Returns true if expected_file_size is equal to actual file size.
-        Assumes the filepath and file exist."""
+        Assumes the filepath and file exist.
+        """
 
         stat_info = self.raw_path.stat()
         actual_file_size = stat_info.st_size
@@ -135,7 +133,7 @@ class MRTFile:
         if actual_file_size == 0:
             raise NotImplementedError("Expected cmprsd size 0 at " + str(self.raw_path))
 
-        return actual_file_size == self._expected_cmprsed_file_size
+        return actual_file_size == self._ec_file_size
 
     def _url_to_fname(self, url: str, ext: str = "") -> str:
         """Converts a URL into a file name"""
@@ -176,10 +174,10 @@ class MRTFile:
                 return int(count)
 
     @property
-    def expected_cmprsed_file_size(self) -> int:
+    def ec_file_size(self) -> int:
         """Returns expected compressed file size in bytes"""
 
-        return self._expected_cmprsed_file_size
+        return self._ec_file_size
 
     @property
     def download_succeeded(self) -> bool:

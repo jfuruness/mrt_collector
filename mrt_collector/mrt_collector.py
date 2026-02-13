@@ -46,7 +46,7 @@ class MRTCollector:
     def run(
         self,
         sources: tuple[Source, ...] = tuple(
-            [Cls() for Cls in Source.sources]  
+            [Cls() for Cls in Source.sources]
         ),
         # Steps
         mrt_files: tuple[MRTFile, ...] = (),
@@ -122,7 +122,7 @@ class MRTCollector:
         total_bytes = 0
 
         for mrt_file in mrt_files:
-            file_size = mrt_file.expected_cmprsed_file_size
+            file_size = mrt_file.ec_file_size
             total_bytes += file_size
 
         return total_bytes
