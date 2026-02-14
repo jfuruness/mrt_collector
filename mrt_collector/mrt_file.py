@@ -66,7 +66,7 @@ class MRTFile:
 
         return None
 
-    def fetch_expected_file_size(self) -> None:
+    def fetch_ec_file_size(self) -> None:
         """Tries to set expected_file_size with a HEAD request"""
 
         try:

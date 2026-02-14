@@ -95,7 +95,7 @@ class MRTCollector:
         """Gets the expected file size of each MRT"""
 
         for mrt_file in mrt_files:
-            mrt_file.fetch_expected_file_size()
+            mrt_file.fetch_ec_file_size()
 
     def sort_mrt_files(
         self,
