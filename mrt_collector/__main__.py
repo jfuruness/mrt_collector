@@ -41,12 +41,6 @@ def main():
     for mrt_file in mrt_files:
         print(mrt_file.download_succeeded)
 
-    # for now, I'm going to avoid trying to even run the multihome analyzer
-    # there appear to be multiple program breaking bugs, such as in create_graphs (no definition
-    # for f, I'm assuming thats supposed to be the file path of the json we dump to) and in mh.run()
-    # I'll focus on implementing the file size validation stuff, and compile a list of locations within
-    # the program that appear to have critical errors
-
     # mrt_files = list(sorted(collector.run()))
     # mrt_files = [mrt_files[0]]
     # MHExportAnalyzer().run(mrt_files)

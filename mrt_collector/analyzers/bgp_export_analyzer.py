@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from bgpy.as_graphs import CAIDAASGraphConstructor
 from tqdm import tqdm
 
-from ..mrt_file import MRTFile
+from mrt_collector.mrt_file import MRTFile
 
 mpl.use("Agg")
 
@@ -100,9 +100,9 @@ class BGPExportAnalyzer:
             if not provider_asns:
                 continue
             for prefix, set_of_next_hops in inner_dict.items():
-                filtered_data[asn][prefix] = set(
-                    [x for x in set_of_next_hops if x.asn in provider_asns]
-                )
+                filtered_data[asn][prefix] = {
+                    x for x in set_of_next_hops if x.asn in provider_asns
+                }
         return filtered_data
 
     def create_graphs(
@@ -121,7 +121,7 @@ class BGPExportAnalyzer:
             total += 1
             provider_lengths = [len(v) for v in prefix_dict.values()]
             prepending = False
-            for prefix, set_of_next_hops in prefix_dict.items():
+            for prefix, set_of_next_hops in prefix_dict.items(): # noqa
                 prepending_list = [x.prepending for x in set_of_next_hops]
                 if len(set(prepending_list)) == 2:
                     prepending = True
@@ -160,7 +160,7 @@ class BGPExportAnalyzer:
         fig, ax = plt.subplots()
         ax.set_xticklabels(categories, rotation=90, ha="center")
         bars = ax.bar(categories, percentages, color=["blue", "green", "red"])
-        for bar, value in zip(bars, values):
+        for bar, value in zip(bars, values, strict=False):
             ax.text(
                 bar.get_x() + bar.get_width() / 2,
                 bar.get_height(),

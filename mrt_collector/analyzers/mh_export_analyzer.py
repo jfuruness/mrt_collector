@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from bgpy.as_graphs import CAIDAASGraphConstructor
 from tqdm import tqdm
 
-from ..mrt_file import MRTFile
+from mrt_collector.mrt_file import MRTFile
 
 mpl.use("Agg")
 
@@ -31,8 +31,10 @@ class SetEncoder(json.JSONEncoder):
 
 
 class MHExportAnalyzer:
-    # not that I really know what I'm talking abt but I get the sense this func needs work/restructuring
-    # some of the calls, IE self.create_graphs() appear in main() as well as here, but main calls this.
+    # not that I really know what I'm talking abt
+    # but I get the sense this func needs work/restructuring
+    # some of the calls, IE self.create_graphs() appear in
+    # main() as well as here, but main calls this.
     def run(self, mrt_files: tuple[MRTFile, ...]):
         print("This takes about an hour")
         og_start = time.perf_counter()
@@ -118,7 +120,7 @@ class MHExportAnalyzer:
             # This is horrible, fix
             export_to_some_prefixes = {
                 origin: {
-                    k: set([q.prefix for q in v]) for k, v in inner_dict.items()
+                    k: {q.prefix for q in v} for k, v in inner_dict.items()
                 } for origin, inner_dict in mh_data.items()
             }
             json.dump(export_to_some_prefixes, f, indent=4, cls=SetEncoder)
@@ -126,7 +128,7 @@ class MHExportAnalyzer:
             # This is horrible, fix
             export_to_some_prepending = {
                 origin: {
-                    k: set([q.prepending for q in v]) for k, v in inner_dict.items()
+                    k: {q.prepending for q in v} for k, v in inner_dict.items()
                 } for origin, inner_dict in mh_data.items()
             }
             json.dump(export_to_some_prepending, f, indent=4, cls=SetEncoder)
@@ -166,7 +168,7 @@ class MHExportAnalyzer:
             prepending = False
             export_to_all = False
             export_to_some_zero_to_one_provider = False
-            for provider, set_of_prepending_bools in provider_prepending_dict.items():
+            for provider, set_of_prepending_bools in provider_prepending_dict.items(): # noqa
                 if any(x for x in set_of_prepending_bools):
                     prepending = True
                     export_to_some = True
@@ -212,8 +214,13 @@ class MHExportAnalyzer:
         percentages = [0 if total == 0 else v / total * 100 for v in values]
         fig, ax = plt.subplots()
         ax.set_xticklabels(categories, rotation=90, ha="center")
-        bars = ax.bar(categories, percentages, color=["blue", "green", "red", "yellow", "brown", "orange"])
-        for bar, value in zip(bars, values):
+        bars = ax.bar(
+            categories,
+            percentages,
+            color=["blue", "green", "red", "yellow", "brown", "orange"]
+        )
+
+        for bar, value in zip(bars, values, strict=False):
             ax.text(
                 bar.get_x() + bar.get_width() / 2,
                 bar.get_height(),

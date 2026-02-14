@@ -1,6 +1,6 @@
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
-from multiprocessing import cpu_count  # noqa
+from multiprocessing import cpu_count
 from pathlib import Path
 from typing import Any, Callable
 

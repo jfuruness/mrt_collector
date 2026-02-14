@@ -31,7 +31,7 @@ class RIPE(Source):
         dead_links = [prepended_url + x for x in ("02/", "08/", "09/")]
         links = [x for x in links if x not in dead_links]
         if len(links) != 23:
-            warnings.warn(f"Expected 23 collectors from RIPE, got {len(links)}")
+            warnings.warn(f"Expected 23 collectors from RIPE, got {len(links)}") # noqa
         # Return the links to the dumps from the collector links
         return tuple(
             [dl_time.strftime(f"{x}/%Y.%m/bview.%Y%m%d.%H00.gz") for x in links]

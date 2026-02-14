@@ -96,7 +96,7 @@ class MRTFile:
                 succeeded = self.attempt_download_raw()
                 if succeeded:
                     break
-            except Exception as e:
+            except Exception as e: # noqa
                 if i == retries - 1:
                     raise
             time.sleep((i + 1) * 10)
@@ -156,12 +156,23 @@ class MRTFile:
         else:
             command = f"wc -l {self.parsed_path_psv}"
             # Run the command
-            result = subprocess.run(command, shell=True, text=True, capture_output=True)
+            result = subprocess.run(
+                command,
+                shell=True,
+                text=True,
+                capture_output=True,
+                check=False
+            )
 
             # Check if the command was successful
             if result.returncode != 0:
                 print("Error running command:", result.stderr)
-                raise Exception
+                raise subprocess.CalledProcessError(
+                    returncode=result.returncode,
+                    cmd=command,
+                    output=result.stdout,
+                    stderr=result.stderr
+                )
 
             # Process the output to get the total number of lines
             output = result.stdout.strip()
