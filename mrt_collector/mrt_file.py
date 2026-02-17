@@ -70,6 +70,11 @@ class MRTFile:
         """Tries to set expected_file_size with a HEAD request"""
 
         try:
+            # RetrySession() is a custom subclass of requests.Session
+            # that automatically handles Exception raising
+            # in the event of particular HTTP status codes
+            # (mostly 400s). It's constructor supports passing
+            # a custom tuple of codes to raise an exception for
             with RetrySession() as session:
                 with session.head(self.url, timeout=60) as r:
                     status_code = r.status_code

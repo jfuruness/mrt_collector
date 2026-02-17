@@ -65,6 +65,8 @@ mrt_collector = "mrt_collector.__main__:main"
 [project.optional-dependencies]
 test = [
     "bgpy_pkg[test]~=13.0",
+    "ruff~=0.15.0",
+    "ty~=0.0.17"
 ]
 
 [tool.setuptools]
