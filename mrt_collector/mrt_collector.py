@@ -55,7 +55,7 @@ class MRTCollector:
 
         mrt_files = mrt_files or self.get_mrt_files()
         self.set_expected_mrt_file_sizes(mrt_files)
-        mrt_files = self.sort_mrt_files(mrt_files)
+        mrt_files = self.sort_mrt_files_by_attr(mrt_files, "ec_file_siez")
         if self.limit_files_to != 0:
             mrt_files = self.limit_mrt_files(mrt_files)
         self.download_raw_mrts(mrt_files)
@@ -96,14 +96,23 @@ class MRTCollector:
 
         for mrt_file in mrt_files:
             mrt_file.fetch_ec_file_size()
-
-    def sort_mrt_files(
+    
+    def sort_mrt_files_by_attr(
         self,
-        mrt_files: tuple[MRTFile, ...]
+        mrt_files: tuple[MRTFile, ...],
+        attr: str, # supports "ec_file_size", "ac_file_size", and "parsed_file_size"
+        do_reverse: bool = True
     ) -> tuple[MRTFile, ...]:
-        """Wrapper method for sorting mrt_files based on expected file size"""
+        """Sorts mrt_files based on a provided attribute"""
 
-        return tuple(sorted(mrt_files, reverse=True))
+        if not hasattr(mrt_files[0], attr):
+            raise AttributeError("MRTFiles have no " + attr + " attribute")
+
+        return tuple(sorted(
+            mrt_files,
+            key= lambda mrt_file: getattr(mrt_file, attr),
+            reverse=do_reverse
+        ))
 
     def limit_mrt_files(
         self,

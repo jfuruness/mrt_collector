@@ -31,7 +31,8 @@ class MRTFile:
             self.url, ext="txt"
         )
         self._ec_file_size: int = expected_compressed_file_size
-
+   
+    
     def __lt__(self, other) -> bool:
         """For sorting by file size
 
@@ -65,6 +66,7 @@ class MRTFile:
                 return self_path.stat().st_size < other_path.stat().st_size
 
         return None
+    
 
     def fetch_ec_file_size(self) -> None:
         """Tries to set expected_file_size with a HEAD request"""
@@ -190,12 +192,6 @@ class MRTFile:
                 return int(count)
 
     @property
-    def ec_file_size(self) -> int:
-        """Returns expected compressed file size in bytes"""
-
-        return self._ec_file_size
-
-    @property
     def download_succeeded(self) -> bool:
         """Returns true if the raw file exists and matches the expected size"""
 
@@ -203,14 +199,30 @@ class MRTFile:
             return False
 
         return self.validate_file_size()
+    
+    @property
+    def ec_file_size(self) -> int:
+        """Returns expected compressed file size in bytes"""
 
-        """Returns true if download errored out. Just checks first line"""
-        """
-        with self.raw_path.open("rb") as f:
-            for line in f:
-                return line != self.dl_err_str.encode("utf-8")
-        raise NotImplementedError("Empty file?")
-        """
+        return self._ec_file_size
+
+    @property
+    def ac_file_size(self) -> int:
+        """Returns actual (post download) compressed file size in bytes"""
+
+        if not self.raw_path.exists():
+            raise ValueError("Actual file does not exist, from " + self.url)
+
+        return self.raw_path.stat().st_size
+
+    @property
+    def parsed_file_size(self) -> int:
+        """Returns parsed file size in bytes"""
+
+        if not self.parsed_path_psv.exists():
+            raise ValueError("Parsed file does not exist, from " + self.url)
+
+        return self.parsed_path_psv.stat().st_size
 
     @property
     def total_parsed_lines(self) -> int:
