@@ -30,7 +30,7 @@ class MRTFile:
         self.parsed_line_count_path: Path = parsed_line_count_dir / self._url_to_fname(
             self.url, ext="txt"
         )
-        self._ec_file_size: int = expected_compressed_file_size 
+        self._ec_file_size: int = expected_compressed_file_size
 
     def fetch_ec_file_size(self) -> None:
         """Tries to set expected_file_size with a HEAD request"""
@@ -114,7 +114,7 @@ class MRTFile:
         if ext:
             fname = fname.replace(".gz", ext).replace(".bz2", ext)
             # The base without the extension
-            base_name = os.path.splitext(fname)[0]
+            base_name = os.path.splitext(fname)[0] # noqa
             fname = f"{base_name}.{ext}"
         return fname
 
@@ -127,7 +127,7 @@ class MRTFile:
         else:
             command = f"wc -l {self.parsed_path_psv}"
             # Run the command
-            result = subprocess.run(
+            result = subprocess.run( # noqa
                 command,
                 shell=True,
                 text=True,
@@ -153,7 +153,7 @@ class MRTFile:
             return False
 
         return self.validate_file_size()
-    
+
     @property
     def ec_file_size(self) -> int:
         """Returns expected compressed file size in bytes"""

@@ -41,7 +41,7 @@ class MHExportAnalyzer:
         start = og_start
         # mh_data = self._init_data()
         # Aggregates data into {current_asn: {provider_asn: {set of prefix data}}
-        mh_data = self.get_mh_data(mrt_files, mh_data)
+        mh_data = self.get_mh_data(mrt_files, mh_data) # noqa
         print("Make the above multiprocessing")
         print(f"got AS path data in {time.perf_counter() - start}")
         start = time.perf_counter()

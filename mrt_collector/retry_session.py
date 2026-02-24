@@ -8,7 +8,7 @@ class RetrySession(requests.Session):
         self,
         retries: int = 3,
         backoff_factor: float = .3,
-        retry_for_status_code: tuple[int, ...] = (500, 502, 503, 504),
+        retry_for_status_codes: tuple[int, ...] = (500, 502, 503, 504),
         raise_for_status_codes: tuple[int, ...] = (400, 401, 403, 404, 429),
     ):
         super().__init__()
@@ -56,6 +56,6 @@ raise_for_status_codes we immediatly raise an error.
 
 If our error is server-side (5xx), it's worth exhausting
 retries. If our error is client-side (4xx), it's likely a
-problem with our request, and we cut our retries off 
+problem with our request, and we cut our retries off
 immediately and error out.
 """

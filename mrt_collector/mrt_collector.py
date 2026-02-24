@@ -96,7 +96,7 @@ class MRTCollector:
 
         for mrt_file in mrt_files:
             mrt_file.fetch_ec_file_size()
-    
+
     def sort_mrt_files_by_attr(
         self,
         mrt_files: tuple[MRTFile, ...],
