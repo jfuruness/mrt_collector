@@ -132,18 +132,8 @@ class MRTFile:
                 shell=True,
                 text=True,
                 capture_output=True,
-                check=False
+                check=True
             )
-
-            # Check if the command was successful
-            if result.returncode != 0:
-                print("Error running command:", result.stderr)
-                raise subprocess.CalledProcessError(
-                    returncode=result.returncode,
-                    cmd=command,
-                    output=result.stdout,
-                    stderr=result.stderr
-                )
 
             # Process the output to get the total number of lines
             output = result.stdout.strip()
