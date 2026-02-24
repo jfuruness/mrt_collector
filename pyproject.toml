@@ -53,6 +53,10 @@ classifiers = [
 ]
 dependencies = [
     "bgpy_pkg~=13.0",
+    "tqdm~=4.67.1",
+    "urllib3~=2.6.3",
+    "requests~=2.32.5",
+    "graphviz~=0.21"
 ]
 
 [project.urls]
@@ -64,9 +68,11 @@ mrt_collector = "mrt_collector.__main__:main"
 
 [project.optional-dependencies]
 test = [
-    "bgpy_pkg[test]~=13.0",
-    "ruff~=0.15.0",
-    "ty~=0.0.17"
+    "bgpy_pkg[test]==13.0",
+    "ruff==0.15.0",
+    "ty==0.0.17",
+    "pytest==9.0.2",
+    "tox==4.46.0"
 ]
 
 [tool.setuptools]
@@ -102,6 +108,22 @@ warn_unreachable = true
 disallow_untyped_calls = false
 disallow_incomplete_defs = false
 disallow_untyped_defs = false
+
+
+[tool.ty.rules]
+# Approximate mypy strict — enable the core type-safety rules as errors
+unresolved-reference = "error"
+invalid-assignment = "error"
+invalid-argument-type = "error"
+invalid-return-type = "error"
+missing-argument = "error"
+unresolved-import = "ignore"        # equivalent of ignore_missing_imports = true
+unreachable-code = "warn"           # equivalent of warn_unreachable = true
+
+# Note: disallow_untyped_calls, disallow_incomplete_defs, and disallow_untyped_defs
+# have no ty equivalent yet. Use Ruff's flake8-annotations (ANN) rules if needed:
+# [tool.ruff.lint]
+# select = ["ANN"]
 
 [mypy-graphviz]
 ignore_missing_imports = true

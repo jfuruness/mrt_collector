@@ -1,1 +1,5 @@
 bgpy_pkg~=13.0
+tqdm~=4.67.1
+urllib3~=2.6.3
+requests~=2.32.5
+graphviz~=0.21
