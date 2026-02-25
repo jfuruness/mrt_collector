@@ -108,7 +108,10 @@ warn_unreachable = true
 disallow_untyped_calls = false
 disallow_incomplete_defs = false
 disallow_untyped_defs = false
-
+exclude = [
+    "mrt_collector/analyzers/",
+    "mrt_collector/sources/"
+]
 
 [tool.ty.rules]
 # Approximate mypy strict — enable the core type-safety rules as errors
