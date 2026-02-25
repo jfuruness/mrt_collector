@@ -47,7 +47,8 @@ class MRTFile:
                         return
         except Exception as e:
             print(f"URL {self.url} : Head Request failed due to {e} {type(e)}")
-            error_prone_sources.append(self)
+            if type(e) == requests.exceptions.HTTPError:
+                error_prone_sources.append(self)
             # raise
 
     def download_raw(self, retries: int = 3) -> None:

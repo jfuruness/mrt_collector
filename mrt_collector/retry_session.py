@@ -21,7 +21,7 @@ class RetrySession(requests.Session):
             backoff_factor=backoff_factor,
             status_forcelist=retry_for_status_codes,
             allowed_methods=["GET", "HEAD"],
-            raise_on_status=True, # raises if all retries exhausted
+            raise_on_status=False, # raises if all retries exhausted
         )
 
         adapter = HTTPAdapter(max_retries=retry)
