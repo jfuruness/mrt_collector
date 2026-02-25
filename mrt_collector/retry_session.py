@@ -31,6 +31,7 @@ class RetrySession(requests.Session):
     def request(self, *args, **kwargs):
         """Wrapper function for error checking"""
         response = super().request(*args, **kwargs)
+        print(response.status_code)
         if response.status_code in self.raise_for_status_codes:
             response.raise_for_status()
         return response

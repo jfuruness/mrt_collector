@@ -19,7 +19,8 @@ class MRTFile:
         raw_dir: Path,
         parsed_dir: Path,
         parsed_line_count_dir: Path,
-        expected_compressed_file_size: int = 0
+        expected_compressed_file_size: int = 0,
+        status: str = "unknown"
     ) -> None:
         self.url: str = url
         self.source: Source = source
@@ -31,6 +32,7 @@ class MRTFile:
             self.url, ext="txt"
         )
         self._ec_file_size: int = expected_compressed_file_size
+        self.status = status # temp, for diagnosing our file
 
     def fetch_ec_file_size(
         self,
@@ -43,12 +45,14 @@ class MRTFile:
                 with session.head(self.url, timeout=60) as r:
                     status_code = r.status_code
                     if status_code == 200:
-                        self._ec_file_size = r.headers.get('Content-Length', 0)
+                        self._ec_file_size = int(r.headers.get('Content-Length', 0))
+                        self.status = "Ready for download"
                         return
         except Exception as e:
             print(f"URL {self.url} : Head Request failed due to {e} {type(e)}")
-            if type(e) == requests.exceptions.HTTPError:
-                error_prone_sources.append(self)
+            self.status = str(type(e))
+            # if type(e) == requests.exceptions.HTTPError:
+            error_prone_sources.append(self)
             # raise
 
     def download_raw(self, retries: int = 3) -> None:
@@ -148,9 +152,15 @@ class MRTFile:
     def __str__(self) -> str:
         """Temporary str override for debugging issues with sources"""
         
-        efs = str(self.ec_file_size) if self.ec_file_size is not 0 else "error"
+        temp = self.url
 
-        return self.url + " ; expected file size: " + efs
+        efs = str(self.ec_file_size)
+        if self.status == "Ready for download":
+            temp += "\nExpected compressed file size= " + efs
+
+        temp += "\nStatus= " + self.status + "\n----"
+
+        return temp
 
     @property
     def download_succeeded(self) -> bool:

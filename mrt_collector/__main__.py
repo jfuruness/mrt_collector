@@ -36,9 +36,20 @@ def main():
     )
 
     mrt_files = collector.run(limit_files_to = limit_files_to)
-    print("total files created, awaiting download: " + str(len(mrt_files)))
-    for mrt_file in mrt_files:
-        print(str(mrt_file) + "\n----")
+    # print("total files created, awaiting download: " + str(len(mrt_files)))
+    # for mrt_file in mrt_files:
+    #     print(str(mrt_file))
+
+    output_path = Path(__file__).parent / "source_diagnostics" / "output.txt"
+    
+    with output_path.open("w") as f:
+        f.write("total files created= " + str(len(mrt_files)) + "\n")
+        for mrt_file in mrt_files:
+            f.write(str(mrt_file) + "\n")
+
+
+
+
     # for mrt_file in mrt_files:
     #     print(mrt_file.download_succeeded)
 

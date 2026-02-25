@@ -54,9 +54,8 @@ class MRTCollector:
 
         self.set_expected_mrt_file_sizes(mrt_files)
         
+        mrt_files = self.sort_mrt_files_by_attr(mrt_files, "ec_file_size")
         return mrt_files #temp while we test which sources are bad
-
-        mrt_files = self.sort_mrt_files_by_attr(mrt_files, "ec_file_siez")
         if limit_files_to != 0:
             mrt_files = self.limit_mrt_files(mrt_files, limit_files_to)
         self.download_raw_mrts(mrt_files)
