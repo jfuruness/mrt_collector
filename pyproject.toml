@@ -118,12 +118,17 @@ invalid-argument-type = "error"
 invalid-return-type = "error"
 missing-argument = "error"
 unresolved-import = "ignore"        # equivalent of ignore_missing_imports = true
-unreachable-code = "warn"           # equivalent of warn_unreachable = true
 
 # Note: disallow_untyped_calls, disallow_incomplete_defs, and disallow_untyped_defs
 # have no ty equivalent yet. Use Ruff's flake8-annotations (ANN) rules if needed:
 # [tool.ruff.lint]
 # select = ["ANN"]
+
+[tool.ty.src]
+exclude = [
+    "mrt_collector/analyzers/**",
+    "mrt_collector/sources/**"
+]
 
 [mypy-graphviz]
 ignore_missing_imports = true
