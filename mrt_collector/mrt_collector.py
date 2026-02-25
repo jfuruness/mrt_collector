@@ -25,7 +25,6 @@ class MRTCollector:
         dl_time: datetime = datetime(2025, 3, 1, 0, 0, 0),
         cpus: int = cpu_count(),
         base_dir: Path | None = None,
-        limit_files_to: int = 0
     ) -> None:
         """Creates directories"""
 
@@ -41,14 +40,12 @@ class MRTCollector:
 
         self._initialize_dirs()
 
-        self.limit_files_to = limit_files_to
-
     def run(
         self,
         sources: tuple[Source, ...] = tuple(
             [Cls() for Cls in Source.sources]
         ),
-        # Steps
+        limit_files_to: int = 0,
         mrt_files: tuple[MRTFile, ...] = (),
     ) -> tuple[MRTFile, ...]:
         """Downloads MRTs and then extracts data from them"""
@@ -56,8 +53,8 @@ class MRTCollector:
         mrt_files = mrt_files or self.get_mrt_files()
         self.set_expected_mrt_file_sizes(mrt_files)
         mrt_files = self.sort_mrt_files_by_attr(mrt_files, "ec_file_siez")
-        if self.limit_files_to != 0:
-            mrt_files = self.limit_mrt_files(mrt_files)
+        if limit_files_to != 0:
+            mrt_files = self.limit_mrt_files(mrt_files, limit_files_to)
         self.download_raw_mrts(mrt_files)
         mrt_files = self.strip_failed_downloads(mrt_files)
         # TODO:  method to get rid of bad downloads, should also allow us to
@@ -116,11 +113,13 @@ class MRTCollector:
 
     def limit_mrt_files(
         self,
-        mrt_files: tuple[MRTFile, ...]
+        mrt_files: tuple[MRTFile, ...],
+        num_files: int
     ) -> tuple[MRTFile, ...]:
         """Creates a new tuple containing as many files as defined by limit_files_to"""
-
-        return mrt_files[-self.limit_files_to:]
+        
+        strip_at = len(mrt_files) - num_files
+        return mrt_files[strip_at:]
 
     def get_total_expected_mrt_file_size(
         self,

@@ -33,10 +33,9 @@ def main():
         dl_time=dl_time,
         cpus= 1 if args.single_process else cpu_count(),
         base_dir=Path.home() / "mrt_data" / dl_time.strftime("%Y_%m_%d"),
-        limit_files_to=limit_files_to
     )
 
-    mrt_files = collector.run()
+    mrt_files = collector.run(limit_files_to = limit_files_to)
 
     for mrt_file in mrt_files:
         print(mrt_file.download_succeeded)
