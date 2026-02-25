@@ -4,6 +4,8 @@ from multiprocessing import cpu_count
 from pathlib import Path
 from typing import Any, Callable
 
+import time # this is for temp solution to our new connection error diagnostics
+
 from tqdm import tqdm
 
 from .mrt_file import MRTFile
@@ -98,7 +100,9 @@ class MRTCollector:
         
         for mrt_file in mrt_files:
             mrt_file.fetch_ec_file_size(error_prone_sources)
-    
+            time.sleep(3) # need arbitrary wait otherwise some of our connections get denied
+            # for too many requests in short timeframe
+
         print(str(len(error_prone_sources)) + " sources with errors")
         for mrt_file in error_prone_sources:
             print("Source produces errors at url " + mrt_file.url + "\n----" )
