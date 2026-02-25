@@ -51,7 +51,11 @@ class MRTCollector:
         """Downloads MRTs and then extracts data from them"""
 
         mrt_files = mrt_files or self.get_mrt_files()
+
         self.set_expected_mrt_file_sizes(mrt_files)
+        
+        return mrt_files #temp while we test which sources are bad
+
         mrt_files = self.sort_mrt_files_by_attr(mrt_files, "ec_file_siez")
         if limit_files_to != 0:
             mrt_files = self.limit_mrt_files(mrt_files, limit_files_to)
@@ -90,9 +94,14 @@ class MRTCollector:
         mrt_files: tuple[MRTFile, ...]
     ) -> None:
         """Gets the expected file size of each MRT"""
-
+        
+        error_prone_sources = []
+        
         for mrt_file in mrt_files:
-            mrt_file.fetch_ec_file_size()
+            mrt_file.fetch_ec_file_size(error_prone_sources)
+
+        for mrt_file in error_prone_sources:
+            print("Source produces errors at url " + mrt_file.url)
 
     def sort_mrt_files_by_attr(
         self,
