@@ -37,8 +37,8 @@ def main():
 
     mrt_files = collector.run(limit_files_to = limit_files_to)
 
-    for mrt_file in mrt_files:
-        print(mrt_file.download_succeeded)
+    # for mrt_file in mrt_files:
+    #     print(mrt_file.download_succeeded)
 
     # mrt_files = list(sorted(collector.run()))
     # mrt_files = [mrt_files[0]]

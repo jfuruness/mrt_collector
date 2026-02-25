@@ -99,9 +99,10 @@ class MRTCollector:
         
         for mrt_file in mrt_files:
             mrt_file.fetch_ec_file_size(error_prone_sources)
-
+    
+        print(str(len(error_prone_sources)) + " sources with errors")
         for mrt_file in error_prone_sources:
-            print("Source produces errors at url " + mrt_file.url)
+            print("Source produces errors at url " + mrt_file.url + "\n----" )
 
     def sort_mrt_files_by_attr(
         self,

@@ -32,7 +32,10 @@ class MRTFile:
         )
         self._ec_file_size: int = expected_compressed_file_size
 
-    def fetch_ec_file_size(self, error_prone_sources: list(MRTFile)) -> None:
+    def fetch_ec_file_size(
+        self,
+        error_prone_sources
+    ) -> None:
         """Tries to set expected_file_size with a HEAD request"""
 
         try:
