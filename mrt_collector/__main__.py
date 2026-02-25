@@ -36,7 +36,9 @@ def main():
     )
 
     mrt_files = collector.run(limit_files_to = limit_files_to)
-
+    print("total files created, awaiting download: " + str(len(mrt_files)))
+    for mrt_file in mrt_files:
+        print(str(mrt_file) + "\n----")
     # for mrt_file in mrt_files:
     #     print(mrt_file.download_succeeded)
 

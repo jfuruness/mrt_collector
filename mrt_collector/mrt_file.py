@@ -145,6 +145,13 @@ class MRTFile:
                 f.write(str(count))
                 return int(count)
 
+    def __str__(self) -> str:
+        """Temporary str override for debugging issues with sources"""
+        
+        efs = str(self.ec_file_size) if self.ec_file_size is not 0 else "error"
+
+        return self.url + " ; expected file size: " + efs
+
     @property
     def download_succeeded(self) -> bool:
         """Returns true if the raw file exists and matches the expected size"""
