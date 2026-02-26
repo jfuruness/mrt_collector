@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 import time # this is for temp solution to our new connection error diagnostics
+import warnings
 
 from tqdm import tqdm
 
@@ -57,7 +58,10 @@ class MRTCollector:
         self.set_expected_mrt_file_sizes(mrt_files)
         
         mrt_files = self.sort_mrt_files_by_attr(mrt_files, "ec_file_size")
+        mrt_files = self.strip_unavail_sources(mrt_files)
         return mrt_files #temp while we test which sources are bad
+       
+        
         if limit_files_to != 0:
             mrt_files = self.limit_mrt_files(mrt_files, limit_files_to)
         self.download_raw_mrts(mrt_files)
@@ -100,12 +104,7 @@ class MRTCollector:
         
         for mrt_file in mrt_files:
             mrt_file.fetch_ec_file_size(error_prone_sources)
-            time.sleep(3) # need arbitrary wait otherwise some of our connections get denied
-            # for too many requests in short timeframe
-
-        print(str(len(error_prone_sources)) + " sources with errors")
-        for mrt_file in error_prone_sources:
-            print("Source produces errors at url " + mrt_file.url + "\n----" )
+            time.sleep(3) # need delay between requqests otherwise too many req error
 
     def sort_mrt_files_by_attr(
         self,
@@ -123,6 +122,33 @@ class MRTCollector:
             key= lambda mrt_file: getattr(mrt_file, attr),
             reverse=do_reverse
         ))
+
+    def strip_unavail_sources(
+        self,
+        mrt_files: tuple[MRTFile, ...],
+        ) -> tuple[MRTFile, ...]:
+        """
+        Removes all MRTFile with ec_file_size of 0 from mrt_files
+        Assumes input is sorted descending
+        """
+        
+        idx = -1
+        for mrt_file in mrt_files:
+            if mrt_file.ec_file_size == 0:
+                idx = mrt_files.index(mrt_file)
+                break
+
+        if idx == -1: # no unavail sources found
+            return mrt_files
+        
+        num_dropped = len(mrt_files) - idx
+        log = "Error retrieving " + str(num_dropped) + " sources (likely 404)"
+        for n in range(idx, len(mrt_files)):
+            log += "\n" + mrt_files[n].url
+        
+        warnings.warn(log, stacklevel=2)
+
+        return mrt_files[:idx]
 
     def limit_mrt_files(
         self,

@@ -27,7 +27,8 @@ def main():
 
     args = parser.parse_args()
     limit_files_to = 0 if args.limit_files is None else args.limit_files
-    dl_time=datetime(2025, 3, 20, 0, 0, 0)
+    # dl_time=datetime(2025, 3, 20, 0, 0, 0)
+    dl_time = datetime(2026, 2, 26, 0, 0, 0)
     # dl_time = datetime.now() #figure we probably want now in this context?
     collector = MRTCollector(
         dl_time=dl_time,
