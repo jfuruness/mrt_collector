@@ -133,3 +133,9 @@ tags
 
 # PyCharm
 .idea/
+
+# macOS specific
+.DS_Store
+
+# this was for my (Satchel) own testing purposes
+mrt_collector/source_diagnostics
