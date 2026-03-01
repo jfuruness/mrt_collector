@@ -81,7 +81,7 @@ mrt_collector = "mrt_collector.__main__:main"
 test = [
     "bgpy_pkg[test]==13.0",
     "ty==0.0.17",
-    "tox==4.46.0"
+    "tox==4.46.0",
     "pytest==9.0.2",
     "pre-commit==4.5.1",
     "types-beautifulsoup4==4.12.0.20250516",
