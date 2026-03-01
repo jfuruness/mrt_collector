@@ -27,11 +27,14 @@ def main():
     limit_files_to = 0 if args.limit_files is None else args.limit_files
     # dl_time=datetime(2025, 3, 20, 0, 0, 0)
     dl_time = datetime(2026, 2, 26, 0, 0, 0)
-    # dl_time = datetime.now() #figure we probably want now in this context?
+    output_path = Path.home() / "mrt_data" / dl_time.strftime("%Y_%m_%d")
+    
+    # I (Satchel) use this for testing on my machine
+    output_path = Path("/Volumes/Crucial X8/") / "mrt_data" / t_str
     collector = MRTCollector(
         dl_time=dl_time,
         cpus= 1 if args.single_process else cpu_count(),
-        base_dir=Path.home() / "mrt_data" / dl_time.strftime("%Y_%m_%d"),
+        base_dir=output_path,
     )
 
     mrt_files = collector.run(limit_files_to = limit_files_to) # noqa

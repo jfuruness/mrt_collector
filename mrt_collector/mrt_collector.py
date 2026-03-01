@@ -63,7 +63,7 @@ class MRTCollector:
 
         mrt_files = self.sort_mrt_files_by_ec_file_size(mrt_files)
         mrt_files = self.strip_unavail_sources(mrt_files)
-        return mrt_files #temp while we test which sources are bad
+#        return mrt_files #temp while we test which sources are bad
 
 
         if limit_files_to != 0:
