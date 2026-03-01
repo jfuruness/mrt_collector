@@ -1,11 +1,9 @@
+import time  # this is for temp solution to our new connection error diagnostics
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
 from multiprocessing import cpu_count
 from pathlib import Path
 from typing import Any, Callable
-
-import time # this is for temp solution to our new connection error diagnostics
-import warnings
 
 from tqdm import tqdm
 
@@ -56,12 +54,12 @@ class MRTCollector:
         mrt_files = mrt_files or self.get_mrt_files()
 
         self.set_mrt_ec_file_sizes(mrt_files)
-        
+
         mrt_files = self.sort_mrt_files_by_ec_file_size(mrt_files)
         mrt_files = self.strip_unavail_sources(mrt_files)
         return mrt_files #temp while we test which sources are bad
-       
-        
+
+
         if limit_files_to != 0:
             mrt_files = self.limit_mrt_files(mrt_files, limit_files_to)
         self.download_raw_mrts(mrt_files)
@@ -99,11 +97,11 @@ class MRTCollector:
         mrt_files: tuple[MRTFile, ...]
     ) -> None:
         """Gets the expected file size of each MRT"""
-         
-        for mrt_file in mrt_files:
-            mrt_file.fetch_ec_file_size()            
+
+        for mrt_file in tqdm(mrt_files, desc="Fetching compressed MRT file sizes"):
+            mrt_file.fetch_ec_file_size()
             # need minimum 3 sec delay between requests, otherwise rate limit exceeded
-            time.sleep(5) 
+            time.sleep(5)
 
     def sort_mrt_files_by_ec_file_size(
         self,
@@ -113,7 +111,7 @@ class MRTCollector:
 
         return tuple(sorted(
             mrt_files,
-            key= lambda mrt_file: getattr(mrt_file, "ec_file_size"),
+            key= lambda mrt_file: mrt_file.ec_file_size,
             reverse=True
         ))
 
@@ -125,10 +123,10 @@ class MRTCollector:
 
         return tuple(sorted(
             mrt_files,
-            key= lambda mrt_file: getattr(mrt_file, "ac_file_size"),
+            key= lambda mrt_file: mrt_file.ac_file_size,
             reverse=True
         ))
-    
+
     def sort_mrt_files_by_parsed_file_size(
         self,
         mrt_files: tuple[MRTFile, ...]
@@ -137,7 +135,7 @@ class MRTCollector:
 
         return tuple(sorted(
             mrt_files,
-            key= lambda mrt_file: getattr(mrt_file, "parsed_file_size"),
+            key= lambda mrt_file: mrt_file.parsed_file_size,
             reverse=True
         ))
 
@@ -148,19 +146,19 @@ class MRTCollector:
         """
         Removes all MRTFile with ec_file_size of 0 from mrt_files
         """
-        
+
         mrt_files = tuple(
             [mrt_file for mrt_file in mrt_files if mrt_file.ec_file_size != 0]
         )
         return mrt_files
-        
+
     def limit_mrt_files(
         self,
         mrt_files: tuple[MRTFile, ...],
         num_files: int
     ) -> tuple[MRTFile, ...]:
         """Creates a new tuple containing as many files as defined by limit_files_to"""
-        
+
         strip_at = len(mrt_files) - num_files
         return mrt_files[strip_at:]
 

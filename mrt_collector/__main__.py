@@ -7,8 +7,6 @@ from .mrt_collector import MRTCollector
 
 
 def main():
-    print("HERE")
-
     parser = argparse.ArgumentParser(prog='MRT Collector')
     #for use with running with limited files
     parser.add_argument(
@@ -36,17 +34,14 @@ def main():
         base_dir=Path.home() / "mrt_data" / dl_time.strftime("%Y_%m_%d"),
     )
 
-    mrt_files = collector.run(limit_files_to = limit_files_to)
-    # print("total files created, awaiting download: " + str(len(mrt_files)))
-    # for mrt_file in mrt_files:
-    #     print(str(mrt_file))
+    mrt_files = collector.run(limit_files_to = limit_files_to) # noqa
 
-    output_path = Path(__file__).parent / "source_diagnostics" / "output.txt"
-    
-    with output_path.open("w") as f:
-        f.write("total files created= " + str(len(mrt_files)) + "\n")
-        for mrt_file in mrt_files:
-            f.write(str(mrt_file) + "\n")
+#    output_path = Path(__file__).parent / "source_diagnostics" / "output.txt"
+
+#    with output_path.open("w") as f:
+#        f.write("total files created= " + str(len(mrt_files)) + "\n")
+#        for mrt_file in mrt_files:
+#            f.write(str(mrt_file) + "\n")
 
 
 

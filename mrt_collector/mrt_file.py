@@ -46,7 +46,7 @@ class MRTFile:
                         self._ec_file_size = int(r.headers.get('Content-Length', 0))
                         self.status = "Ready for download"
                         return
-        except Exception as e:
+        except Exception as e: # noqa
             print(f"URL {self.url} : Head Request failed due to {e} {type(e)}")
             # if type(e) == requests.exceptions.HTTPError:
             # raise
@@ -147,7 +147,7 @@ class MRTFile:
 
     def __str__(self) -> str:
         """Temporary str override for debugging issues with sources"""
-        
+
         temp = self.url
 
         efs = str(self.ec_file_size)
