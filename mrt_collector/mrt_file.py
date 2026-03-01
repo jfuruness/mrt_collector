@@ -57,6 +57,11 @@ class MRTFile:
         if self.download_succeeded:
             return
 
+        # need min 3 sec delay, else exceeds rate limit
+        # I tried putting this in _mp_tqdm in mrtcollector
+        # but it didn't help. Trying here now
+#        time.sleep(5)
+
         # I tried using proper backoff strategies, such as:
         # https://stackoverflow.com/a/35504626/8903959
         # But this actually doesn't capture incomplete read
@@ -102,6 +107,7 @@ class MRTFile:
         actual_file_size = stat_info.st_size
 
         if actual_file_size == 0:
+            print("houston we have a file size")
             raise NotImplementedError("Expected cmprsd size 0 at " + str(self.raw_path))
 
         result = actual_file_size == self._ec_file_size

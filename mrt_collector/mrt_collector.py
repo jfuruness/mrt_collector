@@ -15,9 +15,6 @@ from .sources import Source
 
 def download_mrt(mrt_file: MRTFile) -> None:
     mrt_file.download_raw()
-    # need min 3 sec delay, else exceeds rate limit
-    time.sleep(5)
-
 
 def count_parsed_lines(mrt_file: MRTFile) -> None:
     mrt_file.count_parsed_lines()
@@ -229,6 +226,8 @@ class MRTCollector:
         # Starts the progress bar in another thread
         if self.cpus == 1:
             for args in tqdm(iterable, total=len(iterable), desc=desc):
+                # need min 3 sec delay, else rate limit exceeded
+                time.sleep(5)
                 func(*args)
         else:
             # https://stackoverflow.com/a/63834834/8903959
