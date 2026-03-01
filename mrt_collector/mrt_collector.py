@@ -57,7 +57,7 @@ class MRTCollector:
 
         self.set_mrt_ec_file_sizes(mrt_files)
         
-        mrt_files = self.sort_mrt_files_by_attr(mrt_files, "ec_file_size")
+        mrt_files = self.sort_mrt_files_by_ec_file_size(mrt_files)
         mrt_files = self.strip_unavail_sources(mrt_files)
         return mrt_files #temp while we test which sources are bad
        
@@ -105,21 +105,40 @@ class MRTCollector:
             # need minimum 3 sec delay between requests, otherwise rate limit exceeded
             time.sleep(5) 
 
-    def sort_mrt_files_by_attr(
+    def sort_mrt_files_by_ec_file_size(
         self,
-        mrt_files: tuple[MRTFile, ...],
-        attr: str, # supports "ec_file_size", "ac_file_size", and "parsed_file_size"
-        do_reverse: bool = True
+        mrt_files: tuple[MRTFile, ...]
     ) -> tuple[MRTFile, ...]:
-        """Sorts mrt_files based on a provided attribute"""
-
-        if not hasattr(mrt_files[0], attr):
-            raise AttributeError("MRTFiles have no " + attr + " attribute")
+        """Sorts mrt_files by expected compressed file size (descending)"""
 
         return tuple(sorted(
             mrt_files,
-            key= lambda mrt_file: getattr(mrt_file, attr),
-            reverse=do_reverse
+            key= lambda mrt_file: getattr(mrt_file, "ec_file_size"),
+            reverse=True
+        ))
+
+    def sort_mrt_files_by_ac_file_size(
+        self,
+        mrt_files: tuple[MRTFile, ...]
+    ) -> tuple[MRTFile, ...]:
+        """Sorts mrt_files by actual compressed file size (descending)"""
+
+        return tuple(sorted(
+            mrt_files,
+            key= lambda mrt_file: getattr(mrt_file, "ac_file_size"),
+            reverse=True
+        ))
+    
+    def sort_mrt_files_by_parsed_file_size(
+        self,
+        mrt_files: tuple[MRTFile, ...]
+    ) -> tuple[MRTFile, ...]:
+        """Sorts mrt_files by parsed file size (descending)"""
+
+        return tuple(sorted(
+            mrt_files,
+            key= lambda mrt_file: getattr(mrt_file, "parsed_file_size"),
+            reverse=True
         ))
 
     def strip_unavail_sources(
