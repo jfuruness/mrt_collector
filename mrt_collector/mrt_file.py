@@ -104,7 +104,9 @@ class MRTFile:
         if actual_file_size == 0:
             raise NotImplementedError("Expected cmprsd size 0 at " + str(self.raw_path))
 
-        return actual_file_size == self._ec_file_size
+        result = actual_file_size == self._ec_file_size
+        print(self.url + " : downloaded correctly= " + str(result))
+        return result
 
     def _url_to_fname(self, url: str, ext: str = "") -> str:
         """Converts a URL into a file name"""

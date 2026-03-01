@@ -168,7 +168,7 @@ class MRTCollector:
         strip_at = len(mrt_files) - num_files
         return mrt_files[strip_at:]
 
-    def get_total_expected_mrt_file_size(
+    def get_total_download_size(
         self,
         mrt_files: tuple[MRTFile, ...]
     ) -> int:
@@ -228,6 +228,8 @@ class MRTCollector:
         if self.cpus == 1:
             for args in tqdm(iterable, total=len(iterable), desc=desc):
                 func(*args)
+                # need min 3 sec delay, else exceeds rate limit
+                time.sleep(5)
         else:
             # https://stackoverflow.com/a/63834834/8903959
             with ProcessPoolExecutor(max_workers=self.cpus) as executor:
@@ -235,10 +237,12 @@ class MRTCollector:
                 for future in tqdm(
                     as_completed(futures),
                     total=len(iterable),
-                    desc=desc,
+                    desc=f"downloading {self.get_total_download_size} bytes",
                 ):
                     # reraise any exceptions from the processes
                     future.result()
+                    # need min 3 sec delay, else exceeds rate limit
+                    time.sleep(5)
 
     ###############
     # Directories #

@@ -28,7 +28,7 @@ def main():
     # dl_time=datetime(2025, 3, 20, 0, 0, 0)
     dl_time = datetime(2026, 2, 26, 0, 0, 0)
     output_path = Path.home() / "mrt_data" / dl_time.strftime("%Y_%m_%d")
-    
+
     # I (Satchel) use this for testing on my machine
     output_path = Path("/Volumes/Crucial X8/") / "mrt_data" / dl_time.strftime("%Y_%m_%d")
     collector = MRTCollector(
