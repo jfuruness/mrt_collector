@@ -129,27 +129,13 @@ class MRTCollector:
         ) -> tuple[MRTFile, ...]:
         """
         Removes all MRTFile with ec_file_size of 0 from mrt_files
-        Assumes input is sorted descending
         """
         
-        idx = -1
-        for mrt_file in mrt_files:
-            if mrt_file.ec_file_size == 0:
-                idx = mrt_files.index(mrt_file)
-                break
-
-        if idx == -1: # no unavail sources found
-            return mrt_files
+        mrt_files = tuple(
+            [mrt_file for mrt_file in mrt_files if mrt_file.ec_file_size != 0]
+        )
+        return mrt_files
         
-        num_dropped = len(mrt_files) - idx
-        log = "Error retrieving " + str(num_dropped) + " sources (likely 404)"
-        for n in range(idx, len(mrt_files)):
-            log += "\n" + mrt_files[n].url
-        
-        warnings.warn(log, stacklevel=2)
-
-        return mrt_files[:idx]
-
     def limit_mrt_files(
         self,
         mrt_files: tuple[MRTFile, ...],
