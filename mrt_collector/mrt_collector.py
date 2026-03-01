@@ -99,12 +99,11 @@ class MRTCollector:
         mrt_files: tuple[MRTFile, ...]
     ) -> None:
         """Gets the expected file size of each MRT"""
-        
-        error_prone_sources = []
-        
+         
         for mrt_file in mrt_files:
-            mrt_file.fetch_ec_file_size(error_prone_sources)
-            time.sleep(3) # need delay between requqests otherwise too many req error
+            mrt_file.fetch_ec_file_size()            
+            # need minimum 3 sec delay between requests, otherwise rate limit exceeded
+            time.sleep(5) 
 
     def sort_mrt_files_by_attr(
         self,

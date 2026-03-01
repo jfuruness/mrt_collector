@@ -32,11 +32,9 @@ class MRTFile:
             self.url, ext="txt"
         )
         self._ec_file_size: int = expected_compressed_file_size
-        self.status = status # temp, for diagnosing our file
 
     def fetch_ec_file_size(
         self,
-        error_prone_sources
     ) -> None:
         """Tries to set expected_file_size with a HEAD request"""
 
@@ -50,9 +48,7 @@ class MRTFile:
                         return
         except Exception as e:
             print(f"URL {self.url} : Head Request failed due to {e} {type(e)}")
-            self.status = str(type(e))
             # if type(e) == requests.exceptions.HTTPError:
-            error_prone_sources.append(self)
             # raise
 
     def download_raw(self, retries: int = 3) -> None:
