@@ -55,7 +55,7 @@ class MRTCollector:
 
         mrt_files = mrt_files or self.get_mrt_files()
 
-        self.set_expected_mrt_file_sizes(mrt_files)
+        self.set_mrt_ec_file_sizes(mrt_files)
         
         mrt_files = self.sort_mrt_files_by_attr(mrt_files, "ec_file_size")
         mrt_files = self.strip_unavail_sources(mrt_files)
@@ -94,7 +94,7 @@ class MRTCollector:
                 )
         return tuple(mrt_files)
 
-    def set_expected_mrt_file_sizes(
+    def set_mrt_ec_file_sizes(
         self,
         mrt_files: tuple[MRTFile, ...]
     ) -> None:
