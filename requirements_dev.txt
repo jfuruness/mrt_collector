@@ -23,6 +23,6 @@ types-psutil==7.2.1.20260116
 types-PyYAML==6.0.12.20250915
 types-tqdm==4.67.0.20250809
 mypy==1.19.1
-tox==4.34.1
+tox==4.46.0
 pytest-xdist==3.8.0
 ruff==0.14.13
