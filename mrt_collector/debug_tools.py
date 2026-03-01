@@ -1,7 +1,8 @@
 import csv
-from .mrtfile import MRTFile
 from pathlib import Path
-import typing
+
+from .mrt_file import MRTFile
+
 
 def ec_file_sizes_to_csv(
     mrt_files: tuple[MRTFile, ...],
@@ -11,8 +12,8 @@ def ec_file_sizes_to_csv(
     Outputs result from mrt_file head requests
     Helpful when debugging to skip the 7 min wait
     """
-
-    with output_oath.open("w", newline="") as f:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(["url", "ec_file_size"])
         for mrt_file in mrt_files:
@@ -31,9 +32,9 @@ def ec_file_sizes_from_csv(
     with input_path.open("r", newline="") as f:
         reader = csv.DictReader(f)
         url_to_size = {
-            row["url": int(row["ec_file_size"]) for row in reader
+            row["url"]: int(row["ec_file_size"]) for row in reader
         }
 
     for mrt_file in mrt_files:
         if mrt_file.url in url_to_size:
-            mrt_file._ec_file_size = url_to_size[mrt_file.url]
+            mrt_file._ec_file_size = url_to_size[mrt_file.url] # noqa

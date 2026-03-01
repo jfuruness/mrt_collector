@@ -7,6 +7,7 @@ from typing import Any, Callable
 
 from tqdm import tqdm
 
+from .debug_tools import ec_file_sizes_from_csv, ec_file_sizes_to_csv
 from .mrt_file import MRTFile
 from .rib_dump_parse_funcs import PARSE_FUNC, bgpkit_parser
 from .sources import Source
@@ -53,11 +54,16 @@ class MRTCollector:
 
         mrt_files = mrt_files or self.get_mrt_files()
 
-        self.set_mrt_ec_file_sizes(mrt_files)
+        head_req_path = self.base_dir / "head_req" / "data.csv"
+        if not head_req_path.exists():
+            self.set_mrt_ec_file_sizes(mrt_files)
+            ec_file_sizes_to_csv(mrt_files, head_req_path)
+        else:
+            ec_file_sizes_from_csv(mrt_files, head_req_path)
 
         mrt_files = self.sort_mrt_files_by_ec_file_size(mrt_files)
         mrt_files = self.strip_unavail_sources(mrt_files)
-#        return mrt_files #temp while we test which sources are bad
+        return mrt_files #temp while we test which sources are bad
 
 
         if limit_files_to != 0:
