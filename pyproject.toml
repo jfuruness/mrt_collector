@@ -52,11 +52,22 @@ classifiers = [
     "Topic :: Security",
 ]
 dependencies = [
+    "beautifulsoup4==4.14.3",
+    "frozendict==2.4.7",
+    "graphviz==0.21",
+    "matplotlib==3.10.8",
+    "platformdirs==4.5.1",
+    "psutil==7.2.1",
+    "pytest==9.0.2",
+    "PyYAML==6.0.3",
+    "requests==2.32.5",
+    "requests-cache==1.2.1",
+    "roa-checker~=3.0",
+    "rov-collector~=1.0",
+    "tqdm==4.67.1",
+    "yamlable==1.1.1",
     "bgpy_pkg~=13.0",
-    "tqdm~=4.67.1",
-    "urllib3~=2.6.3",
-    "requests~=2.32.5",
-    "graphviz~=0.21"
+    "urllib3~=2.6.3"
 ]
 
 [project.urls]
@@ -69,10 +80,19 @@ mrt_collector = "mrt_collector.__main__:main"
 [project.optional-dependencies]
 test = [
     "bgpy_pkg[test]==13.0",
-    "ruff==0.15.0",
     "ty==0.0.17",
-    "pytest==9.0.2",
     "tox==4.46.0"
+    "pytest==9.0.2",
+    "pre-commit==4.5.1",
+    "types-beautifulsoup4==4.12.0.20250516",
+    "types-requests==2.32.4.20260107",
+    "types-psutil==7.2.1.20260116",
+    "types-PyYAML==6.0.12.20250915",
+    "types-tqdm==4.67.0.20250809",
+    "mypy==1.19.1",
+    "tox==4.34.1",
+    "pytest-xdist==3.8.0",
+    "ruff==0.14.13",
 ]
 
 [tool.setuptools]
