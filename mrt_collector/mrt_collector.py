@@ -15,6 +15,8 @@ from .sources import Source
 
 def download_mrt(mrt_file: MRTFile) -> None:
     mrt_file.download_raw()
+    # need min 3 sec delay, else exceeds rate limit
+    time.sleep(5)
 
 
 def count_parsed_lines(mrt_file: MRTFile) -> None:
@@ -228,8 +230,6 @@ class MRTCollector:
         if self.cpus == 1:
             for args in tqdm(iterable, total=len(iterable), desc=desc):
                 func(*args)
-                # need min 3 sec delay, else exceeds rate limit
-                time.sleep(5)
         else:
             # https://stackoverflow.com/a/63834834/8903959
             with ProcessPoolExecutor(max_workers=self.cpus) as executor:
@@ -237,12 +237,10 @@ class MRTCollector:
                 for future in tqdm(
                     as_completed(futures),
                     total=len(iterable),
-                    desc=f"downloading {self.get_total_download_size} bytes",
+                    desc=desc,
                 ):
                     # reraise any exceptions from the processes
                     future.result()
-                    # need min 3 sec delay, else exceeds rate limit
-                    time.sleep(5)
 
     ###############
     # Directories #
