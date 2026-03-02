@@ -222,6 +222,9 @@ class MRTCollector:
         desc: str,
     ) -> None:
         """Runs tqdm with multiprocessing"""
+        
+        #temp for benchmarking
+        start = time.time()
 
         # Starts the progress bar in another thread
         if self.cpus == 1:
@@ -232,7 +235,12 @@ class MRTCollector:
         else:
             # https://stackoverflow.com/a/63834834/8903959
             with ProcessPoolExecutor(max_workers=self.cpus) as executor:
-                futures = [executor.submit(func, *x) for x in iterable]
+                futures = []
+                for x in iterable:
+                    futures.append(executor.submit(func, *x))
+                    # need min 3 sec delay, else rate limit exceeded
+                    time.sleep(5)
+                [executor.submit(func, *x) for x in iterable]
                 for future in tqdm(
                     as_completed(futures),
                     total=len(iterable),
@@ -240,6 +248,10 @@ class MRTCollector:
                 ):
                     # reraise any exceptions from the processes
                     future.result()
+
+        elapsed = time.time() - start
+        minutes, seconds = divmod(elapsed, 60)
+        print(f"Download completed in {int(minutes)}m {seconds:.2f}s")
 
     ###############
     # Directories #
