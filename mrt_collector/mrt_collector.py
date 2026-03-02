@@ -71,8 +71,8 @@ class MRTCollector:
         mrt_files = self.strip_failed_downloads(mrt_files)
         # TODO:  method to get rid of bad downloads, should also allow us to
         # remove some of the download checking logic from parse_mrts() and count_parsed_lines()
-        #self.parse_mrts(mrt_files)
-        #self.count_parsed_lines(mrt_files)
+        self.parse_mrts(mrt_files)
+        self.count_parsed_lines(mrt_files)
         return mrt_files
 
     def get_mrt_files(
@@ -201,7 +201,6 @@ class MRTCollector:
         """Runs a tool to extract information from a dump"""
 
         # Remove MRT files that failed to download, and sort by file size
-        mrt_files = tuple(sorted(x for x in mrt_files if x.download_succeeded))
         args = tuple([(x,) for x in mrt_files])
         desc = "Parsing MRTs (largest first), ~13m"
         self._mp_tqdm(args, parse_func, desc=desc)
@@ -209,7 +208,8 @@ class MRTCollector:
     def count_parsed_lines(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Counts parsed lines from MRT files and stores them"""
 
-        mrt_files = tuple(sorted(x for x in mrt_files if x.download_succeeded))
+        # mrt_files = tuple(sorted(x for x in mrt_files if x.download_succeeded))
+        mrt_files = self.sort_mrt_files_by_parsed_file_size(mrt_files)
         args = tuple([(x,) for x in mrt_files])
         desc = "Counting lines in MRTs (largest first), ~2m"
         self._mp_tqdm(args, count_parsed_lines, desc=desc)
