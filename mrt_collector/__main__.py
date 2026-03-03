@@ -30,7 +30,7 @@ def main():
     output_path = Path.home() / "mrt_data" / dl_time.strftime("%Y_%m_%d")
 
     # I (Satchel) use this for testing on my machine
-    #    output_path = Path("/Volumes/Crucial X8/") / "mrt_data" / dl_time.strftime("%Y_%m_%d")
+    output_path = Path("/Volumes/Crucial X8/") / "mrt_data" / dl_time.strftime("%Y_%m_%d")
     collector = MRTCollector(
         dl_time=dl_time,
         cpus= 1 if args.single_process else cpu_count(),

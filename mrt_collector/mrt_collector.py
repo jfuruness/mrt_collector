@@ -71,6 +71,8 @@ class MRTCollector:
         mrt_files = self.strip_failed_downloads(mrt_files)
         # TODO:  method to get rid of bad downloads, should also allow us to
         # remove some of the download checking logic from parse_mrts() and count_parsed_lines()
+        return mrt_files
+
         self.parse_mrts(mrt_files)
         self.count_parsed_lines(mrt_files)
         return mrt_files
@@ -189,23 +191,63 @@ class MRTCollector:
 
         return tuple([mrt_file for mrt_file in mrt_files if mrt_file.download_succeeded])
 
-    def download_raw_mrts(self, mrt_files: tuple[MRTFile, ...]) -> None:
+    def download_raw_mrts(
+        self,
+        mrt_files: tuple[MRTFile, ...]
+    ) -> None:
         """Downloads raw MRT RIB dumps into raw_dir"""
+        
+        already_downloaded = all(
+            mrt_file.download_succeeded for mrt_file in mrt_files
+        )
+
+        if already_downloaded:
+            print("Raw MRTs already downloaded")
+            return
 
         args = tuple([(x,) for x in mrt_files])
-        self._mp_tqdm(args, download_mrt, desc="Downloading MRTs (~5m)")
+        desc = self.download_raw_desc(mrt_files)
+        self.start_sp_or_mp_tqdm(
+            args,
+            download_mrt,
+            desc=desc,
+            use_delay=True,
+            delay=5
+        )
+
+    def download_raw_desc(
+        self,
+        mrt_files: tuple[MRTFile, ...]
+    ) -> str:
+        """Returns a formatted description for tqdm bar
+           for downloading raw mrts"""
+
+        byte_c = self.get_total_download_size(mrt_files)
+        gigabytes = round(byte_c / 1e9, 2)
+
+        return f"Downloading raw MRTs ({gigabytes} gigs)"
 
     def parse_mrts(
-        self, mrt_files: tuple[MRTFile, ...], parse_func: PARSE_FUNC = bgpkit_parser
+        self,
+        mrt_files: tuple[MRTFile, ...],
+        parse_func: PARSE_FUNC = bgpkit_parser
     ) -> None:
         """Runs a tool to extract information from a dump"""
 
         # Remove MRT files that failed to download, and sort by file size
         args = tuple([(x,) for x in mrt_files])
         desc = "Parsing MRTs (largest first), ~13m"
-        self._mp_tqdm(args, parse_func, desc=desc)
+        # self._mp_tqdm(args, parse_func, desc=desc)
+        self.start_sp_or_mp_tqdm(
+            args,
+            parse_func,
+            desc=desc
+        )
 
-    def count_parsed_lines(self, mrt_files: tuple[MRTFile, ...]) -> None:
+    def count_parsed_lines(
+        self,
+        mrt_files: tuple[MRTFile, ...]
+    ) -> None:
         """Counts parsed lines from MRT files and stores them"""
 
         # mrt_files = tuple(sorted(x for x in mrt_files if x.download_succeeded))
@@ -213,6 +255,47 @@ class MRTCollector:
         args = tuple([(x,) for x in mrt_files])
         desc = "Counting lines in MRTs (largest first), ~2m"
         self._mp_tqdm(args, count_parsed_lines, desc=desc)
+    
+    def start_sp_or_mp_tqdm(
+        self,
+        iterable: tuple[tuple[Any, ...], ...],
+        func: Callable[..., Any],
+        desc: str,
+        use_delay: bool = False,
+        delay: float = 3, # minimum 3 seconds, otherwise exceeds rate limits
+    ) -> None:
+        """Wrapper method for setting up mp or sp"""
+
+        if self.cpus == 1:
+            self._sp_tqdm(
+                iterable,
+                func,
+                desc,
+                use_delay,
+                delay
+            )
+        else:
+            self._mp_tqdm(
+                iterable,
+                func,
+                desc,
+                use_delay,
+                delay
+            )
+
+    def _sp_tqdm(
+        iterable: tuple[tuple[Any, ...], ...],
+        func: Callable[..., Any],
+        desc: str,
+        use_delay: bool,
+        delay: float,
+    ) -> None:
+        """Runs tqdm with singleprocessing. Use delay for http requests"""
+
+        for args in tqdm(iterable, total=len(iterable), desc=desc):
+            func(*args)
+            if use_delay:
+                time.sleep(delay)
 
     def _mp_tqdm(
         self,
@@ -220,38 +303,28 @@ class MRTCollector:
         iterable: tuple[tuple[Any, ...], ...],
         func: Callable[..., Any],
         desc: str,
+        use_delay: bool,
+        delay: float,
     ) -> None:
-        """Runs tqdm with multiprocessing"""
+        """Runs tqdm with multiprocessing. Use delay for http requests"""
         
-        #temp for benchmarking
-        start = time.time()
-
-        # Starts the progress bar in another thread
-        if self.cpus == 1:
-            for args in tqdm(iterable, total=len(iterable), desc=desc):
-                # need min 3 sec delay, else rate limit exceeded
-                time.sleep(5)
-                func(*args)
-        else:
-            # https://stackoverflow.com/a/63834834/8903959
-            with ProcessPoolExecutor(max_workers=self.cpus) as executor:
-                futures = []
+        with ProcessPoolExecutor(max_workers=self.cpus) as executor:
+            futures = []
+            with tqdm(total=len(iterable), desc=desc) as pbar:
                 for x in iterable:
                     futures.append(executor.submit(func, *x))
-                    # need min 3 sec delay, else rate limit exceeded
-                    time.sleep(5)
-                [executor.submit(func, *x) for x in iterable]
-                for future in tqdm(
-                    as_completed(futures),
-                    total=len(iterable),
-                    desc=desc,
-                ):
-                    # reraise any exceptions from the processes
-                    future.result()
+                    if use_delay:
+                        time.sleep(delay)
 
-        elapsed = time.time() - start
-        minutes, seconds = divmod(elapsed, 60)
-        print(f"Download completed in {int(minutes)}m {seconds:.2f}s")
+                    done = [f for f in futures if f.done()]
+                    for f in done:
+                        f.result()
+                        futures.remove(f)
+                        pbar.update(1)
+
+            for future in as_completed(futures):
+                future.result()
+                pbar.update(1)
 
     ###############
     # Directories #
