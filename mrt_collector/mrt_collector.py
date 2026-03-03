@@ -69,12 +69,9 @@ class MRTCollector:
             mrt_files = self.limit_mrt_files(mrt_files, limit_files_to)
         self.download_raw_mrts(mrt_files)
         mrt_files = self.strip_failed_downloads(mrt_files)
-        # TODO:  method to get rid of bad downloads, should also allow us to
-        # remove some of the download checking logic from parse_mrts() and count_parsed_lines()
-        return mrt_files
 
         self.parse_mrts(mrt_files)
-        self.count_parsed_lines(mrt_files)
+        #self.count_parsed_lines(mrt_files)
         return mrt_files
 
     def get_mrt_files(
@@ -105,7 +102,7 @@ class MRTCollector:
     ) -> None:
         """Gets the expected file size of each MRT"""
 
-        for mrt_file in tqdm(mrt_files, desc="Fetching compressed MRT file sizes"):
+        for mrt_file in tqdm(mrt_files, total = len(mrt_files), desc="Fetching compressed MRT file sizes"):
             mrt_file.fetch_ec_file_size()
             # need minimum 3 sec delay between requests, otherwise rate limit exceeded
             time.sleep(5)
@@ -241,7 +238,7 @@ class MRTCollector:
         self.start_sp_or_mp_tqdm(
             args,
             parse_func,
-            desc=desc
+            desc
         )
 
     def count_parsed_lines(
@@ -254,7 +251,11 @@ class MRTCollector:
         mrt_files = self.sort_mrt_files_by_parsed_file_size(mrt_files)
         args = tuple([(x,) for x in mrt_files])
         desc = "Counting lines in MRTs (largest first), ~2m"
-        self._mp_tqdm(args, count_parsed_lines, desc=desc)
+        self.start_sp_or_mp_tqdm(
+            args,
+            count_parsed_lines,
+            desc
+        )
     
     def start_sp_or_mp_tqdm(
         self,
