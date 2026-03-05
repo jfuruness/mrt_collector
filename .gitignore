@@ -137,5 +137,7 @@ tags
 # macOS specific
 .DS_Store
 
+/bgpkit-parser-main
+
 # this was for my (Satchel) own testing purposes
 mrt_collector/source_diagnostics
