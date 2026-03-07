@@ -1,5 +1,6 @@
 import os
 import shutil
+from subprocess import check_output
 import subprocess
 import time
 from pathlib import Path
@@ -127,26 +128,26 @@ class MRTFile:
         if self.parsed_line_count_path.exists():
             with self.parsed_line_count_path.open() as f:
                 return int(f.read())
-        else:
-            command = f"wc -l {self.parsed_path_psv}"
-            # Run the command
-            result = subprocess.run( # noqa
-                command,
-                shell=True,
-                text=True,
-                capture_output=True,
-                check=True
-            )
+            
+        # use single quotes for the string to resolve an
+        # issue with my (Satchel) external hard drive
+        # theres a space in the drive name so without
+        # the quotes shell will treat the path as
+        # two separate args
+        command = f'wc -l "{self.parsed_path_psv}"'
+        # Run the command
+        result = check_output(
+            command,
+            shell=True,
+        ).decode()
 
-            # Process the output to get the total number of lines
-            output = result.stdout.strip()
-            lines = output.split("\n")
-            count = int(lines[-1].strip().split(" ")[0])
-            with self.parsed_line_count_path.open("w") as f:
-                # Remove header
-                count = int(count) - 1
-                f.write(str(count))
-                return int(count)
+        count = int(result.split()[0])
+
+        with self.parsed_line_count_path.open("w") as f:
+            # Remove header
+            count =  - 1
+            f.write(str(count))
+            return int(count)
 
     def __str__(self) -> str:
         """Temporary str override for debugging issues with sources"""

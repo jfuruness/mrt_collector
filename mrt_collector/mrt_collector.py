@@ -230,6 +230,14 @@ class MRTCollector:
         parse_func: PARSE_FUNC = bgpkit_parser
     ) -> None:
         """Runs a tool to extract information from a dump"""
+        
+        already_parsed = all(
+            mrt_file.parsed_path_psv.exists() for mrt_file in mrt_files
+        )
+
+        if already_parsed:
+            print("Downloaded MRTs already parsed")
+            return
 
         # Remove MRT files that failed to download, and sort by file size
         args = tuple([(x,) for x in mrt_files])
