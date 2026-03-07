@@ -47,9 +47,7 @@ class MRTFile:
                         self.status = "Ready for download"
                         return
         except Exception as e:  # noqa
-            print(
-                f"URL {self.url} : Head Request failed due to {e} {type(e)}; source will be stripped from downloads"
-            )  # noqa
+            print(f"URL {self.url} : Head Request failed due to {e} {type(e)}")
             # if type(e) == requests.exceptions.HTTPError:
             # raise
 
