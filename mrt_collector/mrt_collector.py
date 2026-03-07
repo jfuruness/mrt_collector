@@ -71,7 +71,7 @@ class MRTCollector:
         mrt_files = self.strip_failed_downloads(mrt_files)
 
         self.parse_mrts(mrt_files)
-        #self.count_parsed_lines(mrt_files)
+        self.count_parsed_lines(mrt_files)
         return mrt_files
 
     def get_mrt_files(
@@ -324,9 +324,9 @@ class MRTCollector:
                         futures.remove(f)
                         pbar.update(1)
 
-            for future in as_completed(futures):
-                future.result()
-                pbar.update(1)
+                for future in as_completed(futures):
+                    future.result()
+                    pbar.update(1)
 
     ###############
     # Directories #
