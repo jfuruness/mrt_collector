@@ -222,7 +222,7 @@ class MRTCollector:
         byte_c = self.get_total_download_size(mrt_files)
         gigabytes = round(byte_c / 1e9, 2)
 
-        return f"Downloading raw MRTs ({gigabytes} gigs)"
+        return f"Downloading raw MRTs ({gigabytes} total gigs, largest first)"
 
     def parse_mrts(
         self,

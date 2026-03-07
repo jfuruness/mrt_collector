@@ -140,12 +140,12 @@ class MRTFile:
             command,
             shell=True,
         ).decode()
-
+        
         count = int(result.split()[0])
 
         with self.parsed_line_count_path.open("w") as f:
             # Remove header
-            count =  - 1
+            count-=1
             f.write(str(count))
             return int(count)
 
