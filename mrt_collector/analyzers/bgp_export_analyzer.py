@@ -121,7 +121,7 @@ class BGPExportAnalyzer:
             total += 1
             provider_lengths = [len(v) for v in prefix_dict.values()]
             prepending = False
-            for prefix, set_of_next_hops in prefix_dict.items(): # noqa
+            for prefix, set_of_next_hops in prefix_dict.items():  # noqa
                 prepending_list = [x.prepending for x in set_of_next_hops]
                 if len(set(prepending_list)) == 2:
                     prepending = True

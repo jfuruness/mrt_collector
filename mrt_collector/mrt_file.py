@@ -1,9 +1,8 @@
 import os
 import shutil
-from subprocess import check_output
-import subprocess
 import time
 from pathlib import Path
+from subprocess import check_output
 from urllib.parse import quote
 
 import requests
@@ -21,7 +20,7 @@ class MRTFile:
         parsed_dir: Path,
         parsed_line_count_dir: Path,
         expected_compressed_file_size: int = 0,
-        status: str = "unknown"
+        status: str = "unknown",
     ) -> None:
         self.url: str = url
         self.source: Source = source
@@ -44,11 +43,13 @@ class MRTFile:
                 with session.head(self.url, timeout=60) as r:
                     status_code = r.status_code
                     if status_code == 200:
-                        self._ec_file_size = int(r.headers.get('Content-Length', 0))
+                        self._ec_file_size = int(r.headers.get("Content-Length", 0))
                         self.status = "Ready for download"
                         return
-        except Exception as e: # noqa
-            print(f"URL {self.url} : Head Request failed due to {e} {type(e)}; source will be stripped from downloads") # noqa
+        except Exception as e:  # noqa
+            print(
+                f"URL {self.url} : Head Request failed due to {e} {type(e)}; source will be stripped from downloads"
+            )  # noqa
             # if type(e) == requests.exceptions.HTTPError:
             # raise
 
@@ -68,13 +69,13 @@ class MRTFile:
                 succeeded = self.attempt_download_raw()
                 if succeeded:
                     break
-            except Exception as e: # noqa
+            except Exception as e:  # noqa
                 if i == retries - 1:
                     raise
             time.sleep((i + 1) * 10)
 
         if not succeeded and self.raw_path.exists():
-            self.raw_path.unlink(missing_ok = True)
+            self.raw_path.unlink(missing_ok=True)
 
     def attempt_download_raw(self) -> bool:
         """Attempts to download the raw MRT file"""
@@ -82,8 +83,8 @@ class MRTFile:
         try:
             with requests.get(self.url, stream=True, timeout=60) as r:
                 status_code = r.status_code
-                r.raise_for_status() # raises an error if we get bad status code
-                #honestly probably should swap this out for new Retry Session anyway
+                r.raise_for_status()  # raises an error if we get bad status code
+                # honestly probably should swap this out for new Retry Session anyway
                 if status_code == 200:
                     with self.raw_path.open("wb") as f:
                         shutil.copyfileobj(r.raw, f)
@@ -107,7 +108,7 @@ class MRTFile:
             raise NotImplementedError("Expected cmprsd size 0 at " + str(self.raw_path))
 
         result = actual_file_size == self._ec_file_size
-#        print(self.url + " : downloaded correctly= " + str(result))
+        #        print(self.url + " : downloaded correctly= " + str(result))
         return result
 
     def _url_to_fname(self, url: str, ext: str = "") -> str:
@@ -118,7 +119,7 @@ class MRTFile:
         if ext:
             fname = fname.replace(".gz", ext).replace(".bz2", ext)
             # The base without the extension
-            base_name = os.path.splitext(fname)[0] # noqa
+            base_name = os.path.splitext(fname)[0]  # noqa
             fname = f"{base_name}.{ext}"
         return fname
 
@@ -128,7 +129,7 @@ class MRTFile:
         if self.parsed_line_count_path.exists():
             with self.parsed_line_count_path.open() as f:
                 return int(f.read())
-            
+
         # use single quotes for the string to resolve an
         # issue with my (Satchel) external hard drive
         # theres a space in the drive name so without
@@ -136,16 +137,16 @@ class MRTFile:
         # two separate args
         command = f'wc -l "{self.parsed_path_psv}"'
         # Run the command
-        result = check_output(
+        result = check_output(  # noqa
             command,
             shell=True,
         ).decode()
-        
+
         count = int(result.split()[0])
 
         with self.parsed_line_count_path.open("w") as f:
             # Remove header
-            count-=1
+            count -= 1
             f.write(str(count))
             return int(count)
 

@@ -21,7 +21,7 @@ class RouteViews(Source):
             if "/bgpdata" in x
         ]
         if len(links) != 55:
-            warnings.warn(f"Expected 55 collectors from route views, got {len(links)}") # noqa
+            warnings.warn(f"Expected 55 collectors from route views, got {len(links)}")  # noqa
         # Return the links to the dumps from the collector links
         return tuple(
             [dl_time.strftime(f"{x}%Y.%m/RIBS/rib.%Y%m%d.%H00.bz2") for x in links]

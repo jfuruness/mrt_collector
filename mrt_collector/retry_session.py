@@ -7,7 +7,7 @@ class RetrySession(requests.Session):
     def __init__(
         self,
         retries: int = 3,
-        backoff_factor: float = .3,
+        backoff_factor: float = 0.3,
         retry_for_status_codes: tuple[int, ...] = (500, 502, 503, 504),
         raise_for_status_codes: tuple[int, ...] = (400, 401, 403, 404, 429),
     ):
@@ -21,7 +21,7 @@ class RetrySession(requests.Session):
             backoff_factor=backoff_factor,
             status_forcelist=retry_for_status_codes,
             allowed_methods=["GET", "HEAD"],
-            raise_on_status=False, # raises if all retries exhausted
+            raise_on_status=False,  # raises if all retries exhausted
         )
 
         adapter = HTTPAdapter(max_retries=retry)
@@ -34,6 +34,7 @@ class RetrySession(requests.Session):
         if response.status_code in self.raise_for_status_codes:
             response.raise_for_status()
         return response
+
 
 """
 This is a subclass of requests.session created for
