@@ -129,8 +129,7 @@ disallow_untyped_calls = false
 disallow_incomplete_defs = false
 disallow_untyped_defs = false
 exclude = [
-    "mrt_collector/analyzers/",
-    "mrt_collector/sources/"
+    "mrt_collector/analyzers/"
 ]
 
 [tool.ty.rules]
@@ -149,8 +148,7 @@ unresolved-import = "ignore"        # equivalent of ignore_missing_imports = tru
 
 [tool.ty.src]
 exclude = [
-    "mrt_collector/analyzers/**",
-    "mrt_collector/sources/**"
+    "mrt_collector/analyzers/**"
 ]
 
 [mypy-graphviz]

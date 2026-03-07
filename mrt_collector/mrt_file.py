@@ -48,8 +48,6 @@ class MRTFile:
                         return
         except Exception as e:  # noqa
             print(f"URL {self.url} : Head Request failed due to {e} {type(e)}")
-            # if type(e) == requests.exceptions.HTTPError:
-            # raise
 
     def download_raw(self, retries: int = 3) -> None:
         """Downloads the raw file if you haven't already"""
@@ -81,8 +79,7 @@ class MRTFile:
         try:
             with requests.get(self.url, stream=True, timeout=60) as r:
                 status_code = r.status_code
-                r.raise_for_status()  # raises an error if we get bad status code
-                # honestly probably should swap this out for new Retry Session anyway
+                r.raise_for_status()  
                 if status_code == 200:
                     with self.raw_path.open("wb") as f:
                         shutil.copyfileobj(r.raw, f)
@@ -106,7 +103,6 @@ class MRTFile:
             raise NotImplementedError("Expected cmprsd size 0 at " + str(self.raw_path))
 
         result = actual_file_size == self._ec_file_size
-        #        print(self.url + " : downloaded correctly= " + str(result))
         return result
 
     def _url_to_fname(self, url: str, ext: str = "") -> str:

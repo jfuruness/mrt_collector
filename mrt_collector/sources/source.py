@@ -21,7 +21,7 @@ class Source(ABC):
     def __repr__(self) -> str:
         return self.__class__.__name__
 
-    def _get_hrefs(self, requests_cache_path: Path) -> tuple[str, ...]:
+    def _get_hrefs(self, requests_cache_path: Path) -> tuple[str, ...]: 
         """Parses a URL and returns all the Hrefs for it"""
 
         with CachedSession(requests_cache_path) as session:

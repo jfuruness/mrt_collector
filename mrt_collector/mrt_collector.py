@@ -61,7 +61,6 @@ class MRTCollector:
 
         mrt_files = self.sort_mrt_files_by_ec_file_size(mrt_files)
         mrt_files = self.strip_unavail_sources(mrt_files)
-        #        return mrt_files #temp while we test which sources are bad
 
         if limit_files_to != 0:
             mrt_files = self.limit_mrt_files(mrt_files, limit_files_to)
@@ -208,16 +207,13 @@ class MRTCollector:
             print("Downloaded MRTs already parsed")
             return
 
-        # Remove MRT files that failed to download, and sort by file size
         args = tuple([(x,) for x in mrt_files])
         desc = "Parsing MRTs (largest first), ~13m"
-        # self._mp_tqdm(args, parse_func, desc=desc)
         self.start_sp_or_mp_tqdm(args, parse_func, desc)
 
     def count_parsed_lines(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Counts parsed lines from MRT files and stores them"""
 
-        # mrt_files = tuple(sorted(x for x in mrt_files if x.download_succeeded))
         mrt_files = self.sort_mrt_files_by_parsed_file_size(mrt_files)
         args = tuple([(x,) for x in mrt_files])
         desc = "Counting lines in MRTs (largest first), ~2m"
@@ -255,7 +251,6 @@ class MRTCollector:
 
     def _mp_tqdm(
         self,
-        # args to func in a list of lists
         iterable: tuple[tuple[Any, ...], ...],
         func: Callable[..., Any],
         desc: str,
