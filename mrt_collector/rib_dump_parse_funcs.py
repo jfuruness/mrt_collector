@@ -14,6 +14,8 @@ def bgpkit_parser(mrt_file: MRTFile) -> None:
 
     if not mrt_file.parsed_path_psv.exists():
         check_call( # noqa
-            f"bgpkit-parser {mrt_file.raw_path} --psv > {mrt_file.parsed_path_psv}",
+            # need the single quotes for the entire string and double quotes for the paths
+            # to tell the shell to treat everything as a single path
+            f'bgpkit-parser "{mrt_file.raw_path}" --psv > "{mrt_file.parsed_path_psv}"',
             shell=True,
         )

@@ -285,6 +285,7 @@ class MRTCollector:
             )
 
     def _sp_tqdm(
+        self,
         iterable: tuple[tuple[Any, ...], ...],
         func: Callable[..., Any],
         desc: str,
