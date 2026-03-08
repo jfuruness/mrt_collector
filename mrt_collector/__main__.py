@@ -3,6 +3,7 @@ from datetime import datetime
 from multiprocessing import cpu_count
 from pathlib import Path
 
+from .time_goodizer import latest_avail_dump_time
 from .mrt_collector import MRTCollector
 
 
@@ -25,8 +26,11 @@ def main():
 
     args = parser.parse_args()
     limit_files_to = 0 if args.limit_files is None else args.limit_files
+
+    dl_time = latest_avail_dump_time()
+
     # dl_time=datetime(2025, 3, 20, 0, 0, 0)
-    dl_time = datetime(2026, 2, 26, 0, 0, 0)
+    # dl_time = datetime(2026, 2, 26, 0, 0, 0)
     output_path = Path.home() / "mrt_data" / dl_time.strftime("%Y_%m_%d")
 
     # I (Satchel) use this for testing on my machine
@@ -41,20 +45,6 @@ def main():
 
     mrt_files = collector.run(limit_files_to=limit_files_to)  # noqa
 
-
-#    output_path = Path(__file__).parent / "source_diagnostics" / "output.txt"
-
-#    with output_path.open("w") as f:
-#        f.write("total files created= " + str(len(mrt_files)) + "\n")
-#        for mrt_file in mrt_files:
-#            f.write(str(mrt_file) + "\n")
-
-
-# for mrt_file in mrt_files:
-#     print(mrt_file.download_succeeded)
-
-# mrt_files = list(sorted(collector.run()))
-# mrt_files = [mrt_files[0]]
 # MHExportAnalyzer().run(mrt_files)
 # MHExportAnalyzer().create_graphs()
 
