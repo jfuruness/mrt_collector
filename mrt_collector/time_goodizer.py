@@ -1,10 +1,13 @@
 from datetime import datetime
 
-def latest_avail_dump_time(
+OLDEST = datetime(2001, 10, 27, 0, 0, 0)
+
+def get_dl_time(
     current_dt: datetime = datetime.now()
 ) -> datetime:
-    """Returns the latest available time
-    rib dumps are available"""
+    """Returns the closest available time
+    rib dumps are available to current_dt,
+    which defaults to the current time"""
 
     current_hour = current_dt.hour
     # RIPE dumps every 8 hours, routeview every 2
@@ -24,14 +27,23 @@ def parse_custom_datetime(
     custom_dt_str:str
 ) -> datetime:
     """Parses custom datetime from string.
-    Expects format as "MM/DD/YYYY"
+    Expects format as "MM/DD/YYYY/HH"
     If time has not occured yet, uses current time"""
-
-    custom_dt = datetime.strptime(custom_dt_str, "%m/%d/%Y")
+    
+    try:
+        custom_dt = datetime.strptime(custom_dt_str, "%m/%d/%Y/%H")
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"Invalid datetime: '{custom_dt_str}'. Expected format: mm/dd/yyyy/hh"
+        )
 
     if custom_dt > datetime.now():
         custom_dt = datetime.now()
+        print(f"Submitted time is in the future, using latest available, {custom_dt}.")
+    elif custom_dt < OLDEST:
+        custom_dt = OLDEST
+        print(f"Submitted time predates RIB dumps, using oldest available, {custom_dt}.")
 
-    return latest_avail_dump_time(
+    return get_dl_time(
         custom_dt
     )

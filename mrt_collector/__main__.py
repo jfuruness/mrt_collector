@@ -3,7 +3,7 @@ from datetime import datetime
 from multiprocessing import cpu_count
 from pathlib import Path
 
-from .time_goodizer import latest_avail_dump_time
+from .time_goodizer import get_dl_time, parse_custom_datetime
 from .mrt_collector import MRTCollector
 
 
@@ -14,7 +14,7 @@ def main():
         "-lf",
         "--limit_files",
         type=int,
-        help="Number of files to process; Leave blank for all",
+        help="Number of files to process, smallest first; Leave blank for all",
     )
 
     parser.add_argument(
@@ -24,13 +24,21 @@ def main():
         help="Limits to single processining",
     )
 
+    parser.add_argument(
+        "-dt",
+        "--datetime",
+        help="Datetime in mm/dd/yyyy/hh format (24-hour)"
+    )
+
     args = parser.parse_args()
+
     limit_files_to = 0 if args.limit_files is None else args.limit_files
+    
+    if args.datetime:
+        dl_time = parse_custom_datetime(args.datetime)
+    else:
+        dl_time = get_dl_time()
 
-    dl_time = latest_avail_dump_time()
-
-    # dl_time=datetime(2025, 3, 20, 0, 0, 0)
-    # dl_time = datetime(2026, 2, 26, 0, 0, 0)
     output_path = Path.home() / "mrt_data" / dl_time.strftime("%Y_%m_%d")
 
     # I (Satchel) use this for testing on my machine
