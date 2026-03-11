@@ -107,7 +107,7 @@ class MRTCollector:
         """Sorts mrt_files by expected compressed file size (descending)"""
 
         return tuple(
-            sorted(mrt_files, key=lambda mrt_file: mrt_file.ec_file_size, reverse=True)
+            sorted(mrt_files, key=lambda x: x.ec_file_size, reverse=True)
         )
 
     def sort_mrt_files_by_ac_file_size(
@@ -116,7 +116,7 @@ class MRTCollector:
         """Sorts mrt_files by actual compressed file size (descending)"""
 
         return tuple(
-            sorted(mrt_files, key=lambda mrt_file: mrt_file.ac_file_size, reverse=True)
+            sorted(mrt_files, key=lambda x: x.ac_file_size, reverse=True)
         )
 
     def sort_mrt_files_by_parsed_file_size(
@@ -126,7 +126,7 @@ class MRTCollector:
 
         return tuple(
             sorted(
-                mrt_files, key=lambda mrt_file: mrt_file.parsed_file_size, reverse=True
+                mrt_files, key=lambda x: x.parsed_file_size, reverse=True
             )
         )
 
@@ -138,10 +138,9 @@ class MRTCollector:
         Removes all MRTFile with ec_file_size of 0 from mrt_files
         """
 
-        mrt_files = tuple(
+        return tuple(
             [mrt_file for mrt_file in mrt_files if mrt_file.ec_file_size != 0]
         )
-        return mrt_files
 
     def limit_mrt_files(
         self, mrt_files: tuple[MRTFile, ...], num_files: int
@@ -173,11 +172,13 @@ class MRTCollector:
 
     def download_raw_mrts(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Downloads raw MRT RIB dumps into raw_dir"""
+ 
+        mrt_files = self.sort_mrt_files_by_ec_file_size(mrt_files)
 
         already_downloaded = all(mrt_file.download_succeeded for mrt_file in mrt_files)
 
         if already_downloaded:
-            print("Raw MRTs already downloaded")
+            print("Raw MRTs already downloaded!")
             return
 
         args = tuple([(x,) for x in mrt_files])
@@ -198,13 +199,15 @@ class MRTCollector:
         self, mrt_files: tuple[MRTFile, ...], parse_func: PARSE_FUNC = bgpkit_parser
     ) -> None:
         """Runs a tool to extract information from a dump"""
-
+        
+        mrt_files = self.sort_mrt_files_by_ac_file_size(mrt_files)
+        
         already_parsed = all(
             mrt_file.parsed_path_psv.exists() for mrt_file in mrt_files
         )
 
         if already_parsed:
-            print("Downloaded MRTs already parsed")
+            print("Downloaded MRTs already parsed!")
             return
 
         args = tuple([(x,) for x in mrt_files])
@@ -215,6 +218,15 @@ class MRTCollector:
         """Counts parsed lines from MRT files and stores them"""
 
         mrt_files = self.sort_mrt_files_by_parsed_file_size(mrt_files)
+
+        already_counted = all(
+            mrt_file.parsed_line_count_path.exists() for mrt_file in mrt_files
+        )        
+
+        if already_counted:
+            print("Parsed MRTs already counted!")
+            return
+
         args = tuple([(x,) for x in mrt_files])
         desc = "Counting lines in MRTs (largest first), ~2m"
         self.start_sp_or_mp_tqdm(args, count_parsed_lines, desc)
