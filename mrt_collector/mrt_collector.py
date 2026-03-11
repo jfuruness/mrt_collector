@@ -7,7 +7,7 @@ from typing import Any, Callable
 
 from tqdm import tqdm
 
-from .debug_tools import ec_file_sizes_from_csv, ec_file_sizes_to_csv
+from .debug_tools import ec_file_sizes_from_json, ec_file_sizes_to_json
 from .mrt_file import MRTFile
 from .rib_dump_parse_funcs import PARSE_FUNC, bgpkit_parser
 from .sources import Source
@@ -52,14 +52,13 @@ class MRTCollector:
 
         mrt_files = mrt_files or self.get_mrt_files()
 
-        head_req_path = self.base_dir / "head_req" / "data.csv"
-        if not head_req_path.exists():
+        # head_req_path = self.base_dir / "head_req" / "data.csv"
+        if not self.head_req_path.exists():
             self.set_mrt_ec_file_sizes(mrt_files)
-            ec_file_sizes_to_csv(mrt_files, head_req_path)
+            ec_file_sizes_to_json(mrt_files, self.head_req_path)
         else:
-            ec_file_sizes_from_csv(mrt_files, head_req_path)
+            ec_file_sizes_from_json(mrt_files, self.head_req_path)
 
-        mrt_files = self.sort_mrt_files_by_ec_file_size(mrt_files)
         mrt_files = self.strip_unavail_sources(mrt_files)
 
         if limit_files_to != 0:
@@ -313,6 +312,12 @@ class MRTCollector:
         """
 
         return self.base_dir / "requests_cache.db"
+
+    @property
+    def head_req_path(self) -> Path:
+        """Returns JSON file with KVP url:ec file size stored from head requests"""
+
+        return self.base_dir / "head_req.json"
 
     @property
     def raw_dir(self) -> Path:
