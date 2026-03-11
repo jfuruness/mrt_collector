@@ -57,6 +57,7 @@ class MRTCollector:
             self.set_mrt_ec_file_sizes(mrt_files)
             ec_file_sizes_to_json(mrt_files, self.head_req_path)
         else:
+            print("Head request results already cached!")
             ec_file_sizes_from_json(mrt_files, self.head_req_path)
 
         mrt_files = self.strip_unavail_sources(mrt_files)
