@@ -7,7 +7,8 @@ def get_dl_time(
 ) -> datetime:
     """Returns the closest available time
     rib dumps are available to current_dt,
-    which defaults to the current time"""
+    which defaults to the current time
+    """
 
     current_hour = current_dt.hour
     # RIPE dumps every 8 hours, routeview every 2
@@ -28,8 +29,9 @@ def parse_custom_datetime(
 ) -> datetime:
     """Parses custom datetime from string.
     Expects format as "MM/DD/YYYY/HH"
-    If time has not occured yet, uses current time"""
-    
+    If time has not occured yet, uses current time
+    """
+
     try:
         custom_dt = datetime.strptime(custom_dt_str, "%m/%d/%Y/%H")
     except ValueError:

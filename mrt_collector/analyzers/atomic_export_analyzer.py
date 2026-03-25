@@ -1,17 +1,15 @@
-import json
 import csv
-from dataclasses import dataclass, asdict
-from pathlib import Path
-from tqdm import tqdm
+import json
 from collections import defaultdict
+from dataclasses import asdict, dataclass
+from pathlib import Path
 
+from tqdm import tqdm
+
+from mrt_collector.mrt_collector import sort_mrt_files_by_parsed_file_size
 from mrt_collector.mrt_file import MRTFile
-from .json_set_encoder import JSONSetEncoder.default
-# might be wise to move these sorting functions elsewhere
-# considering they will be used across the package
-from mrt_collector.mrt_collector import MRTCollector.sort_mrt_files_by_parsed_file_size
 
-# prefix atomic data will be formatted as: 
+# prefix atomic data will be formatted as:
 # defaultdict<prefix: str, set{data: AtomicData}>
 
 @dataclass(frozen=True)
@@ -19,7 +17,7 @@ class AtomicData:
     atomic: bool
     aggr_asn: int
 
-class AtomicExportAnalyzer: 
+class AtomicExportAnalyzer:
     def __init__(
         self,
         base_dir: Path
@@ -34,19 +32,23 @@ class AtomicExportAnalyzer:
         self,
         mrt_files: tuple[MRTFile, ...]
     ) -> None:
-    """Lifecycle of the export analyzer"""
+        """Lifecycle of the export analyzer"""
 
         mrt_files = sort_mrt_files_by_parsed_file_size(mrt_files)
-        atomic_data = self.get_atomic_data(mrt_files)
-        self.dump_atomic_data_json()
-        self.dump_prefix_data_json()
+        self.get_atomic_data(mrt_files)
+        self.dump_atomic_data_json(
+            self.json_atomic_data_path
+        )
+        self.dump_prefix_sets_json(
+            self.json_prefixes_path
+        )
 
 
     def get_atomic_data(
         self,
         mrt_files: tuple[MRTFile, ...],
     ):
-    """Creates Atomic Export Data from parsed MRTs"""
+        """Creates Atomic Export Data from parsed MRTs"""
 
         total_lines = sum(x.total_parsed_lines for x in mrt_files)
         desc = "Extracting atomic aggregate data"
@@ -67,7 +69,7 @@ class AtomicExportAnalyzer:
         mrt_file: MRTFile,
         pbar
     ):
-    """Collects atomic data from an mrt file"""
+        """Collects atomic data from an mrt file"""
 
         with mrt_file.parsed_path_psv.open() as f:
             reader = csv.DictReader(f, delimiter="|")
@@ -75,14 +77,14 @@ class AtomicExportAnalyzer:
                 pbar.update()
                 if row["type"] != "A":
                     continue
-                
+
                 atomic = row["atomic"] == "true"
-                aggr_asn = row["aggr_asn"] if row["aggr_asn"] else "None"
+                aggr_asn = row["aggr_asn"] or "None"
                 # skip rows without atomic and without aggregate data
                 # some rows can have atomic=false but still have data
                 if not atomic and aggr_asn == "None":
                     continue
-                
+
                 prefix = row["prefix"]
                 if atomic:
                     self.atomic_prefixes.add(prefix)
@@ -93,18 +95,20 @@ class AtomicExportAnalyzer:
                 self.atomic_data[prefix].add(
                     AtomicData(atomic, aggr_asn)
                 )
-    
+
     def dump_atomic_data_json(
         self,
-        filepath: Path = self.json_atomic_data_path
+        filepath: Path #= self.json_atomic_data_path
     ) -> None:
-    """Manual-ish json dump for atomic data. Doing it this way
+        """Manual-ish json dump for atomic data. Doing it this way
         helps with both my defaultdict formatting and conserving
-        memory, since we aren't loading the entire dump all at once"""
+        memory, since we aren't loading the entire dump all at once
+        """
 
+        filepath.parent.mkdir(parents=True, exist_ok=True)
         with open(filepath, "w") as f:
             f.write("{\n")
-            items = list(self.atomic_dict.items())
+            items = list(self.atomic_data.items())
             for i, (prefix, data_set) in enumerate(items):
                 f.write(f'    "{prefix}": [\n')
                 data_list = list(data_set)
@@ -118,22 +122,27 @@ class AtomicExportAnalyzer:
 
     def dump_prefix_sets_json(
         self,
-        filepath: Path = self.json_prefixes_path
+        filepath: Path #= self.json_prefixes_path
     ) -> None:
-    """json dump for prefix sets"""
+        """json dump for prefix sets"""
 
         output = {
             "prefixes where atomic=true": list(self.atomic_prefixes),
-            "prefixes with aggregator asn": list(self.aggr_asn_prefixes) 
+            "prefixes with aggregator asn": list(self.aggr_asn_prefixes),
+            "prefixes where atomic=true AND with aggregator asn": list(
+                self.atomic_and_aggr_asn_prefixes
+            )
         }
 
+        filepath.parent.mkdir(parents=True, exist_ok=True)
         with open(filepath, "w") as f:
             json.dump(output, f, indent=4)
 
-    @property 
-    def atomic_and_aggr_asn_prefixes(self) -> set(str):
-    """Property for an optional third set of prefixes;
-        where atomic=true and aggr_asn is not empty"""
+    @property
+    def atomic_and_aggr_asn_prefixes(self):
+        """Property for an optional third set of prefixes;
+        where atomic=true and aggr_asn is not empty
+        """
 
         return self.atomic_prefixes & self.aggr_asn_prefixes
 
@@ -141,7 +150,7 @@ class AtomicExportAnalyzer:
     def json_atomic_data_path(self) -> Path:
         return self.base_dir / "analysis" / "atomic_data.json"
 
-    @property 
+    @property
     def json_prefixes_path(self) -> Path:
-        return self.base_dir / "analysis" / "atomic_prefixes.json" 
+        return self.base_dir / "analysis" / "atomic_prefixes.json"
 

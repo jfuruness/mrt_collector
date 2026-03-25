@@ -1,5 +1,6 @@
 import json
 
+
 # https://stackoverflow.com/a/8230505/8903959
 class JSONSetEncoder(json.JSONEncoder):
     def default(self, obj):

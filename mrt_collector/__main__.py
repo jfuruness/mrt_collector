@@ -3,8 +3,7 @@ from datetime import datetime
 from multiprocessing import cpu_count
 from pathlib import Path
 
-from .time_goodizer import get_dl_time, parse_custom_datetime
-from.collection_path_handler import handle_path
+from .analyzers import atomic_export_analyzer
 from .mrt_collector import MRTCollector
 
 
@@ -40,30 +39,32 @@ def main():
     args = parser.parse_args()
 
     limit_files_to = 0 if args.limit_files is None else args.limit_files
-    
-    if args.datetime:
-        dl_time = parse_custom_datetime(args.datetime)
-    else:
-        dl_time = get_dl_time()
-    
-    output_path = handle_path(
-        dl_time,
-        args.path or "Use default"
-    )
-    
+
+#    if args.datetime:
+#        dl_time = parse_custom_datetime(args.datetime)
+#    else:
+#        dl_time = get_dl_time()
+
+#    output_path = handle_path(
+#        dl_time,
+#        args.path or "Use default"
+#    )
+    dl_time = datetime(2026, 3, 25, 0, 0, 0)
     # output_path = Path.home() / "mrt_data" / dl_time.strftime("%Y_%m_%d")
 
     # I (Satchel) use this for testing on my machine
-#    output_path = (
-#        Path("/Volumes/Crucial X8/") / "mrt_data" / dl_time.strftime("%Y_%m_%d")
-#    )
+    output_path = (
+        Path("/Volumes/Crucial X8/") / "mrt_data" / dl_time.strftime("%Y_%m_%d")
+    )
     collector = MRTCollector(
         dl_time=dl_time,
         cpus=1 if args.single_process else cpu_count(),
         base_dir=output_path,
     )
 
-    mrt_files = collector.run(limit_files_to=limit_files_to)  # noqa
+    mrt_files = collector.run(limit_files_to=limit_files_to)
+    atomic_analyzer = atomic_export_analyzer.AtomicExportAnalyzer(output_path)
+    atomic_analyzer.run(mrt_files)
 
 # MHExportAnalyzer().run(mrt_files)
 # MHExportAnalyzer().create_graphs()

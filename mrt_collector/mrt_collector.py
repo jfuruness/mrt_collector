@@ -21,10 +21,39 @@ def count_parsed_lines(mrt_file: MRTFile) -> None:
     mrt_file.count_parsed_lines()
 
 
+def sort_mrt_files_by_ec_file_size(
+    mrt_files: tuple[MRTFile, ...]
+) -> tuple[MRTFile, ...]:
+    """Sorts mrt_files by expected compressed file size (descending)"""
+
+    return tuple(
+        sorted(mrt_files, key=lambda x: x.ec_file_size, reverse=True)
+    )
+
+def sort_mrt_files_by_ac_file_size(
+    mrt_files: tuple[MRTFile, ...]
+) -> tuple[MRTFile, ...]:
+    """Sorts mrt_files by actual compressed file size (descending)"""
+
+    return tuple(
+        sorted(mrt_files, key=lambda x: x.ac_file_size, reverse=True)
+    )
+
+def sort_mrt_files_by_parsed_file_size(
+    mrt_files: tuple[MRTFile, ...]
+) -> tuple[MRTFile, ...]:
+    """Sorts mrt_files by parsed file size (descending)"""
+
+    return tuple(
+        sorted(
+            mrt_files, key=lambda x: x.parsed_file_size, reverse=True
+        )
+    )
+
 class MRTCollector:
     def __init__(
         self,
-        dl_time: datetime = datetime(2025, 3, 1, 0, 0, 0),
+        dl_time: datetime = datetime(2026, 2, 26, 0, 0, 0),
         cpus: int = cpu_count(),
         base_dir: Path | None = None,
     ) -> None:
@@ -101,35 +130,6 @@ class MRTCollector:
             # need minimum 3 sec delay between requests, otherwise rate limit exceeded
             time.sleep(5)
 
-    def sort_mrt_files_by_ec_file_size(
-        self, mrt_files: tuple[MRTFile, ...]
-    ) -> tuple[MRTFile, ...]:
-        """Sorts mrt_files by expected compressed file size (descending)"""
-
-        return tuple(
-            sorted(mrt_files, key=lambda x: x.ec_file_size, reverse=True)
-        )
-
-    def sort_mrt_files_by_ac_file_size(
-        self, mrt_files: tuple[MRTFile, ...]
-    ) -> tuple[MRTFile, ...]:
-        """Sorts mrt_files by actual compressed file size (descending)"""
-
-        return tuple(
-            sorted(mrt_files, key=lambda x: x.ac_file_size, reverse=True)
-        )
-
-    def sort_mrt_files_by_parsed_file_size(
-        self, mrt_files: tuple[MRTFile, ...]
-    ) -> tuple[MRTFile, ...]:
-        """Sorts mrt_files by parsed file size (descending)"""
-
-        return tuple(
-            sorted(
-                mrt_files, key=lambda x: x.parsed_file_size, reverse=True
-            )
-        )
-
     def strip_unavail_sources(
         self,
         mrt_files: tuple[MRTFile, ...],
@@ -172,8 +172,8 @@ class MRTCollector:
 
     def download_raw_mrts(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Downloads raw MRT RIB dumps into raw_dir"""
- 
-        mrt_files = self.sort_mrt_files_by_ec_file_size(mrt_files)
+
+        mrt_files = sort_mrt_files_by_ec_file_size(mrt_files)
 
         already_downloaded = all(mrt_file.download_succeeded for mrt_file in mrt_files)
 
@@ -199,9 +199,9 @@ class MRTCollector:
         self, mrt_files: tuple[MRTFile, ...], parse_func: PARSE_FUNC = bgpkit_parser
     ) -> None:
         """Runs a tool to extract information from a dump"""
-        
-        mrt_files = self.sort_mrt_files_by_ac_file_size(mrt_files)
-        
+
+        mrt_files = sort_mrt_files_by_ac_file_size(mrt_files)
+
         already_parsed = all(
             mrt_file.parsed_path_psv.exists() for mrt_file in mrt_files
         )
@@ -217,11 +217,11 @@ class MRTCollector:
     def count_parsed_lines(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Counts parsed lines from MRT files and stores them"""
 
-        mrt_files = self.sort_mrt_files_by_parsed_file_size(mrt_files)
+        mrt_files = sort_mrt_files_by_parsed_file_size(mrt_files)
 
         already_counted = all(
             mrt_file.parsed_line_count_path.exists() for mrt_file in mrt_files
-        )        
+        )
 
         if already_counted:
             print("Parsed MRTs already counted!")
