@@ -13,6 +13,8 @@ from tqdm import tqdm
 
 from mrt_collector.mrt_file import MRTFile
 
+from .json_set_encoder import JSONSetEncoder as SetEncoder
+
 mpl.use("Agg")
 
 
