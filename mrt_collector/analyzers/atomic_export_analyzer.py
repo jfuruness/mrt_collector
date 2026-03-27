@@ -116,7 +116,7 @@ class AtomicExportAnalyzer:
                     line = json.dumps(asdict(item))
                     comma = "," if j < len(data_list) - 1 else ""
                     f.write(f'        {line}{comma}\n')
-                comma = "," if i < len(data_list) - 1 else ""
+                comma = "," if i < len(item) - 1 else ""
                 f.write(f'    ]{comma}\n')
             f.write("}\n")
 
