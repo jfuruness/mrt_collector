@@ -1,3 +1,5 @@
+Informational Badges:
+
 [![PyPI version](https://badge.fury.io/py/mrt_collector.svg)](https://badge.fury.io/py/mrt_collector)
 ![PyPy](https://img.shields.io/badge/PyPy-7.3.17-blue)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/mrt_collector)](https://pypi.org/project/mrt_collector/)
@@ -5,6 +7,8 @@
 ![Linux](https://img.shields.io/badge/os-Linux-blue.svg)
 ![macOS Intel](https://img.shields.io/badge/os-macOS_Intel-lightgrey.svg)
 ![macOS ARM](https://img.shields.io/badge/os-macOS_ARM-lightgrey.svg)
+
+Some Linting Badges (Where I could find them):
 
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/charliermarsh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
