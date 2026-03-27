@@ -106,19 +106,14 @@ class AtomicExportAnalyzer:
         """
 
         filepath.parent.mkdir(parents=True, exist_ok=True)
+    
+        serializable = {
+            prefix: [asdict(ad) for ad in ad_set]
+            for prefix, ad_set in self.atomic_data.items()
+        }
+
         with open(filepath, "w") as f:
-            f.write("{\n")
-            items = list(self.atomic_data.items())
-            for i, (prefix, data_set) in enumerate(items):
-                f.write(f'    "{prefix}": [\n')
-                data_list = list(data_set)
-                for j, item in enumerate(data_list):
-                    line = json.dumps(asdict(item))
-                    comma = "," if j < len(data_list) - 1 else ""
-                    f.write(f'        {line}{comma}\n')
-                comma = "," if i < len(item) - 1 else ""
-                f.write(f'    ]{comma}\n')
-            f.write("}\n")
+            json.dump(serializable, f, indent=4)
 
     def dump_prefix_sets_json(
         self,
