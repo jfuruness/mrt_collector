@@ -88,7 +88,7 @@ Then run:
 pip3 install pip --upgrade
 pip3 install wheel
 ```
-
+***NOTE: not yet uploaded to PyPi, this will not work
 For production:
 
 ```bash
@@ -96,7 +96,7 @@ pip3 install mrt_collector
 ```
 
 This will install the package and all of it's python dependencies.
-
+***
 If you want to install the project for development:
 
 ```bash
