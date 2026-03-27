@@ -1,10 +1,27 @@
+[![PyPI version](https://badge.fury.io/py/mrt_collector.svg)](https://badge.fury.io/py/mrt_collector)
+![PyPy](https://img.shields.io/badge/PyPy-7.3.17-blue)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/mrt_collector)](https://pypi.org/project/mrt_collector/)
+![Tests](https://github.com/jfuruness/mrt_collector/actions/workflows/tests.yml/badge.svg)
+![Linux](https://img.shields.io/badge/os-Linux-blue.svg)
+![macOS Intel](https://img.shields.io/badge/os-macOS_Intel-lightgrey.svg)
+![macOS ARM](https://img.shields.io/badge/os-macOS_ARM-lightgrey.svg)
+
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/charliermarsh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Checked with mypy](https://img.shields.io/badge/mypy-checked-2A6DBA.svg)](http://mypy-lang.org/)
+[![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
+[![Pylint](https://img.shields.io/badge/linting-pylint-yellowgreen)](https://github.com/pylint-dev/pylint/tree/main)
+[![try/except style: tryceratops](https://img.shields.io/badge/try%2Fexcept%20style-tryceratops%20%F0%9F%A6%96%E2%9C%A8-black)](https://github.com/guilatrova/tryceratops)
+
 # mrt\_collector
 
-[Informational Badges]
+### If you like the repo, it would be awesome if you could add a star to it! It really helps out the visibility. Also for any questions at all we'd love to hear from you at jfuruness@gmail.com
 
 * [Description](#package-description)
 * [Usage](#usage)
 * [Installation](#installation)
+* [Testing](#testing)
+* [Development/Contributing](#developmentcontributing)
 * [License](#license)
 
 ## Package Description
@@ -12,6 +29,7 @@
 This package downloads and parses raw MRT data from a given time, sourced from **RIPE** and **Routeview** archives, and supports various analysis of those parsed MRT files (currently supports only atomic aggregate analysis). This package supports single and multiprocessing.
 
 When run, the user must provide a date and time (24-hour) from which to download MRT dumps. By default data is written to the home directory, but the user can optionally provide a custom location. The directory is formatted as:
+
 ```
 ROOT
 ├── mrt_data
@@ -28,6 +46,7 @@ ROOT
 ```
 
 Parsed files are `.psv` formatted as:
+
 ```
 type|timestamp|peer_ip|peer_asn|prefix|as_path|origin_asns|origin|next_hop|local_pref|med|communities|atomic|aggr_asn|aggr_ip|only_to_customer
 ```
@@ -37,6 +56,7 @@ On an M2 MacBook Air with 16 GB of RAM, with ~40 MB/s download speeds, multiproc
 ## Usage
 
 From the command line:
+
 ```bash
 mrt_collector -dt=mm/dd/yyyy/hh
 ```
@@ -56,13 +76,63 @@ The atomic aggregate analysis module outputs two JSON files, `atomic_data.json` 
 
 ## Installation
 
-Install Python and pip if you have not already. Then run:
+Install python and pip if you have not already.
+Then run:
+
 ```bash
+# Needed for graphviz and Pillow
 pip3 install pip --upgrade
 pip3 install wheel
 ```
 
-> *Haven't published this to PyPI yet, so this is TODO.*
+For production:
+
+```bash
+pip3 install mrt_collector
+```
+
+This will install the package and all of it's python dependencies.
+
+If you want to install the project for development:
+
+```bash
+git clone https://github.com/jfuruness/mrt_collector.git
+cd mrt_collector
+pip3 install -e .
+pre-commit install
+```
+
+To test the development package: [Testing](#testing)
+
+## Testing
+
+To test the package after installation:
+
+```
+cd mrt_collector
+pytest mrt_collector
+ruff check mrt_collector
+ruff format mrt_collector
+mypy mrt_collector
+```
+
+If you want to run it across multiple environments, and have python 3.10 and 3.11 installed:
+
+```
+cd mrt_collector
+tox --skip-missing-interpreters
+```
+
+## Development/Contributing
+
+1. Fork it!
+2. Create your feature branch: `git checkout -b my-new-feature`
+3. Test it
+5. Run tox
+6. Commit your changes: `git commit -am 'Add some feature'`
+7. Push to the branch: `git push origin my-new-feature`
+8. Ensure github actions are passing tests
+9. Email me at jfuruness@gmail.com if it's been a while and I haven't seen it
 
 ## License
 
