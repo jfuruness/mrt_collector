@@ -1,13 +1,15 @@
+import time  # this is for temp solution to our new connection error diagnostics
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
-from multiprocessing import cpu_count  # noqa
+from multiprocessing import cpu_count
 from pathlib import Path
 from typing import Any, Callable
 
 from tqdm import tqdm
 
-from .rib_dump_parse_funcs import PARSE_FUNC, bgpkit_parser
+from .debug_tools import ec_file_sizes_from_json, ec_file_sizes_to_json
 from .mrt_file import MRTFile
+from .rib_dump_parse_funcs import PARSE_FUNC, bgpkit_parser
 from .sources import Source
 
 
@@ -19,10 +21,39 @@ def count_parsed_lines(mrt_file: MRTFile) -> None:
     mrt_file.count_parsed_lines()
 
 
+def sort_mrt_files_by_ec_file_size(
+    mrt_files: tuple[MRTFile, ...]
+) -> tuple[MRTFile, ...]:
+    """Sorts mrt_files by expected compressed file size (descending)"""
+
+    return tuple(
+        sorted(mrt_files, key=lambda x: x.ec_file_size, reverse=True)
+    )
+
+def sort_mrt_files_by_ac_file_size(
+    mrt_files: tuple[MRTFile, ...]
+) -> tuple[MRTFile, ...]:
+    """Sorts mrt_files by actual compressed file size (descending)"""
+
+    return tuple(
+        sorted(mrt_files, key=lambda x: x.ac_file_size, reverse=True)
+    )
+
+def sort_mrt_files_by_parsed_file_size(
+    mrt_files: tuple[MRTFile, ...]
+) -> tuple[MRTFile, ...]:
+    """Sorts mrt_files by parsed file size (descending)"""
+
+    return tuple(
+        sorted(
+            mrt_files, key=lambda x: x.parsed_file_size, reverse=True
+        )
+    )
+
 class MRTCollector:
     def __init__(
         self,
-        dl_time: datetime = datetime(2025, 3, 1, 0, 0, 0),
+        dl_time: datetime = datetime(2026, 2, 26, 0, 0, 0),
         cpus: int = cpu_count(),
         base_dir: Path | None = None,
     ) -> None:
@@ -42,25 +73,36 @@ class MRTCollector:
 
     def run(
         self,
-        sources: tuple[Source, ...] = tuple(
-            [Cls() for Cls in Source.sources]  # type: ignore
-        ),
-        # Steps
+        sources: tuple[Source, ...] = tuple([Cls() for Cls in Source.sources]),
+        limit_files_to: int = 0,
         mrt_files: tuple[MRTFile, ...] = (),
-    ) -> None:
+    ) -> tuple[MRTFile, ...]:
         """Downloads MRTs and then extracts data from them"""
 
-        mrt_files = mrt_files if mrt_files else self.get_mrt_files(sources)
+        mrt_files = mrt_files or self.get_mrt_files()
+
+        # head_req_path = self.base_dir / "head_req" / "data.csv"
+        if not self.head_req_path.exists():
+            self.set_mrt_ec_file_sizes(mrt_files)
+            ec_file_sizes_to_json(mrt_files, self.head_req_path)
+        else:
+            print("Head request results already cached!")
+            ec_file_sizes_from_json(mrt_files, self.head_req_path)
+
+        mrt_files = self.strip_unavail_sources(mrt_files)
+
+        if limit_files_to != 0:
+            mrt_files = self.limit_mrt_files(mrt_files, limit_files_to)
         self.download_raw_mrts(mrt_files)
+        mrt_files = self.strip_failed_downloads(mrt_files)
+
         self.parse_mrts(mrt_files)
         self.count_parsed_lines(mrt_files)
         return mrt_files
 
     def get_mrt_files(
         self,
-        sources: tuple[Source, ...] = tuple(
-            [Cls() for Cls in Source.sources]  # type: ignore
-        ),
+        sources: tuple[Source, ...] = tuple([Cls() for Cls in Source.sources]),
     ) -> tuple[MRTFile, ...]:
         """Gets URLs from sources (cached) and returns MRT File objects"""
 
@@ -78,56 +120,174 @@ class MRTCollector:
                 )
         return tuple(mrt_files)
 
+    def set_mrt_ec_file_sizes(self, mrt_files: tuple[MRTFile, ...]) -> None:
+        """Gets the expected file size of each MRT"""
+
+        desc = "Fetching compressed MRT file sizes"
+
+        for mrt_file in tqdm(mrt_files, total=len(mrt_files), desc=desc):
+            mrt_file.fetch_ec_file_size()
+            # need minimum 3 sec delay between requests, otherwise rate limit exceeded
+            time.sleep(5)
+
+    def strip_unavail_sources(
+        self,
+        mrt_files: tuple[MRTFile, ...],
+    ) -> tuple[MRTFile, ...]:
+        """
+        Removes all MRTFile with ec_file_size of 0 from mrt_files
+        """
+
+        return tuple(
+            [mrt_file for mrt_file in mrt_files if mrt_file.ec_file_size != 0]
+        )
+
+    def limit_mrt_files(
+        self, mrt_files: tuple[MRTFile, ...], num_files: int
+    ) -> tuple[MRTFile, ...]:
+        """Creates a new tuple containing as many files as defined by limit_files_to"""
+
+        strip_at = len(mrt_files) - num_files
+        return mrt_files[strip_at:]
+
+    def get_total_download_size(self, mrt_files: tuple[MRTFile, ...]) -> int:
+        """Returns in bytes (int) the total sum of expected mrt file sizes"""
+
+        total_bytes = 0
+
+        for mrt_file in mrt_files:
+            file_size = mrt_file.ec_file_size
+            total_bytes += file_size
+
+        return total_bytes
+
+    def strip_failed_downloads(
+        self, mrt_files: tuple[MRTFile, ...]
+    ) -> tuple[MRTFile, ...]:
+        """Removes any MRTFile where download_succeeded is false"""
+
+        return tuple(
+            [mrt_file for mrt_file in mrt_files if mrt_file.download_succeeded]
+        )
+
     def download_raw_mrts(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Downloads raw MRT RIB dumps into raw_dir"""
 
-        print("This can be optimized, get file size before downloading and order")
+        mrt_files = sort_mrt_files_by_ec_file_size(mrt_files)
+
+        already_downloaded = all(mrt_file.download_succeeded for mrt_file in mrt_files)
+
+        if already_downloaded:
+            print("Raw MRTs already downloaded!")
+            return
+
         args = tuple([(x,) for x in mrt_files])
-        self._mp_tqdm(args, download_mrt, desc="Downloading MRTs (~5m)")
+        desc = self.download_raw_desc(mrt_files)
+        self.start_sp_or_mp_tqdm(args, download_mrt, desc=desc, use_delay=True, delay=5)
+
+    def download_raw_desc(self, mrt_files: tuple[MRTFile, ...]) -> str:
+        """Returns a formatted description for tqdm bar
+        for downloading raw mrts
+        """
+
+        byte_c = self.get_total_download_size(mrt_files)
+        gigabytes = round(byte_c / 1e9, 2)
+
+        return f"Downloading raw MRTs ({gigabytes} total gigs, largest first)"
 
     def parse_mrts(
         self, mrt_files: tuple[MRTFile, ...], parse_func: PARSE_FUNC = bgpkit_parser
     ) -> None:
         """Runs a tool to extract information from a dump"""
 
-        # Remove MRT files that failed to download, and sort by file size
-        mrt_files = tuple(list(sorted(x for x in mrt_files if x.download_succeeded)))
+        mrt_files = sort_mrt_files_by_ac_file_size(mrt_files)
+
+        already_parsed = all(
+            mrt_file.parsed_path_psv.exists() for mrt_file in mrt_files
+        )
+
+        if already_parsed:
+            print("Downloaded MRTs already parsed!")
+            return
+
         args = tuple([(x,) for x in mrt_files])
         desc = "Parsing MRTs (largest first), ~13m"
-        self._mp_tqdm(args, parse_func, desc=desc)
+        self.start_sp_or_mp_tqdm(args, parse_func, desc)
 
     def count_parsed_lines(self, mrt_files: tuple[MRTFile, ...]) -> None:
         """Counts parsed lines from MRT files and stores them"""
 
-        mrt_files = tuple(list(sorted(x for x in mrt_files if x.download_succeeded)))
+        mrt_files = sort_mrt_files_by_parsed_file_size(mrt_files)
+
+        already_counted = all(
+            mrt_file.parsed_line_count_path.exists() for mrt_file in mrt_files
+        )
+
+        if already_counted:
+            print("Parsed MRTs already counted!")
+            return
+
         args = tuple([(x,) for x in mrt_files])
         desc = "Counting lines in MRTs (largest first), ~2m"
-        self._mp_tqdm(args, count_parsed_lines, desc=desc)
+        self.start_sp_or_mp_tqdm(args, count_parsed_lines, desc)
 
-    def _mp_tqdm(
+    def start_sp_or_mp_tqdm(
         self,
-        # args to func in a list of lists
         iterable: tuple[tuple[Any, ...], ...],
         func: Callable[..., Any],
         desc: str,
+        use_delay: bool = False,
+        delay: float = 3,  # minimum 3 seconds, otherwise exceeds rate limits
     ) -> None:
-        """Runs tqdm with multiprocessing"""
+        """Wrapper method for setting up mp or sp"""
 
-        # Starts the progress bar in another thread
         if self.cpus == 1:
-            for args in tqdm(iterable, total=len(iterable), desc=desc):
-                func(*args)
+            self._sp_tqdm(iterable, func, desc, use_delay, delay)
         else:
-            # https://stackoverflow.com/a/63834834/8903959
-            with ProcessPoolExecutor(max_workers=self.cpus) as executor:
-                futures = [executor.submit(func, *x) for x in iterable]
-                for future in tqdm(
-                    as_completed(futures),
-                    total=len(iterable),
-                    desc=desc,
-                ):
-                    # reraise any exceptions from the processes
+            self._mp_tqdm(iterable, func, desc, use_delay, delay)
+
+    def _sp_tqdm(
+        self,
+        iterable: tuple[tuple[Any, ...], ...],
+        func: Callable[..., Any],
+        desc: str,
+        use_delay: bool,
+        delay: float,
+    ) -> None:
+        """Runs tqdm with singleprocessing. Use delay for http requests"""
+
+        for args in tqdm(iterable, total=len(iterable), desc=desc):
+            func(*args)
+            if use_delay:
+                time.sleep(delay)
+
+    def _mp_tqdm(
+        self,
+        iterable: tuple[tuple[Any, ...], ...],
+        func: Callable[..., Any],
+        desc: str,
+        use_delay: bool,
+        delay: float,
+    ) -> None:
+        """Runs tqdm with multiprocessing. Use delay for http requests"""
+
+        with ProcessPoolExecutor(max_workers=self.cpus) as executor:
+            futures = []
+            with tqdm(total=len(iterable), desc=desc) as pbar:
+                for x in iterable:
+                    futures.append(executor.submit(func, *x))
+                    if use_delay:
+                        time.sleep(delay)
+
+                    done = [f for f in futures if f.done()]
+                    for f in done:
+                        f.result()
+                        futures.remove(f)
+                        pbar.update(1)
+
+                for future in as_completed(futures):
                     future.result()
+                    pbar.update(1)
 
     ###############
     # Directories #
@@ -153,6 +313,12 @@ class MRTCollector:
         """
 
         return self.base_dir / "requests_cache.db"
+
+    @property
+    def head_req_path(self) -> Path:
+        """Returns JSON file with KVP url:ec file size stored from head requests"""
+
+        return self.base_dir / "head_req.json"
 
     @property
     def raw_dir(self) -> Path:

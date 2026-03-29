@@ -1,16 +1,13 @@
-import csv
-import json
-from pathlib import Path
 import os
 import shutil
-import subprocess
-from subprocess import check_call
 import time
+from pathlib import Path
+from subprocess import check_output
 from urllib.parse import quote
-import warnings
 
 import requests
 
+from .retry_session import RetrySession
 from .sources import Source
 
 
@@ -21,7 +18,9 @@ class MRTFile:
         source: Source,
         raw_dir: Path,
         parsed_dir: Path,
-        parsed_line_count_dir: Path
+        parsed_line_count_dir: Path,
+        expected_compressed_file_size: int = 0,
+        status: str = "unknown",
     ) -> None:
         self.url: str = url
         self.source: Source = source
@@ -32,68 +31,79 @@ class MRTFile:
         self.parsed_line_count_path: Path = parsed_line_count_dir / self._url_to_fname(
             self.url, ext="txt"
         )
+        self._ec_file_size: int = expected_compressed_file_size
 
-    def __lt__(self, other) -> bool:
-        """For sorting by file size
+    def fetch_ec_file_size(
+        self,
+    ) -> None:
+        """Tries to set expected_file_size with a HEAD request"""
 
-        This is useful when doing long operations with multiprocessing.
-        By starting with the largest files first, it takes significantly less time
-        """
-
-        if isinstance(other, MRTFile):
-            for path_attr in ["parsed_path_psv", "raw_path"]:
-                # Save the paths to variables
-                self_path = getattr(self, path_attr)
-                other_path = getattr(other, path_attr)
-                # If both parsed paths exist
-                if self_path.exists() and other_path.exists():
-                    # Check the file size, sort in descending order
-                    # That way largest files are done first
-                    # https://stackoverflow.com/a/2104107/8903959
-                    if self_path.stat().st_size > other_path.stat().st_size:
-                        return True
-                    else:
-                        return False
-        return NotImplemented
+        try:
+            with RetrySession() as session:
+                with session.head(self.url, timeout=60) as r:
+                    status_code = r.status_code
+                    if status_code == 200:
+                        self._ec_file_size = int(r.headers.get("Content-Length", 0))
+                        self.status = "Ready for download"
+                        return
+        except Exception as e:  # noqa
+            print(f"URL {self.url} : Head Request failed due to {e} {type(e)}")
 
     def download_raw(self, retries: int = 3) -> None:
         """Downloads the raw file if you haven't already"""
 
-        if self.downloaded:
+        if self.download_succeeded:
             return
 
         # I tried using proper backoff strategies, such as:
         # https://stackoverflow.com/a/35504626/8903959
         # But this actually doesn't capture incomplete read
         # errors in URL lib. So I need to write my own.
-        status_code = 0
+        succeeded = False
         for i in range(retries):
             try:
-                with requests.get(self.url, stream=True, timeout=60) as r:
-                    status_code = r.status_code  # type: ignore
-                    if status_code == 200:
-                        with self.raw_path.open("wb") as f:
-                            shutil.copyfileobj(r.raw, f)  # type: ignore
-                            return
-            except Exception as e:
-                if status_code == 404:
-                    print(f"URL {self.url} failed due to 404 {i + 1}/{retries}")
-                else:
-                    print(
-                        f"URL {self.url} failed due to {e} {type(e)} {i + 1}/{retries}"
-                    )
+                succeeded = self.attempt_download_raw()
+                if succeeded:
+                    break
+            except Exception as e:  # noqa
                 if i == retries - 1:
                     raise
-
             time.sleep((i + 1) * 10)
 
-        # Don't error, sometiems files fail due to not found errors (404)
-        warnings.warn(
-            f"status of {status_code} for {self.url}, download failed but didn't err"
-        )
-        # Write the file so that you don't go back to it later
-        with self.raw_path.open("wb") as f:
-            f.write(self.dl_err_str.encode("utf-8"))
+        if not succeeded and self.raw_path.exists():
+            self.raw_path.unlink(missing_ok=True)
+
+    def attempt_download_raw(self) -> bool:
+        """Attempts to download the raw MRT file"""
+
+        try:
+            with requests.get(self.url, stream=True, timeout=60) as r:
+                status_code = r.status_code
+                r.raise_for_status()
+                if status_code == 200:
+                    with self.raw_path.open("wb") as f:
+                        shutil.copyfileobj(r.raw, f)
+                    return self.download_succeeded
+        except Exception as e:
+            print(f"URL {self.url} failed due to {e} {type(e)}")
+            raise
+
+        return False
+
+    def validate_file_size(self) -> bool:
+        """Returns true if expected_file_size is equal to actual file size.
+        Assumes the filepath and file exist.
+        """
+
+        stat_info = self.raw_path.stat()
+        actual_file_size = stat_info.st_size
+
+        if actual_file_size == 0:
+            print("houston we have a file size")
+            raise NotImplementedError("Expected cmprsd size 0 at " + str(self.raw_path))
+
+        result = actual_file_size == self._ec_file_size
+        return result
 
     def _url_to_fname(self, url: str, ext: str = "") -> str:
         """Converts a URL into a file name"""
@@ -103,7 +113,7 @@ class MRTFile:
         if ext:
             fname = fname.replace(".gz", ext).replace(".bz2", ext)
             # The base without the extension
-            base_name = os.path.splitext(fname)[0]
+            base_name = os.path.splitext(fname)[0]  # noqa
             fname = f"{base_name}.{ext}"
         return fname
 
@@ -113,46 +123,72 @@ class MRTFile:
         if self.parsed_line_count_path.exists():
             with self.parsed_line_count_path.open() as f:
                 return int(f.read())
-        else:
-            command = f"wc -l {self.parsed_path_psv}"
-            # Run the command
-            result = subprocess.run(command, shell=True, text=True, capture_output=True)
 
-            # Check if the command was successful
-            if result.returncode != 0:
-                print("Error running command:", result.stderr)
-                raise Exception
+        # use single quotes for the string to resolve an
+        # issue with my (Satchel) external hard drive
+        # theres a space in the drive name so without
+        # the quotes shell will treat the path as
+        # two separate args
+        command = f'wc -l "{self.parsed_path_psv}"'
+        # Run the command
+        result = check_output(  # noqa
+            command,
+            shell=True,
+        ).decode()
 
-            # Process the output to get the total number of lines
-            output = result.stdout.strip()
-            lines = output.split("\n")
-            count = int(lines[-1].strip().split(" ")[0])
-            with self.parsed_line_count_path.open("w") as f:
-                # Remove header
-                count = int(count) - 1
-                f.write(str(count))
-                return int(count)
+        count = int(result.split()[0])
 
-    @property
-    def downloaded(self) -> bool:
-        """Returns True if file downloaded else False"""
+        with self.parsed_line_count_path.open("w") as f:
+            # Remove header
+            count -= 1
+            f.write(str(count))
+            return int(count)
 
-        return self.raw_path.exists()
+    def __str__(self) -> str:
+        """Temporary str override for debugging issues with sources"""
+
+        temp = self.url
+
+        efs = str(self.ec_file_size)
+        if self.status == "Ready for download":
+            temp += "\nExpected compressed file size= " + efs
+
+        temp += "\nStatus= " + self.status + "\n----"
+
+        return temp
 
     @property
     def download_succeeded(self) -> bool:
-        """Returns true if download errored out. Just checks first line"""
+        """Returns true if the raw file exists and matches the expected size"""
 
-        with self.raw_path.open("rb") as f:
-            for line in f:
-                return line != self.dl_err_str.encode("utf-8")
-        raise NotImplementedError("Empty file?")
+        if not self.raw_path.exists():
+            return False
+
+        return self.validate_file_size()
 
     @property
-    def dl_err_str(self) -> str:
-        """String that is stored within a file if download errors"""
+    def ec_file_size(self) -> int:
+        """Returns expected compressed file size in bytes"""
 
-        return "ERROR"
+        return self._ec_file_size
+
+    @property
+    def ac_file_size(self) -> int:
+        """Returns actual (post download) compressed file size in bytes"""
+
+        if not self.raw_path.exists():
+            raise ValueError("Actual file does not exist, from " + self.url)
+
+        return self.raw_path.stat().st_size
+
+    @property
+    def parsed_file_size(self) -> int:
+        """Returns parsed file size in bytes"""
+
+        if not self.parsed_path_psv.exists():
+            raise ValueError("Parsed file does not exist, from " + self.url)
+
+        return self.parsed_path_psv.stat().st_size
 
     @property
     def total_parsed_lines(self) -> int:

@@ -1,5 +1,5 @@
-from datetime import datetime
 import warnings
+from datetime import datetime
 from pathlib import Path
 
 from .source import Source
@@ -20,8 +20,8 @@ class RouteViews(Source):
             for x in self._get_hrefs(requests_cache_path)
             if "/bgpdata" in x
         ]
-        if len(links) != 48:
-            warnings.warn(f"Expected 48 collectors from route views, got {len(links)}")
+        if len(links) != 55:
+            warnings.warn(f"Expected 55 collectors from route views, got {len(links)}")  # noqa
         # Return the links to the dumps from the collector links
         return tuple(
             [dl_time.strftime(f"{x}%Y.%m/RIBS/rib.%Y%m%d.%H00.bz2") for x in links]

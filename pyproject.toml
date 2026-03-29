@@ -10,9 +10,11 @@ description = "Collects and analyzes MRT RIB dumps"
 readme = "README.md"
 authors = [
     {name = "Justin Furuness", email = "jfuruness@gmail.com"},
+    {name = "Satchel Diaz", email = "satchelrdiaz05@gmail.com"}
 ]
 maintainers = [
-  {name = "Justin Furuness", email = "jfuruness@gmail.com"}
+    {name = "Justin Furuness", email = "jfuruness@gmail.com"},
+    {name = "Satchel Diaz", email = "satchelrdiaz05@gmail.com"}
 ]
 license = {file = "LICENSE.txt"}
 keywords = [
@@ -50,7 +52,22 @@ classifiers = [
     "Topic :: Security",
 ]
 dependencies = [
+    "beautifulsoup4==4.14.3",
+    "frozendict==2.4.7",
+    "graphviz==0.21",
+    "matplotlib==3.10.8",
+    "platformdirs==4.5.1",
+    "psutil==7.2.1",
+    "pytest==9.0.2",
+    "PyYAML==6.0.3",
+    "requests==2.32.5",
+    "requests-cache==1.2.1",
+    "roa-checker~=3.0",
+    "rov-collector~=1.0",
+    "tqdm==4.67.1",
+    "yamlable==1.1.1",
     "bgpy_pkg~=13.0",
+    "urllib3~=2.6.3"
 ]
 
 [project.urls]
@@ -62,7 +79,20 @@ mrt_collector = "mrt_collector.__main__:main"
 
 [project.optional-dependencies]
 test = [
-    "bgpy_pkg[test]~=13.0",
+    "bgpy_pkg[test]==13.0",
+    "ty==0.0.17",
+    "tox==4.46.0",
+    "pytest==9.0.2",
+    "pre-commit==4.5.1",
+    "types-beautifulsoup4==4.12.0.20250516",
+    "types-requests==2.32.4.20260107",
+    "types-psutil==7.2.1.20260116",
+    "types-PyYAML==6.0.12.20250915",
+    "types-tqdm==4.67.0.20250809",
+    "mypy==1.19.1",
+    "tox==4.46.0",
+    "pytest-xdist==3.8.0",
+    "ruff==0.14.13"
 ]
 
 [tool.setuptools]
@@ -98,6 +128,28 @@ warn_unreachable = true
 disallow_untyped_calls = false
 disallow_incomplete_defs = false
 disallow_untyped_defs = false
+exclude = [
+    "mrt_collector/analyzers/"
+]
+
+[tool.ty.rules]
+# Approximate mypy strict — enable the core type-safety rules as errors
+unresolved-reference = "error"
+invalid-assignment = "error"
+invalid-argument-type = "error"
+invalid-return-type = "error"
+missing-argument = "error"
+unresolved-import = "ignore"        # equivalent of ignore_missing_imports = true
+
+# Note: disallow_untyped_calls, disallow_incomplete_defs, and disallow_untyped_defs
+# have no ty equivalent yet. Use Ruff's flake8-annotations (ANN) rules if needed:
+# [tool.ruff.lint]
+# select = ["ANN"]
+
+[tool.ty.src]
+exclude = [
+    "mrt_collector/analyzers/**"
+]
 
 [mypy-graphviz]
 ignore_missing_imports = true
@@ -246,6 +298,10 @@ ignore = [
     # It's a good rule, but conflicts with ruff format so had to remove
     # (it gave an error message surprisingly)
     "ISC001",
+    # Flags every single print statement. Eventually this will come in handy
+    # but for where we are in development it's more annoying than anything
+    "T201",
+    
     # Wants to apply sorting to __all__
     # For me sometimes __init__ is out of order due to import loops,
     # and my __all__ tends to follow my __init__ order, so I've disabled this
@@ -263,6 +319,9 @@ ignore = [
 ]
 
 unfixable = []
+[tool.ruff.lint.pycodestyle]
+max-line-length = 100
+
 [tool.ruff.lint.per-file-ignores]
 # Don't use isort on these files (which sorts imports)
 # init files are often ordered in a certain way to avoid circular imports

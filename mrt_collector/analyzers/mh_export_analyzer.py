@@ -1,18 +1,19 @@
+import csv
+import gc
+import json
+import time
 from collections import defaultdict
 from dataclasses import dataclass
-import gc
-import csv
-import json
 from pathlib import Path
-import time
 
-from tqdm import tqdm
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-
 from bgpy.as_graphs import CAIDAASGraphConstructor
-from ..mrt_file import MRTFile
+from tqdm import tqdm
 
+from mrt_collector.mrt_file import MRTFile
+
+from .json_set_encoder import JSONSetEncoder as SetEncoder
 
 mpl.use("Agg")
 
@@ -24,7 +25,7 @@ class PrefixData:
 
 
 # https://stackoverflow.com/a/8230505/8903959
-class SetEncoder(json.JSONEncoder):
+class JSONSetEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, set):
             return list(obj)
@@ -32,13 +33,17 @@ class SetEncoder(json.JSONEncoder):
 
 
 class MHExportAnalyzer:
+    # not that I really know what I'm talking abt
+    # but I get the sense this func needs work/restructuring
+    # some of the calls, IE self.create_graphs() appear in
+    # main() as well as here, but main calls this.
     def run(self, mrt_files: tuple[MRTFile, ...]):
         print("This takes about an hour")
         og_start = time.perf_counter()
         start = og_start
         # mh_data = self._init_data()
         # Aggregates data into {current_asn: {provider_asn: {set of prefix data}}
-        mh_data = self.get_mh_data(mrt_files, mh_data)
+        mh_data = self.get_mh_data(mrt_files, mh_data)  # noqa
         print("Make the above multiprocessing")
         print(f"got AS path data in {time.perf_counter() - start}")
         start = time.perf_counter()
@@ -47,6 +52,7 @@ class MHExportAnalyzer:
         print(f"got graph data in {time.perf_counter() - start}")
         print(time.perf_counter() - og_start)
 
+    # *** Is this deprecated? it appears to be
     def _init_data(self):
         bgp_dag = CAIDAASGraphConstructor().run()
         data = dict()
@@ -64,8 +70,7 @@ class MHExportAnalyzer:
         print("Add multiprocessing? Potentially? If you have enough ram?")
         total_lines = sum(x.total_parsed_lines for x in mrt_files)
         with tqdm(
-            total=total_lines,
-            desc="Extracting Mulithomed 2+Provider Export data"
+            total=total_lines, desc="Extracting Mulithomed 2+Provider Export data"
         ) as pbar:
             for mrt_file in sorted(mrt_files):
                 if not mrt_file.parsed_path_psv.exists():
@@ -88,7 +93,7 @@ class MHExportAnalyzer:
                                 if origin not in mh_data:
                                     continue
                                 provider_asn = as_path[-2]
-                                prepending = (provider_asn == origin)
+                                prepending = provider_asn == origin
                                 if prepending:
                                     reversed_as_path = list(reversed(as_path))
                                     for asn in reversed_as_path:
@@ -115,20 +120,20 @@ class MHExportAnalyzer:
         with self.json_prefixes_path.open("w") as f:
             # This is horrible, fix
             export_to_some_prefixes = {
-                origin: {
-                    k: set([q.prefix for q in v]) for k, v in inner_dict.items()
-                } for origin, inner_dict in mh_data.items()
+                origin: {k: {q.prefix for q in v} for k, v in inner_dict.items()}
+                for origin, inner_dict in mh_data.items()
             }
             json.dump(export_to_some_prefixes, f, indent=4, cls=SetEncoder)
         with self.json_prepending_path.open("w") as f:
             # This is horrible, fix
             export_to_some_prepending = {
-                origin: {
-                    k: set([q.prepending for q in v]) for k, v in inner_dict.items()
-                } for origin, inner_dict in mh_data.items()
+                origin: {k: {q.prepending for q in v} for k, v in inner_dict.items()}
+                for origin, inner_dict in mh_data.items()
             }
             json.dump(export_to_some_prepending, f, indent=4, cls=SetEncoder)
 
+    # create graphs doesnt even appear to define what f is, appears to be removed
+    # considering there is a leading comma following self
     def create_graphs(
         self,
     ) -> None:
@@ -137,9 +142,7 @@ class MHExportAnalyzer:
         with self.json_prepending_path.open() as f:
             export_to_some_prepending = json.load(f)
         relevant_origins = sorted(
-            set(
-                list(export_to_some_prefixes) + list(export_to_some_prepending)
-            )
+            set(list(export_to_some_prefixes) + list(export_to_some_prepending))
         )
 
         total = 0
@@ -163,7 +166,7 @@ class MHExportAnalyzer:
             prepending = False
             export_to_all = False
             export_to_some_zero_to_one_provider = False
-            for provider, set_of_prepending_bools in provider_prepending_dict.items():
+            for provider, set_of_prepending_bools in provider_prepending_dict.items():  # noqa
                 if any(x for x in set_of_prepending_bools):
                     prepending = True
                     export_to_some = True
@@ -184,7 +187,9 @@ class MHExportAnalyzer:
 
             total_export_to_some += int(export_to_some)
             total_export_to_some_prefix += int(export_to_some_prefix)
-            total_export_to_some_zero_to_one_provider += int(export_to_some_zero_to_one_provider)
+            total_export_to_some_zero_to_one_provider += int(
+                export_to_some_zero_to_one_provider
+            )
             total_export_to_some_prepending += int(prepending)
             # Sometimes both can be true if there is prepending
             total_export_to_all += int(export_to_all and not export_to_some)
@@ -209,8 +214,13 @@ class MHExportAnalyzer:
         percentages = [0 if total == 0 else v / total * 100 for v in values]
         fig, ax = plt.subplots()
         ax.set_xticklabels(categories, rotation=90, ha="center")
-        bars = ax.bar(categories, percentages, color=["blue", "green", "red", "yellow", "brown", "orange"])
-        for bar, value in zip(bars, values):
+        bars = ax.bar(
+            categories,
+            percentages,
+            color=["blue", "green", "red", "yellow", "brown", "orange"],
+        )
+
+        for bar, value in zip(bars, values, strict=False):
             ax.text(
                 bar.get_x() + bar.get_width() / 2,
                 bar.get_height(),
@@ -237,12 +247,8 @@ class MHExportAnalyzer:
 
     @property
     def json_prefixes_path(self) -> Path:
-        return Path(
-            "~/Desktop/mh_2p_export_to_some_prefixes.json"
-        ).expanduser()
+        return Path("~/Desktop/mh_2p_export_to_some_prefixes.json").expanduser()
 
     @property
     def json_prepending_path(self) -> Path:
-        return Path(
-            "~/Desktop/mh_2p_export_to_some_prepending.json"
-        ).expanduser()
+        return Path("~/Desktop/mh_2p_export_to_some_prepending.json").expanduser()
