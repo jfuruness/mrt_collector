@@ -1,23 +1,22 @@
 import argparse
-from datetime import datetime
 from multiprocessing import cpu_count
-from pathlib import Path
 
 from .analyzers import atomic_export_analyzer
-from .mrt_collector import MRTCollector
-from .datetime_handler import handle_datetime
 from .collection_path_handler import handle_path
+from .datetime_handler import handle_datetime
+from .mrt_collector import MRTCollector
+
 
 def main():
     parser = argparse.ArgumentParser(prog="MRT Collector")
-    
+
     parser.add_argument(
         "-dt",
         "--datetime",
         help="Datetime in mm/dd/yyyy/hh format (24-hour)",
         required=True
     )
-    
+
     # for use with running with limited files, mostly for debugging
     parser.add_argument(
         "-lf",
@@ -43,10 +42,7 @@ def main():
 
     limit_files_to = 0 if args.limit_files is None else args.limit_files
 
-    if args.datetime:
-        dl_time = handle_datetime(args.datetime)
-    else:
-        dl_time = get_latest_dl_time()
+    dl_time = handle_datetime(args.datetime)
 
     output_path = handle_path(
         dl_time,

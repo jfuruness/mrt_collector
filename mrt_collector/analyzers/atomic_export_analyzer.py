@@ -102,7 +102,7 @@ class AtomicExportAnalyzer:
     ) -> None:
         """JSON dump for atomic aggregate data"""
         filepath.parent.mkdir(parents=True, exist_ok=True)
-    
+
         serializable = {
             prefix: [asdict(ad) for ad in ad_set]
             for prefix, ad_set in self.atomic_data.items()
