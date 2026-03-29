@@ -60,29 +60,30 @@ class MHExportAnalyzer(ExportAnalyzer):
 
         if len(as_path) <= 1:
             return
-        else:
-            origin = as_path[-1]
-            if origin not in self.mh_data:
-                return
-            provider_asn = as_path[-2]
-            prepending = provider_asn == origin
-            if prepending:
-                reversed_as_path = list(reversed(as_path))
-                for asn in reversed_as_path:
-                    if asn != origin:
-                        provider_asn = asn
-                        break
-            # This was just prepending and nothing else
-            if provider_asn == origin:
-                return
-            # Provider is not in CAIDA, skip
-            if provider_asn not in self.mh_data[origin]:
-                return
-            self.mh_data[origin][provider_asn].add(
-                PrefixData(
-                    prefix=row["prefix"], prepending=prepending
-                )
+        
+        origin = as_path[-1]
+        if origin not in self.mh_data:
+            return
+        
+        provider_asn = as_path[-2]
+        prepending = provider_asn == origin
+        if prepending:
+            reversed_as_path = list(reversed(as_path))
+            for asn in reversed_as_path:
+                if asn != origin:
+                    provider_asn = asn
+                    break
+        # This was just prepending and nothing else
+        if provider_asn == origin:
+            return
+        # Provider is not in CAIDA, skip
+        if provider_asn not in self.mh_data[origin]:
+            return
+        self.mh_data[origin][provider_asn].add(
+            PrefixData(
+                prefix=row["prefix"], prepending=prepending
             )
+        )
 
     def dump_json(
         self
