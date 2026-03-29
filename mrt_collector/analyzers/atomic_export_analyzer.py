@@ -100,11 +100,7 @@ class AtomicExportAnalyzer:
         self,
         filepath: Path #= self.json_atomic_data_path
     ) -> None:
-        """Manual-ish json dump for atomic data. Doing it this way
-        helps with both my defaultdict formatting and conserving
-        memory, since we aren't loading the entire dump all at once
-        """
-
+        """JSON dump for atomic aggregate data"""
         filepath.parent.mkdir(parents=True, exist_ok=True)
     
         serializable = {
@@ -119,7 +115,7 @@ class AtomicExportAnalyzer:
         self,
         filepath: Path #= self.json_prefixes_path
     ) -> None:
-        """json dump for prefix sets"""
+        """JSON dump for prefix sets"""
 
         output = {
             "prefixes where atomic=true": list(self.atomic_prefixes),
