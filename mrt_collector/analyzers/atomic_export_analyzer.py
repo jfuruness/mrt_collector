@@ -1,13 +1,9 @@
-import csv
 import json
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-from tqdm import tqdm
-
-from mrt_collector.mrt_collector import sort_mrt_files_by_parsed_file_size
-from mrt_collector.mrt_file import MRTFile
+from .export_analyzer import ExportAnalyzer
 
 # prefix atomic data will be formatted as:
 # defaultdict<prefix: str, set{data: AtomicData}>
@@ -17,84 +13,52 @@ class AtomicData:
     atomic: bool
     aggr_asn: int
 
-class AtomicExportAnalyzer:
+class AtomicExportAnalyzer(ExportAnalyzer):
     def __init__(
         self,
         base_dir: Path
     ) -> None:
 
+        super().__init__(base_dir)
+        self.desc = "Extracting atomic aggregate data"
         self.atomic_data = defaultdict(set)
         self.atomic_prefixes = set()
         self.aggr_asn_prefixes = set()
-        self.base_dir = base_dir
 
-    def run(
+    def analyze(
         self,
-        mrt_files: tuple[MRTFile, ...]
+        row: dict[str, ...]
     ) -> None:
-        """Lifecycle of the export analyzer"""
+        """Collects atomic data from an mrt file"""
 
-        mrt_files = sort_mrt_files_by_parsed_file_size(mrt_files)
-        self.get_atomic_data(mrt_files)
+        atomic = row["atomic"] == "true"
+        aggr_asn = row["aggr_asn"] or "None"
+        # skip rows without atomic and without aggregate data
+        # some rows can have atomic=false but still have data
+        if not atomic and aggr_asn == "None":
+            return
+
+        prefix = row["prefix"]
+        if atomic:
+            self.atomic_prefixes.add(prefix)
+
+        if aggr_asn != "None":
+            self.aggr_asn_prefixes.add(prefix)
+
+        self.atomic_data[prefix].add(
+            AtomicData(atomic, aggr_asn)
+        )
+
+    def dump_json(
+        self
+    ) -> None:
+
         self.dump_atomic_data_json(
             self.json_atomic_data_path
         )
         self.dump_prefix_sets_json(
             self.json_prefixes_path
         )
-
-
-    def get_atomic_data(
-        self,
-        mrt_files: tuple[MRTFile, ...],
-    ):
-        """Creates Atomic Export Data from parsed MRTs"""
-
-        total_lines = sum(x.total_parsed_lines for x in mrt_files)
-        desc = "Extracting atomic aggregate data"
-        with tqdm(
-            total=total_lines,
-            desc=desc
-        ) as pbar:
-            for mrt_file in mrt_files:
-                if not mrt_file.parsed_path_psv.exists():
-                    continue
-                self._collect_from_file(
-                    mrt_file,
-                    pbar
-                )
-
-    def _collect_from_file(
-        self,
-        mrt_file: MRTFile,
-        pbar
-    ):
-        """Collects atomic data from an mrt file"""
-
-        with mrt_file.parsed_path_psv.open() as f:
-            reader = csv.DictReader(f, delimiter="|")
-            for row in reader:
-                pbar.update()
-                if row["type"] != "A":
-                    continue
-
-                atomic = row["atomic"] == "true"
-                aggr_asn = row["aggr_asn"] or "None"
-                # skip rows without atomic and without aggregate data
-                # some rows can have atomic=false but still have data
-                if not atomic and aggr_asn == "None":
-                    continue
-
-                prefix = row["prefix"]
-                if atomic:
-                    self.atomic_prefixes.add(prefix)
-
-                if aggr_asn != "None":
-                    self.aggr_asn_prefixes.add(prefix)
-
-                self.atomic_data[prefix].add(
-                    AtomicData(atomic, aggr_asn)
-                )
 
     def dump_atomic_data_json(
         self,
