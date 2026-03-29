@@ -1,7 +1,5 @@
-import csv
 import gc
 import json
-import time
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -9,10 +7,10 @@ from pathlib import Path
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from bgpy.as_graphs import CAIDAASGraphConstructor
-from tqdm import tqdm
 
 from mrt_collector.mrt_file import MRTFile
 
+from .export_analyzer import ExportAnalyzer
 from .json_set_encoder import JSONSetEncoder as SetEncoder
 
 mpl.use("Agg")
@@ -23,112 +21,84 @@ class PrefixData:
     prefix: str
     prepending: bool
 
+class MHExportAnalyzer(ExportAnalyzer):
+    def __init__(
+        self,
+        base_dir: Path
+    ) -> None:
 
-# https://stackoverflow.com/a/8230505/8903959
-class JSONSetEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, set):
-            return list(obj)
-        return json.JSONEncoder.default(self, obj)
+        super().__init__(base_dir)
+        self.desc = "Extracting Multihomed 2+Provider Export data"
+        self._init_data()
 
-
-class MHExportAnalyzer:
-    # not that I really know what I'm talking abt
-    # but I get the sense this func needs work/restructuring
-    # some of the calls, IE self.create_graphs() appear in
-    # main() as well as here, but main calls this.
-    def run(self, mrt_files: tuple[MRTFile, ...]):
-        print("This takes about an hour")
-        og_start = time.perf_counter()
-        start = og_start
-        # mh_data = self._init_data()
-        # Aggregates data into {current_asn: {provider_asn: {set of prefix data}}
-        mh_data = self.get_mh_data(mrt_files, mh_data)  # noqa
-        print("Make the above multiprocessing")
-        print(f"got AS path data in {time.perf_counter() - start}")
-        start = time.perf_counter()
-        self.dump_json(mh_data)
-        self.create_graphs()
-        print(f"got graph data in {time.perf_counter() - start}")
-        print(time.perf_counter() - og_start)
-
-    # *** Is this deprecated? it appears to be
     def _init_data(self):
         bgp_dag = CAIDAASGraphConstructor().run()
-        data = dict()
+        self.mh_data = dict()
         for as_obj in bgp_dag:
             if as_obj.multihomed and len(as_obj.providers) >= 2:
-                data[as_obj.asn] = {x: set() for x in as_obj.provider_asns}
-        return data
+                self.mh_data[as_obj.asn] = {x: set() for x in as_obj.provider_asns}
 
-    def get_mh_data(
-        self, mrt_files: tuple[MRTFile, ...], mh_data
+    def run(
+        self,
+        mrt_files: tuple[MRTFile, ...]
+    ) -> None:
+
+        super().run(mrt_files)
+        self.create_graphs()
+
+    def analyze(
+        self,
+        row: dict[str, ...]
     ) -> defaultdict[int, defaultdict[str, set[int]]]:
         """Aggregates data into {current_asn: {prefix: set_of_next_hops}}"""
 
-        print("NOTE: this takes up about 5GB of RAM")
-        print("Add multiprocessing? Potentially? If you have enough ram?")
-        total_lines = sum(x.total_parsed_lines for x in mrt_files)
-        with tqdm(
-            total=total_lines, desc="Extracting Mulithomed 2+Provider Export data"
-        ) as pbar:
-            for mrt_file in sorted(mrt_files):
-                if not mrt_file.parsed_path_psv.exists():
-                    continue
-                with mrt_file.parsed_path_psv.open() as f:
-                    reader = csv.DictReader(f, delimiter="|")
-                    for row in reader:
-                        pbar.update()
-                        if row["type"] == "A":
-                            try:
-                                as_path = [int(x) for x in row["as_path"].split()]
-                            except ValueError:
-                                # print("Encountered AS set")
-                                continue
+        try:
+            as_path = [int(x) for x in row["as_path"].split()]
+        except ValueError:
+            # print("Encountered AS set")
+            return
 
-                            if len(as_path) <= 1:
-                                continue
-                            else:
-                                origin = as_path[-1]
-                                if origin not in mh_data:
-                                    continue
-                                provider_asn = as_path[-2]
-                                prepending = provider_asn == origin
-                                if prepending:
-                                    reversed_as_path = list(reversed(as_path))
-                                    for asn in reversed_as_path:
-                                        if asn != origin:
-                                            provider_asn = asn
-                                            break
-                                # This was just prepending and nothing else
-                                if provider_asn == origin:
-                                    continue
-                                # Provider is not in CAIDA, skip
-                                if provider_asn not in mh_data[origin]:
-                                    continue
-                                mh_data[origin][provider_asn].add(
-                                    PrefixData(
-                                        prefix=row["prefix"], prepending=prepending
-                                    )
-                                )
-        return mh_data
+        if len(as_path) <= 1:
+            return
+        else:
+            origin = as_path[-1]
+            if origin not in self.mh_data:
+                return
+            provider_asn = as_path[-2]
+            prepending = provider_asn == origin
+            if prepending:
+                reversed_as_path = list(reversed(as_path))
+                for asn in reversed_as_path:
+                    if asn != origin:
+                        provider_asn = asn
+                        break
+            # This was just prepending and nothing else
+            if provider_asn == origin:
+                return
+            # Provider is not in CAIDA, skip
+            if provider_asn not in self.mh_data[origin]:
+                return
+            self.mh_data[origin][provider_asn].add(
+                PrefixData(
+                    prefix=row["prefix"], prepending=prepending
+                )
+            )
 
     def dump_json(
-        self,
-        mh_data,
+        self
     ) -> None:
         with self.json_prefixes_path.open("w") as f:
             # This is horrible, fix
             export_to_some_prefixes = {
                 origin: {k: {q.prefix for q in v} for k, v in inner_dict.items()}
-                for origin, inner_dict in mh_data.items()
+                for origin, inner_dict in self.mh_data.items()
             }
             json.dump(export_to_some_prefixes, f, indent=4, cls=SetEncoder)
         with self.json_prepending_path.open("w") as f:
             # This is horrible, fix
             export_to_some_prepending = {
                 origin: {k: {q.prepending for q in v} for k, v in inner_dict.items()}
-                for origin, inner_dict in mh_data.items()
+                for origin, inner_dict in self.mh_data.items()
             }
             json.dump(export_to_some_prepending, f, indent=4, cls=SetEncoder)
 
@@ -247,8 +217,8 @@ class MHExportAnalyzer:
 
     @property
     def json_prefixes_path(self) -> Path:
-        return Path("~/Desktop/mh_2p_export_to_some_prefixes.json").expanduser()
+        return self.base_dir / "analysis" / "mh_2p_export_to_some_prefixes.json"
 
     @property
     def json_prepending_path(self) -> Path:
-        return Path("~/Desktop/mh_2p_export_to_some_prepending.json").expanduser()
+        return self.base_dir / "analysis" / "mh_2p_export_to_some_prepending.json"
