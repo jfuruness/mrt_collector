@@ -1,7 +1,5 @@
-import csv
 import gc
 import json
-import time
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -13,6 +11,9 @@ from tqdm import tqdm
 
 from mrt_collector.mrt_file import MRTFile
 
+from .export_analyzer import ExportAnalyzer
+from .json_set_encoder import JSONSetEncoder as SetEncoder
+
 mpl.use("Agg")
 
 
@@ -21,66 +22,44 @@ class NextHopData:
     asn: int
     prepending: bool
 
+class BGPExportAnalyzer(ExportAnalyzer):
+    def __init__(
+        self,
+        base_dir: Path
+    ) -> None:
 
-# https://stackoverflow.com/a/8230505/8903959
-class SetEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, set):
-            return list(obj)
-        return json.JSONEncoder.default(self, obj)
+        super().__init__(base_dir)
+        self.desc = "Extracting AS-Path data"
+        self.bgp_data = defaultdict(lambda: defaultdict(set))
 
-
-class BGPExportAnalyzer:
     def run(self, mrt_files: tuple[MRTFile, ...]):
-        og_start = time.perf_counter()
-        start = og_start
-        # Aggregates data into {current_asn: {prefix: set_of_next_hops}}
-        as_path_data = self.get_as_path_data(mrt_files)
-        print("Make the above multiprocessing")
-        print(f"got AS path data in {time.perf_counter() - start}")
-        start = time.perf_counter()
-        as_path_data_w_only_providers = self.remove_non_providers(as_path_data)
-        print(f"filtered AS path data in {time.perf_counter() - start}")
+        super().run(mrt_files)
+        as_path_data_w_only_providers = self.remove_non_providers(self.bgp_data)
         self.create_graphs(as_path_data_w_only_providers)
-        print(time.perf_counter() - og_start)
 
-    def get_as_path_data(
-        self, mrt_files: tuple[MRTFile, ...]
-    ) -> defaultdict[int, defaultdict[str, set[int]]]:
-        """Aggregates data into {current_asn: {prefix: set_of_next_hops}}"""
+    def analyze(
+        self,
+        row: dict[str, ...]
+    ) -> None:
 
-        print("NOTE: this takes up about XGB of RAM")
-        print("Add multiprocessing? Potentially? If you have enough ram?")
-        data = defaultdict(lambda: defaultdict(set))
-        total_lines = sum(x.total_parsed_lines for x in mrt_files)
-        with tqdm(total=total_lines, desc="Extracting AS-Path data") as pbar:
-            for mrt_file in sorted(mrt_files):
-                if not mrt_file.parsed_path_psv.exists():
-                    continue
-                with mrt_file.parsed_path_psv.open() as f:
-                    reader = csv.DictReader(f, delimiter="|")
-                    for row in reader:
-                        pbar.update()
-                        if row["type"] == "A":
-                            try:
-                                as_path = [int(x) for x in row["as_path"].split()]
-                            except ValueError:
-                                # print("Encountered AS set")
-                                continue
-                            # print(as_path)
-                            reversed_as_path = list(reversed(as_path))
-                            prepending = len(set(as_path)) != len(as_path)
-                            for i, asn in enumerate(reversed_as_path):
-                                try:
-                                    next_asn = reversed_as_path[i + 1]
-                                    # This will add an empty set to the end
-                                    data[asn][row["prefix"]]
-                                except IndexError:
-                                    break
-                                data[asn][row["prefix"]].add(
-                                    NextHopData(asn=next_asn, prepending=prepending)
-                                )
-        return data
+        try:
+            as_path = [int(x) for x in row["as_path"].split()]
+        except ValueError:
+            # print("Encountered AS set")
+            return
+        # print(as_path)
+        reversed_as_path = list(reversed(as_path))
+        prepending = len(set(as_path)) != len(as_path)
+        for i, asn in enumerate(reversed_as_path):
+            try:
+                next_asn = reversed_as_path[i + 1]
+                # This will add an empty set to the end
+                self.bgp_data[asn][row["prefix"]]
+            except IndexError:
+                break
+            self.bgp_data[asn][row["prefix"]].add(
+                NextHopData(asn=next_asn, prepending=prepending)
+            )
 
     def remove_non_providers(
         self,
@@ -184,3 +163,4 @@ class BGPExportAnalyzer:
         # comment above
         plt.close(fig)
         gc.collect()
+

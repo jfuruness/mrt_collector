@@ -1,6 +1,5 @@
 import gc
 import json
-from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -49,7 +48,7 @@ class MHExportAnalyzer(ExportAnalyzer):
     def analyze(
         self,
         row: dict[str, ...]
-    ) -> defaultdict[int, defaultdict[str, set[int]]]:
+    ) -> None:
         """Aggregates data into {current_asn: {prefix: set_of_next_hops}}"""
 
         try:
@@ -60,11 +59,11 @@ class MHExportAnalyzer(ExportAnalyzer):
 
         if len(as_path) <= 1:
             return
-        
+
         origin = as_path[-1]
         if origin not in self.mh_data:
             return
-        
+
         provider_asn = as_path[-2]
         prepending = provider_asn == origin
         if prepending:
