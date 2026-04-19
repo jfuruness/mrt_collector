@@ -2,6 +2,7 @@ import argparse
 from multiprocessing import cpu_count
 
 from .analyzers import atomic_export_analyzer
+from .analyzers import bgp_aggregate_analyzer
 from .collection_path_handler import handle_path
 from .datetime_handler import handle_datetime
 from .mrt_collector import MRTCollector
@@ -65,6 +66,9 @@ def main():
     mrt_files = collector.run(limit_files_to=limit_files_to)
     atomic_analyzer = atomic_export_analyzer.AtomicExportAnalyzer(output_path)
     atomic_analyzer.run(mrt_files)
+#    aggregate_analyzer = bgp_aggregate_analyzer.BGPAggregateAnalyzer(output_path)
+#    aggregate_analyzer.run(mrt_files)
+
 
 if __name__ == "__main__":
     main()

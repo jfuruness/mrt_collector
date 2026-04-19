@@ -1,7 +1,7 @@
 import csv
 from pathlib import Path
 
-from ABC import ABC, abstractmethod
+from abc import ABC, abstractmethod
 from tqdm import tqdm
 
 from mrt_collector.mrt_collector import sort_mrt_files_by_parsed_file_size
@@ -44,7 +44,7 @@ class ExportAnalyzer(ABC):
                         reader = csv.DictReader(f, delimiter="|")
                         for row in reader:
                             pbar.update()
-                            if row["type"] == "A":
+                            if row["type"] != "A":
                                 continue
                             self.analyze(row)
     @abstractmethod
