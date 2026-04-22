@@ -40,6 +40,7 @@ class ExportAnalyzer(ABC):
         ) as pbar:
             for mrt_file in mrt_files:
                 if mrt_file.parsed_path_psv.exists():
+                    self.current_source = mrt_file.parsed_path_psv.stem
                     with mrt_file.parsed_path_psv.open() as f:
                         reader = csv.DictReader(f, delimiter="|")
                         for row in reader:
