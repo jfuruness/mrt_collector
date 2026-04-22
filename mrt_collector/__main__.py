@@ -1,7 +1,7 @@
 import argparse
 from multiprocessing import cpu_count
 
-from .analyzers import atomic_export_analyzer
+from .analyzers.aggregate import atomic_export_analyzer
 from .analyzers import slashzero_prefix_analyzer
 from .collection_path_handler import handle_path
 from .datetime_handler import handle_datetime

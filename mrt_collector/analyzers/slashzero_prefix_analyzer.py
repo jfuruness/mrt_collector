@@ -26,7 +26,7 @@ class SlashzeroPrefixAnalyzer(ExportAnalyzer):
         if "/0" not in prefix:
             return
         
-        origin = row["origin"]
+        origin = row["origin_asns"]
         path = self.strip_prepending(row["as_path"])
 
         entry = (self.current_source, path)

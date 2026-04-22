@@ -3,7 +3,7 @@ from collections import defaultdict
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-from .export_analyzer import ExportAnalyzer
+from mrt_collector.analyzers.export_analyzer import ExportAnalyzer
 
 # prefix atomic data will be formatted as:
 # defaultdict<prefix: str, set{data: AtomicData}>
