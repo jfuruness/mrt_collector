@@ -2,6 +2,8 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
+import ipaddress
+
 from mrt_collector.mrt_collector import sort_mrt_files_by_parsed_file_size
 
 from mrt_collector.analyzers.export_analyzer import ExportAnalyzer
@@ -17,7 +19,9 @@ class AggregatedSpaceAnalyzer(ExportAnalyzer):
         super().__init__(base_dir)
         self.desc = "Extracting percentage of aggregated network space (v4 and v6)"
         self.v4_trie = IPv4CIDRTrie(AtomicCIDRNode)
+        self.agg_v4_space = 0
         self.v6_trie = IPv6CIDRTrie(AtomicCIDRNode)
+        self.agg_v6_space = 0
 
     def run(
         self,
@@ -35,10 +39,34 @@ class AggregatedSpaceAnalyzer(ExportAnalyzer):
         row: dict[str, ...]
     )->None:
         """Builds CIDR Tries, for v4 and v6"""
-        pass
-        #atomic_aggregate = 
+        
+        atomic_aggregate = row["atomic"] == "true" or row["aggr_asn"] is not ""
+        prefix = ipaddress.ip_network(row["prefix"], strict=False)
 
+        if isinstance(prefix, ipaddress.IPv4Network):
+            self.v4_trie.insert(prefix, atomic_aggregate)
+        else:
+            self.v6_trie.insert(prefix, atomic_aggregate)
 
     def post_process(self)->None:
         """Calculates percentages aggregated network space (for v4 and v6)"""
         pass
+
+    def dfs(
+        self, 
+        node:AtomicCIDRNode,
+        v4:bool = True,
+    )->None:
+        
+        if node is None:
+            return
+        
+        if node.prefix is not None and node.atomic_aggregate == True:
+            if v4:
+                self.agg_v4_space += 2**(32-node.prefix.prefixlen)
+            else:
+                self.agg_v6_space += 2**(128-node.prefix.prefixlen)
+            return
+        
+        self.dfs(node.left, v4)
+        self.dfs(node.right, v4)
