@@ -27,7 +27,7 @@ class SlashzeroPrefixAnalyzer(ExportAnalyzer):
             return
         
         origin = row["origin"]
-        path = self.strip_prepending(row["path"])
+        path = self.strip_prepending(row["as_path"])
 
         entry = (self.current_source, path)
         self.prefix_data[origin].add(entry)
