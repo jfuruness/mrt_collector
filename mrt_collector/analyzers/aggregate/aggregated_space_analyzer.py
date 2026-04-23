@@ -2,9 +2,12 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
+from typing import Iterator
+
 import ipaddress
 
 from mrt_collector.mrt_collector import sort_mrt_files_by_parsed_file_size
+from mrt_collector.mrt_file import MRTFile
 
 from mrt_collector.analyzers.export_analyzer import ExportAnalyzer
 from lib_cidr_trie.cidr_tries import IPv4CIDRTrie, IPv6CIDRTrie
@@ -36,7 +39,7 @@ class AggregatedSpaceAnalyzer(ExportAnalyzer):
 
     def analyze(
         self,
-        row: dict[str, ...]
+        row: dict[str]
     )->None:
         """Builds CIDR Tries, for v4 and v6"""
         
@@ -50,23 +53,40 @@ class AggregatedSpaceAnalyzer(ExportAnalyzer):
 
     def post_process(self)->None:
         """Calculates percentages aggregated network space (for v4 and v6)"""
-        pass
+        
+        v4_prefixes = [node.prefix for node in self.dfs(self.v4_trie.root, v4=True)]
+        ann_v4_space = sum(
+            net.num_addresses for net in ipaddress.collapse_addresses(v4_prefixes)
+        )
+
+        self.per_agg_ann_v4_space = self.agg_v4_space / ann_v4_space
+        self.per_agg_total_v4_space = self.agg_v4_space / 2**32
+
+        v6_prefixes = [node.prefix for node in self.dfs(self.v6_trie.root, v4=False)]
+        ann_v6_space = sum(
+            net.num_addresses for net in ipaddress.collapse_addresses(v6_prefixes)
+        )
+
+        self.per_agg_ann_v6_space = self.agg_v6_space / ann_v6_space
+        self.per_agg_total_v6_space = self.agg_v6_space / 2**128
 
     def dfs(
         self, 
         node:AtomicCIDRNode,
         v4:bool = True,
-    )->None:
+    )->Iterator[AtomicCIDRNode]:
         
         if node is None:
             return
         
-        if node.prefix is not None and node.atomic_aggregate == True:
-            if v4:
-                self.agg_v4_space += 2**(32-node.prefix.prefixlen)
-            else:
-                self.agg_v6_space += 2**(128-node.prefix.prefixlen)
-            return
+        if node.prefix is not None:
+            yield node
+            if node.atomic_aggregate == True:
+                if v4:
+                    self.agg_v4_space += 2**(32-node.prefix.prefixlen)
+                else:
+                    self.agg_v6_space += 2**(128-node.prefix.prefixlen)
+                return
         
-        self.dfs(node.left, v4)
-        self.dfs(node.right, v4)
+        yield from self.dfs(node.left, v4)
+        yield from self.dfs(node.right, v4)
