@@ -3,6 +3,7 @@ from multiprocessing import cpu_count
 
 from .analyzers.aggregate import atomic_export_analyzer
 from .analyzers import slashzero_prefix_analyzer
+from .analyzers.aggregate import aggregated_space_analyzer
 from .collection_path_handler import handle_path
 from .datetime_handler import handle_datetime
 from .mrt_collector import MRTCollector
@@ -66,9 +67,10 @@ def main():
     mrt_files = collector.run(limit_files_to=limit_files_to)
 #    atomic_analyzer = atomic_export_analyzer.AtomicExportAnalyzer(output_path)
 #    atomic_analyzer.run(mrt_files)
-    prefix_analyzer = slashzero_prefix_analyzer.SlashzeroPrefixAnalyzer(output_path)
-    prefix_analyzer.run(mrt_files)
-
+#    prefix_analyzer = slashzero_prefix_analyzer.SlashzeroPrefixAnalyzer(output_path)
+#    prefix_analyzer.run(mrt_files)
+    agg_space_analyzer = aggregated_space_analyzer.AggregatedSpaceAnalyzer(output_path)
+    agg_space_analyzer.run(mrt_files)
 
 if __name__ == "__main__":
     main()

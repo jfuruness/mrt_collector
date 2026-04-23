@@ -75,7 +75,10 @@ class AggregatedSpaceAnalyzer(ExportAnalyzer):
         node:AtomicCIDRNode,
         v4:bool = True,
     )->Iterator[AtomicCIDRNode]:
-        
+        """Performs depth-first search, calculating aggregated space
+            simultaneously returns generator to be used to calculate
+            announced space
+        """
         if node is None:
             return
         
@@ -90,3 +93,25 @@ class AggregatedSpaceAnalyzer(ExportAnalyzer):
         
         yield from self.dfs(node.left, v4)
         yield from self.dfs(node.right, v4)
+
+
+    def dump_json(
+        self
+    )->None:
+        
+        filepath = self.json_path
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+
+        serializable = {
+            "Percent aggregated total v4 space": f"{self.per_agg_total_v4_space:.10f}",
+            "Percent aggregated announced v4 space": f"{self.per_agg_ann_v4_space:.10f}",
+            "Percent aggregated total v6 space": f"{self.per_agg_total_v6_space:.2e}",
+            "Percent aggregated announced v6 space": f"{self.per_agg_ann_v6_space:.10f}",
+        }
+
+        with open(filepath, "w") as f:
+            json.dump(serializable, f, indent=4)
+
+    @property
+    def json_path(self) -> Path:
+        return self.base_dir / "analysis" / "per_aggregated_space.json"
