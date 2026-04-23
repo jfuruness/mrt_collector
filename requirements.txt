@@ -14,3 +14,4 @@ roa-checker~=3.0
 rov-collector~=1.0
 tqdm==4.67.1
 yamlable==1.1.1
+lib_cidr_trie~=1.2.11

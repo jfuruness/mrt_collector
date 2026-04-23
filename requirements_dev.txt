@@ -26,3 +26,4 @@ mypy==1.19.1
 tox==4.46.0
 pytest-xdist==3.8.0
 ruff==0.14.13
+lib_cidr_trie==1.2.11
