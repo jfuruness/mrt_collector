@@ -27,7 +27,7 @@ class AtomicExportAnalyzer(ExportAnalyzer):
 
     def analyze(
         self,
-        row: dict[str, ...]
+        row: dict[str]
     ) -> None:
         """Collects atomic data from an mrt file"""
 

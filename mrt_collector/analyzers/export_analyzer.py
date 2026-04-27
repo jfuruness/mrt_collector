@@ -59,7 +59,7 @@ class ExportAnalyzer(ABC):
     @abstractmethod
     def analyze(
         self,
-        row: dict[str, ...]
+        row: dict[str]
     ) -> None:
         pass
 

@@ -39,7 +39,7 @@ class BGPExportAnalyzer(ExportAnalyzer):
 
     def analyze(
         self,
-        row: dict[str, ...]
+        row: dict[str]
     ) -> None:
 
         try:
