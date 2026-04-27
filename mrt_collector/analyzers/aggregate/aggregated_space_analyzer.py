@@ -42,7 +42,7 @@ class AggregatedSpaceAnalyzer(ExportAnalyzer):
     )->None:
         """Builds CIDR Tries, for v4 and v6"""
         
-        atomic_aggregate = row["atomic"] == "true" or row["aggr_asn"] is not ""
+        atomic_aggregate = row["atomic"] == "true" or row["aggr_asn"] != ""
         prefix = ipaddress.ip_network(row["prefix"], strict=False)
 
         if isinstance(prefix, ipaddress.IPv4Network):

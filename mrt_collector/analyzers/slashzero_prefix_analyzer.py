@@ -66,14 +66,14 @@ class SlashzeroPrefixAnalyzer(ExportAnalyzer):
                 cur_asn = path_no_prepending[idx]
                 next_asn = path_no_prepending[idx-1]
 
-                cur_as = self.bgp_dag.as_dicts[cur_asn]
+                cur_as = self.bgp_dag.as_dict[cur_asn]
                 if(next_asn in cur_as.customer_asns):
                     continue
                 elif(next_asn in cur_as.provider_asns):
                     sent_to_providers = True
                     continue
                 elif(next_asn in cur_as.peer_asns):
-                    peer_as = self.bgp_dag.as_dicts[next_asn]
+                    peer_as = self.bgp_dag.as_dict[next_asn]
                     if len(peer_as.customers > 0):
                         sent_to_providers = True
                     continue
