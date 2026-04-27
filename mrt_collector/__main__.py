@@ -67,10 +67,10 @@ def main():
     mrt_files = collector.run(limit_files_to=limit_files_to)
 #    atomic_analyzer = atomic_export_analyzer.AtomicExportAnalyzer(output_path)
 #    atomic_analyzer.run(mrt_files)
-    prefix_analyzer = slashzero_prefix_analyzer.SlashzeroPrefixAnalyzer(output_path)
-    prefix_analyzer.run(mrt_files)
-#    agg_space_analyzer = aggregated_space_analyzer.AggregatedSpaceAnalyzer(output_path)
-#    agg_space_analyzer.run(mrt_files)
+#    prefix_analyzer = slashzero_prefix_analyzer.SlashzeroPrefixAnalyzer(output_path)
+#    prefix_analyzer.run(mrt_files)
+    agg_space_analyzer = aggregated_space_analyzer.AggregatedSpaceAnalyzer(output_path)
+    agg_space_analyzer.run(mrt_files)
 
 if __name__ == "__main__":
     main()
