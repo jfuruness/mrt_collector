@@ -54,7 +54,9 @@ class AggregatedSpaceAnalyzer(ExportAnalyzer):
     def post_process(self)->None:
         """Calculates percentages aggregated network space (for v4 and v6)"""
         
-        v4_prefixes = [node.prefix for node in self.dfs(self.v4_trie.root, v4=True)]
+        v4_prefixes = [
+            node.prefix for node in self.dfs(self.v4_trie.root, v4=True) if "/0" not in node.prefix
+        ]
         ann_v4_space = sum(
             net.num_addresses for net in ipaddress.collapse_addresses(v4_prefixes)
         )
@@ -62,7 +64,9 @@ class AggregatedSpaceAnalyzer(ExportAnalyzer):
         self.per_agg_ann_v4_space = self.agg_v4_space / ann_v4_space
         self.per_agg_total_v4_space = self.agg_v4_space / 2**32
 
-        v6_prefixes = [node.prefix for node in self.dfs(self.v6_trie.root, v4=False)]
+        v6_prefixes = [
+            node.prefix for node in self.dfs(self.v6_trie.root, v4=False) if "/0" not in node.prefix
+        ]
         ann_v6_space = sum(
             net.num_addresses for net in ipaddress.collapse_addresses(v6_prefixes)
         )
