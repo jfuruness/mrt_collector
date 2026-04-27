@@ -74,7 +74,7 @@ class SlashzeroPrefixAnalyzer(ExportAnalyzer):
                     continue
                 elif(next_asn in cur_as.peer_asns):
                     peer_as = self.bgp_dag.as_dict[next_asn]
-                    if len(peer_as.customers > 0):
+                    if len(peer_as.customers) > 0:
                         sent_to_providers = True
                     continue
 
