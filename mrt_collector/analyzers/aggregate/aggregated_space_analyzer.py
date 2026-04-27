@@ -20,11 +20,21 @@ class AggregatedSpaceAnalyzer(ExportAnalyzer):
     )->None:
         
         super().__init__(base_dir)
+
         self.desc = "Extracting percentage of aggregated network space (v4 and v6)"
+
         self.v4_trie = IPv4CIDRTrie(AtomicCIDRNode)
         self.agg_v4_space = 0
+
+        # default to max
+        self.lowest_v4_subnet = 32
+
+
         self.v6_trie = IPv6CIDRTrie(AtomicCIDRNode)
         self.agg_v6_space = 0
+
+        # default to max
+        self.lowest_v6_subnet = 128
 
     def analyze(
         self,
@@ -44,7 +54,7 @@ class AggregatedSpaceAnalyzer(ExportAnalyzer):
         """Calculates percentages aggregated network space (for v4 and v6)"""
         
         v4_prefixes = [
-            node.prefix for node in self.dfs(self.v4_trie.root, v4=True) if "/0" not in node.prefix
+            node.prefix for node in self.dfs(self.v4_trie.root, v4=True)
         ]
         ann_v4_space = sum(
             net.num_addresses for net in ipaddress.collapse_addresses(v4_prefixes)
@@ -54,7 +64,7 @@ class AggregatedSpaceAnalyzer(ExportAnalyzer):
         self.per_agg_total_v4_space = self.agg_v4_space / 2**32
 
         v6_prefixes = [
-            node.prefix for node in self.dfs(self.v6_trie.root, v4=False) if "/0" not in node.prefix
+            node.prefix for node in self.dfs(self.v6_trie.root, v4=False)
         ]
         ann_v6_space = sum(
             net.num_addresses for net in ipaddress.collapse_addresses(v6_prefixes)
@@ -75,13 +85,16 @@ class AggregatedSpaceAnalyzer(ExportAnalyzer):
         if node is None:
             return
         
-        if node.prefix is not None:
+        if node.prefix is not None and "/0" not in node.prefix:
             yield node
             if node.atomic_aggregate == True:
+                subnet = node.prefix.prefixlen
                 if v4:
-                    self.agg_v4_space += 2**(32-node.prefix.prefixlen)
+                    self.lowest_v4_subnet = min(self.lowest_v4_subnet, subnet)
+                    self.agg_v4_space += 2**(32-subnet)
                 else:
-                    self.agg_v6_space += 2**(128-node.prefix.prefixlen)
+                    self.lowest_v6_subnet = min(self.lowest_v6_subnet, subnet)
+                    self.agg_v6_space += 2**(128-subnet)
                 return
         
         yield from self.dfs(node.left, v4)
@@ -98,8 +111,10 @@ class AggregatedSpaceAnalyzer(ExportAnalyzer):
         serializable = {
             "Percent aggregated total v4 space": f"{self.per_agg_total_v4_space:.10f}",
             "Percent aggregated announced v4 space": f"{self.per_agg_ann_v4_space:.10f}",
+            "Lowest value v4 subnet mask": self.lowest_v4_subnet,
             "Percent aggregated total v6 space": f"{self.per_agg_total_v6_space:.2e}",
             "Percent aggregated announced v6 space": f"{self.per_agg_ann_v6_space:.10f}",
+            "Lowest value v6 subnet mask": self.lowest_v6_subnet
         }
 
         with open(filepath, "w") as f:

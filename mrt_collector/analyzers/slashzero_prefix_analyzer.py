@@ -1,10 +1,17 @@
 import json
 from collections import defaultdict
 from pathlib import Path
+from dataclasses import asdict, dataclass
 
 from .export_analyzer import ExportAnalyzer
 
-from .json_set_encoder import JSONSetEncoder
+from bgpy.as_graphs import CAIDAASGraphConstructor
+
+@dataclass
+class PathData:
+    path: str
+    path_topo_aligns_with_bgpy: bool
+    sent_to_providers: bool | None
 
 class SlashzeroPrefixAnalyzer(ExportAnalyzer):
     def __init__(
@@ -15,6 +22,7 @@ class SlashzeroPrefixAnalyzer(ExportAnalyzer):
         super().__init__(base_dir)
         self.desc = "Extracting /0 prefix data"
         self.prefix_data = defaultdict(dict)
+        self.bgp_dag = CAIDAASGraphConstructor().run()
 
     def analyze(
         self, 
@@ -26,21 +34,28 @@ class SlashzeroPrefixAnalyzer(ExportAnalyzer):
         if "/0" not in prefix:
             return
         
-        origin = row["origin_asns"]
-        path = self.strip_prepending(row["as_path"])
+        origin = int(row["origin_asns"])
+        data = self.get_pathdata_from_path(row["as_path"])
 
         source = self.current_source
-        self.prefix_data[origin][source] = path
+        self.prefix_data[origin][source] = data
 
-    def strip_prepending(
+    def get_pathdata_from_path(
         self,
         path: str
-    ) -> str:
+    ) -> PathData:
         """Removes any prepending from given AS path"""
 
-        temp = set(path.split())
-        return " ".join(temp)
-    
+        split_asns = list(map(int, path.split()))
+        # lazy method of removing prepending; dicts in python preserve insertion order
+        path_no_prepending = list(dict.fromkeys(split_asns))
+
+
+
+        path_no_prepending = " ".join(map(str, path_no_prepending))
+
+        return PathData(path_no_prepending, False, False)
+
     def dump_json(
         self
     ) -> None:
@@ -48,7 +63,7 @@ class SlashzeroPrefixAnalyzer(ExportAnalyzer):
         self.json_prefix_data_path.parent.mkdir(parents=True, exist_ok=True)
 
         with open(self.json_prefix_data_path, "w") as f:
-            json.dump(self.prefix_data, f, indent=4, cls=JSONSetEncoder)
+            json.dump(self.prefix_data, f, indent=4)
     
     @property
     def json_prefix_data_path(self) -> Path:
