@@ -14,7 +14,7 @@ class SlashzeroPrefixAnalyzer(ExportAnalyzer):
         
         super().__init__(base_dir)
         self.desc = "Extracting /0 prefix data"
-        self.prefix_data = defaultdict(set)
+        self.prefix_data = defaultdict(dict)
 
     def analyze(
         self, 
@@ -29,9 +29,8 @@ class SlashzeroPrefixAnalyzer(ExportAnalyzer):
         origin = row["origin_asns"]
         path = self.strip_prepending(row["as_path"])
 
-        entry = (self.current_source, path)
-        self.prefix_data[origin].add(entry)
-
+        source = self.current_source
+        self.prefix_data[origin][source] = path
 
     def strip_prepending(
         self,
@@ -45,7 +44,7 @@ class SlashzeroPrefixAnalyzer(ExportAnalyzer):
     def dump_json(
         self
     ) -> None:
-        """JSON dump for atomic aggregate data"""
+        """JSON dump for /0 prefix data"""
         self.json_prefix_data_path.parent.mkdir(parents=True, exist_ok=True)
 
         with open(self.json_prefix_data_path, "w") as f:

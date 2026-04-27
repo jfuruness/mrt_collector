@@ -26,17 +26,6 @@ class AggregatedSpaceAnalyzer(ExportAnalyzer):
         self.v6_trie = IPv6CIDRTrie(AtomicCIDRNode)
         self.agg_v6_space = 0
 
-    def run(
-        self,
-        mrt_files: tuple[MRTFile, ...]
-    ) -> None:
-        """Lifecycle of the export analyzer"""
-
-        mrt_files = sort_mrt_files_by_parsed_file_size(mrt_files)
-        self.get_data(mrt_files)
-        self.post_process()
-        self.dump_json()
-
     def analyze(
         self,
         row: dict[str]

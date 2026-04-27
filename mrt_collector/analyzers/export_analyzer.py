@@ -25,6 +25,7 @@ class ExportAnalyzer(ABC):
 
         mrt_files = sort_mrt_files_by_parsed_file_size(mrt_files)
         self.get_data(mrt_files)
+        self.post_process()
         self.dump_json()
 
     def get_data(
@@ -48,6 +49,12 @@ class ExportAnalyzer(ABC):
                             if row["type"] != "A":
                                 continue
                             self.analyze(row)
+    
+    def post_process(
+        self
+    )->None:
+        pass
+
     @abstractmethod
     def analyze(
         self,
