@@ -5,14 +5,15 @@ from .export_analyzer import ExportAnalyzer
 from .json_set_encoder import JSONSetEncoder
 
 
-class OTCExportAnalyzer(ExportAnalyzer):
+class OTCExportAnalyzer(ExportAnalyzer, analyzer_id = "otc"):
+    desc = "Extracts set of all OTC ASNs"
+
     def __init__(
         self,
         base_dir: Path
     ) -> None:
 
         super().__init__(base_dir)
-        self.desc = "Extracting set of all OTC ASNs"
         self.otc_data = set()
 
     def analyze(

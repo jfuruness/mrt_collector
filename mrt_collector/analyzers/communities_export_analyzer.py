@@ -5,14 +5,15 @@ from .export_analyzer import ExportAnalyzer
 from .json_set_encoder import JSONSetEncoder
 
 
-class CommunitiesExportAnalyzer(ExportAnalyzer):
+class CommunitiesExportAnalyzer(ExportAnalyzer, analyzer_id="communities"):
+    desc = "Extracts set of all BGP communities"
+
     def __init__(
         self,
         base_dir: Path
     ) -> None:
 
         super().__init__(base_dir)
-        self.desc = "Extracting set of all BGP communities"
         self.comm_data = set()
 
     def analyze(

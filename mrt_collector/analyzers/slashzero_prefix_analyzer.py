@@ -5,8 +5,6 @@ from dataclasses import asdict, dataclass
 
 from .export_analyzer import ExportAnalyzer
 
-from bgpy.as_graphs import CAIDAASGraphConstructor
-
 @dataclass
 class PathData:
     path: str
@@ -20,16 +18,17 @@ class CustomEncoder(json.JSONEncoder):
             return asdict(obj)
         return super().default(obj)
 
-class SlashzeroPrefixAnalyzer(ExportAnalyzer):
+class SlashzeroPrefixAnalyzer(ExportAnalyzer, analyzer_id="slashzero"):
+    desc = "Extracts /0 announcement data, cross references against BGPy graph"
+
     def __init__(
         self, 
         base_dir: Path
     )->None:
         
         super().__init__(base_dir)
-        self.desc = "Extracting /0 prefix data"
         self.prefix_data = defaultdict(dict)
-        self.bgp_dag = CAIDAASGraphConstructor().run()
+        self.uses_bgpy_graph = True
 
     def analyze(
         self, 
@@ -81,9 +80,6 @@ class SlashzeroPrefixAnalyzer(ExportAnalyzer):
                         sent_to_providers = True
                         continue
                     elif(next_asn in cur_as.peer_asns):
-                        peer_as = self.bgp_dag.as_dict[next_asn]
-                        if len(peer_as.customers) > 0:
-                            sent_to_providers = True
                         continue
 
                 # if this is ever reached, the path does not align w/ bgpy topology

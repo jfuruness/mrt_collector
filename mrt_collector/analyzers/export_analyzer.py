@@ -1,55 +1,58 @@
-import csv
 from pathlib import Path
 
 from abc import ABC, abstractmethod
-from tqdm import tqdm
-
-from mrt_collector.mrt_collector import sort_mrt_files_by_parsed_file_size
-from mrt_collector.mrt_file import MRTFile
-
 
 class ExportAnalyzer(ABC):
+    _registry: dict[str, type["ExportAnalyzer"]] = {}
+
+    def __init_subclass__(
+        cls, 
+        analyzer_id: str = None, 
+        **kwargs
+    ):
+        """Add our analyzer to the registry for the orchestrator to access"""
+        super().__init_subclass__(**kwargs)
+        if analyzer_id is not None:
+            if analyzer_id in ExportAnalyzer._registry:
+                raise ValueError(f"Duplicate analyzer_id: {analyzer_id!r}")
+            ExportAnalyzer._registry[analyzer_id] = cls
+
+    @classmethod
+    def from_id(
+        cls, 
+        analyzer_id: str, 
+        base_dir: Path
+    ) -> "ExportAnalyzer":
+        """Access a specific analyzer via a string argument"""
+        try:
+            return cls._registry[analyzer_id](base_dir)
+        except KeyError:
+            raise ValueError(
+                f"Unknown analyzer: {analyzer_id!r}. "
+                f"Available: {sorted(cls._registry)}"
+            )
+
     def __init__(
         self,
         base_dir: Path
     ) -> None:
 
         self.base_dir = base_dir
-        self.desc = "Analyzing some data"
+        self.uses_bgpy_graph = False
 
-    def run(
+    def set_bgpy_graph(
         self,
-        mrt_files: tuple[MRTFile, ...]
+        graph
     ) -> None:
-        """Lifecycle of the export analyzer"""
+        self.bgp_dag = graph
 
-        mrt_files = sort_mrt_files_by_parsed_file_size(mrt_files)
-        self.get_data(mrt_files)
-        self.post_process()
-        self.dump_json()
-
-    def get_data(
+    def set_current_source(
         self,
-        mrt_files: tuple[MRTFile, ...]
+        source: str
     ) -> None:
-        """Iterates through each parsed mrt file for performing analysis"""
-        total_lines = sum(x.total_parsed_lines for x in mrt_files)
-
-        with tqdm(
-            total=total_lines,
-            desc = self.desc
-        ) as pbar:
-            for mrt_file in mrt_files:
-                if mrt_file.parsed_path_psv.exists():
-                    self.current_source = mrt_file.parsed_path_psv.stem
-                    with mrt_file.parsed_path_psv.open() as f:
-                        reader = csv.DictReader(f, delimiter="|")
-                        for row in reader:
-                            pbar.update()
-                            if row["type"] != "A":
-                                continue
-                            self.analyze(row)
+        self.current_source = source
     
+    # not abstract because not always neccesary
     def post_process(
         self
     )->None:
@@ -68,4 +71,3 @@ class ExportAnalyzer(ABC):
         self
     ) -> None:
         pass
-

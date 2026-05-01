@@ -13,7 +13,9 @@ from mrt_collector.analyzers.export_analyzer import ExportAnalyzer
 from lib_cidr_trie.cidr_tries import IPv4CIDRTrie, IPv6CIDRTrie
 from .atomic_cidr_node import AtomicCIDRNode
 
-class AggregatedSpaceAnalyzer(ExportAnalyzer):
+class AggregatedSpaceAnalyzer(ExportAnalyzer, analyzer_id="agg_space"):
+    desc = "Extracts percentage of aggregated network space (v4 and v6)"
+
     def __init__(
         self, 
         base_dir: Path
@@ -21,14 +23,11 @@ class AggregatedSpaceAnalyzer(ExportAnalyzer):
         
         super().__init__(base_dir)
 
-        self.desc = "Extracting percentage of aggregated network space (v4 and v6)"
-
         self.v4_trie = IPv4CIDRTrie(AtomicCIDRNode)
         self.agg_v4_space = 0
 
         # default to max
         self.lowest_v4_subnet = 32
-
 
         self.v6_trie = IPv6CIDRTrie(AtomicCIDRNode)
         self.agg_v6_space = 0

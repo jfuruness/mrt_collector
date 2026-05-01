@@ -7,6 +7,7 @@ from .analyzers.aggregate import aggregated_space_analyzer
 from .collection_path_handler import handle_path
 from .datetime_handler import handle_datetime
 from .mrt_collector import MRTCollector
+from .analysis_orchestrator import AnalysisOrchestrator
 
 
 def main():
@@ -40,6 +41,13 @@ def main():
         help="Set a custom path to place data"
     )
 
+    parser.add_argument(
+        "-a",
+        type=lambda s: s.split(","),
+        default=[],
+        help="Comma-separated list of analyzer IDs to run",
+    )
+
     args = parser.parse_args()
 
     limit_files_to = 0 if args.limit_files is None else args.limit_files
@@ -65,12 +73,13 @@ def main():
     )
 
     mrt_files = collector.run(limit_files_to=limit_files_to)
-#    atomic_analyzer = atomic_export_analyzer.AtomicExportAnalyzer(output_path)
-#    atomic_analyzer.run(mrt_files)
-#    prefix_analyzer = slashzero_prefix_analyzer.SlashzeroPrefixAnalyzer(output_path)
-#    prefix_analyzer.run(mrt_files)
-    agg_space_analyzer = aggregated_space_analyzer.AggregatedSpaceAnalyzer(output_path)
-    agg_space_analyzer.run(mrt_files)
+
+    if args.a:
+        orchestrator = AnalysisOrchestrator(
+            output_path,
+            mrt_files,
+            args.a
+        )
 
 if __name__ == "__main__":
     main()

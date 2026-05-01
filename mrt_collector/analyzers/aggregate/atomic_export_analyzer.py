@@ -14,13 +14,14 @@ class AtomicData:
     aggr_asn: int
 
 class AtomicExportAnalyzer(ExportAnalyzer):
+    desc = "Extracts atomic aggregate data"
+
     def __init__(
         self,
         base_dir: Path
     ) -> None:
 
         super().__init__(base_dir)
-        self.desc = "Extracting atomic aggregate data"
         self.atomic_data = defaultdict(set)
         self.atomic_prefixes = set()
         self.aggr_asn_prefixes = set()

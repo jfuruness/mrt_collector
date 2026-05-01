@@ -6,14 +6,15 @@ from .json_set_encoder import JSONSetEncoder
 
 import bisect
 
-class PathStatsExportAnalyzer(ExportAnalyzer):
+class PathStatsExportAnalyzer(ExportAnalyzer, analyzer_id = "path_stats"):
+    desc = "Extracts Mean, Median, Max and Min of all AS Path Lengths"
+
     def __init__(
         self,
         base_dir: Path
     ) -> None:
 
         super().__init__(base_dir)
-        self.desc = "Extracting Mean, Median, Max and Min of all AS Path Lengths"
         self.as_path_lengths = []
         self.max = 0
         self.min = 0
