@@ -108,11 +108,11 @@ class AggregatedSpaceAnalyzer(ExportAnalyzer, analyzer_id="agg_space"):
         filepath.parent.mkdir(parents=True, exist_ok=True)
 
         serializable = {
-            "Percent aggregated total v4 space": f"{self.per_agg_total_v4_space:.10f}",
-            "Percent aggregated announced v4 space": f"{self.per_agg_ann_v4_space:.10f}",
+            "Percent aggregated total v4 space": f"{100*self.per_agg_total_v4_space:.10f}",
+            "Percent aggregated announced v4 space": f"{100*self.per_agg_ann_v4_space:.10f}",
             "Lowest value v4 subnet mask": self.lowest_v4_subnet,
-            "Percent aggregated total v6 space": f"{self.per_agg_total_v6_space:.2e}",
-            "Percent aggregated announced v6 space": f"{self.per_agg_ann_v6_space:.10f}",
+            "Percent aggregated total v6 space": f"{100*self.per_agg_total_v6_space:.10f}",
+            "Percent aggregated announced v6 space": f"{100*self.per_agg_ann_v6_space:.10f}",
             "Lowest value v6 subnet mask": self.lowest_v6_subnet
         }
 

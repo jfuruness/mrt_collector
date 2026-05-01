@@ -60,7 +60,7 @@ class SlashzeroPrefixAnalyzer(ExportAnalyzer, analyzer_id="slashzero"):
         sent_to_providers = False
         
         # need a default
-        key_error = False
+        key_error = path_no_prepending[0] not in self.bgp_dag.as_dict
 
         path_length = len(path_no_prepending)
         if path_length > 1:

@@ -58,17 +58,20 @@ class AnalysisOrchestrator():
             desc = self.desc
         ) as pbar:
             for mrt_file in mrt_files:
+                # source loop
                 if mrt_file.parsed_path_psv.exists():
                     self.current_source = mrt_file.parsed_path_psv.stem
+                    for a in self.analyzers:
+                                a.set_current_source(self.current_source)
                     with mrt_file.parsed_path_psv.open() as f:
                         reader = csv.DictReader(f, delimiter="|")
+                        # per-row loop
                         for row in reader:
                             pbar.update()
                             if row["type"] != "A":
                                 continue
                             # call analyze on analyzers
                             for a in self.analyzers:
-                                a.set_current_source(self.current_source)
                                 a.analyze(row)                      
 
     def format_desc(
