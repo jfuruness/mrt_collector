@@ -59,6 +59,9 @@ class SlashzeroPrefixAnalyzer(ExportAnalyzer, analyzer_id="slashzero"):
         topo_aligns = True
         sent_to_providers = False
         
+        # need a default
+        key_error = False
+
         path_length = len(path_no_prepending)
         if path_length > 1:
             # as path reads right to left, thank you BGP
