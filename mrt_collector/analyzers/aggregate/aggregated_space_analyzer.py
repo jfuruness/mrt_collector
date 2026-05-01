@@ -85,7 +85,7 @@ class AggregatedSpaceAnalyzer(ExportAnalyzer):
         if node is None:
             return
         
-        if node.prefix is not None and "/0" not in node.prefix:
+        if node.prefix is not None and node.prefix.prefixlen != 0:
             yield node
             if node.atomic_aggregate == True:
                 subnet = node.prefix.prefixlen
