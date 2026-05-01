@@ -104,9 +104,9 @@ class AtomicExportAnalyzer(ExportAnalyzer):
 
     @property
     def json_atomic_data_path(self) -> Path:
-        return self.base_dir / "analysis" / "atomic_data.json"
+        return self.base_dir / "atomic_data.json"
 
     @property
     def json_prefixes_path(self) -> Path:
-        return self.base_dir / "analysis" / "atomic_prefixes.json"
+        return self.base_dir / "atomic_prefixes.json"
 

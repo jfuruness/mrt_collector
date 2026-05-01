@@ -104,4 +104,4 @@ class SlashzeroPrefixAnalyzer(ExportAnalyzer, analyzer_id="slashzero"):
     
     @property
     def json_prefix_data_path(self) -> Path:
-        return self.base_dir / "analysis" / "slashzero_prefix_data.json"      
+        return self.base_dir / "slashzero_prefix_data.json"      

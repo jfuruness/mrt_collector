@@ -11,7 +11,7 @@ from mrt_collector.mrt_file import MRTFile
 
 from mrt_collector.analyzers.export_analyzer import ExportAnalyzer
 from lib_cidr_trie.cidr_tries import IPv4CIDRTrie, IPv6CIDRTrie
-from .atomic_cidr_node import AtomicCIDRNode
+from .aggregate_cidr_node import AggregateCIDRNode
 
 class AggregatedSpaceAnalyzer(ExportAnalyzer, analyzer_id="agg_space"):
     desc = "Extracts percentage of aggregated network space (v4 and v6)"
@@ -23,13 +23,13 @@ class AggregatedSpaceAnalyzer(ExportAnalyzer, analyzer_id="agg_space"):
         
         super().__init__(base_dir)
 
-        self.v4_trie = IPv4CIDRTrie(AtomicCIDRNode)
+        self.v4_trie = IPv4CIDRTrie(AggregateCIDRNode)
         self.agg_v4_space = 0
 
         # default to max
         self.lowest_v4_subnet = 32
 
-        self.v6_trie = IPv6CIDRTrie(AtomicCIDRNode)
+        self.v6_trie = IPv6CIDRTrie(AggregateCIDRNode)
         self.agg_v6_space = 0
 
         # default to max
@@ -74,9 +74,9 @@ class AggregatedSpaceAnalyzer(ExportAnalyzer, analyzer_id="agg_space"):
 
     def dfs(
         self, 
-        node:AtomicCIDRNode,
+        node:AggregateCIDRNode,
         v4:bool = True,
-    )->Iterator[AtomicCIDRNode]:
+    )->Iterator[AggregateCIDRNode]:
         """Performs depth-first search, calculating aggregated space
             simultaneously returns generator to be used to calculate
             announced space
@@ -121,4 +121,4 @@ class AggregatedSpaceAnalyzer(ExportAnalyzer, analyzer_id="agg_space"):
 
     @property
     def json_path(self) -> Path:
-        return self.base_dir / "analysis" / "per_aggregated_space.json"
+        return self.base_dir / "per_aggregated_space.json"

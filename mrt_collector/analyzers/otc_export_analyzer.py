@@ -36,4 +36,4 @@ class OTCExportAnalyzer(ExportAnalyzer, analyzer_id = "otc"):
 
     @property
     def json_path(self) -> Path:
-        return self.base_dir / "analysis" / "otc_asns.json"
+        return self.base_dir / "otc_asns.json"

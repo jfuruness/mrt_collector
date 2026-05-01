@@ -2,7 +2,7 @@ from ipaddress import IPv4Network, IPv6Network
 
 from lib_cidr_trie.cidr_node import CIDRNode
 
-class AtomicCIDRNode(CIDRNode):
+class AggregateCIDRNode(CIDRNode):
     def add_data(
         self, 
         prefix: IPv4Network | IPv6Network,

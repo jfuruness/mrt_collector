@@ -53,4 +53,4 @@ class PathStatsExportAnalyzer(ExportAnalyzer, analyzer_id = "path_stats"):
 
     @property
     def json_path(self) -> Path:
-        return self.base_dir / "analysis" / "path_stats.json"
+        return self.base_dir / "path_stats.json"

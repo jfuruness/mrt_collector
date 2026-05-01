@@ -37,7 +37,7 @@ class ExportAnalyzer(ABC):
         base_dir: Path
     ) -> None:
 
-        self.base_dir = base_dir
+        self.base_dir = base_dir / "analysis"
         self.uses_bgpy_graph = False
 
     def set_bgpy_graph(

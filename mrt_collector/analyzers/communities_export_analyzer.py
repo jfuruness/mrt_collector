@@ -37,4 +37,4 @@ class CommunitiesExportAnalyzer(ExportAnalyzer, analyzer_id="communities"):
 
     @property
     def json_path(self) -> Path:
-        return self.base_dir / "analysis" / "communities.json"
+        return self.base_dir / "communities.json"
