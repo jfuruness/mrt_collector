@@ -12,6 +12,7 @@ class PathData:
     path: str
     path_topo_aligns_with_bgpy: bool
     sent_to_providers: bool
+    key_error: bool
 
 class CustomEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -66,17 +67,24 @@ class SlashzeroPrefixAnalyzer(ExportAnalyzer):
                 cur_asn = path_no_prepending[idx]
                 next_asn = path_no_prepending[idx-1]
 
-                cur_as = self.bgp_dag.as_dict[cur_asn]
-                if(next_asn in cur_as.customer_asns):
-                    continue
-                elif(next_asn in cur_as.provider_asns):
-                    sent_to_providers = True
-                    continue
-                elif(next_asn in cur_as.peer_asns):
-                    peer_as = self.bgp_dag.as_dict[next_asn]
-                    if len(peer_as.customers) > 0:
+                # we are getting key errors, this is interesting because
+                # not only does this mean topology is not reflected
+                # but the actual ASs themselves are not reflected
+                # thus I take note of this separate from topological
+                # consistency
+                key_error = cur_asn not in self.bgp_dag.as_dict
+                if(key_error == False):
+                    cur_as = self.bgp_dag.as_dict[cur_asn]
+                    if(next_asn in cur_as.customer_asns):
+                        continue
+                    elif(next_asn in cur_as.provider_asns):
                         sent_to_providers = True
-                    continue
+                        continue
+                    elif(next_asn in cur_as.peer_asns):
+                        peer_as = self.bgp_dag.as_dict[next_asn]
+                        if len(peer_as.customers) > 0:
+                            sent_to_providers = True
+                        continue
 
                 # if this is ever reached, the path does not align w/ bgpy topology
                 topo_aligns = False
@@ -84,7 +92,7 @@ class SlashzeroPrefixAnalyzer(ExportAnalyzer):
 
         final_path = " ".join(map(str, path_no_prepending))
 
-        return PathData(final_path, topo_aligns, sent_to_providers)
+        return PathData(final_path, topo_aligns, sent_to_providers, key_error)
 
     def dump_json(
         self
@@ -97,4 +105,4 @@ class SlashzeroPrefixAnalyzer(ExportAnalyzer):
     
     @property
     def json_prefix_data_path(self) -> Path:
-        return self.base_dir / "analysis" / "slashzero_prefix_data.json"
+        return self.base_dir / "analysis" / "slashzero_prefix_data.json"      
