@@ -11,8 +11,8 @@ from tqdm import tqdm
 
 from mrt_collector.mrt_file import MRTFile
 
-from .export_analyzer import ExportAnalyzer
-from .json_set_encoder import JSONSetEncoder as SetEncoder
+from ..export_analyzer import ExportAnalyzer
+from ..json_set_encoder import JSONSetEncoder as SetEncoder
 
 mpl.use("Agg")
 

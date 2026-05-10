@@ -9,8 +9,8 @@ from bgpy.as_graphs import CAIDAASGraphConstructor
 
 from mrt_collector.mrt_file import MRTFile
 
-from .export_analyzer import ExportAnalyzer
-from .json_set_encoder import JSONSetEncoder as SetEncoder
+from ..export_analyzer import ExportAnalyzer
+from ..json_set_encoder import JSONSetEncoder as SetEncoder
 
 mpl.use("Agg")
 
@@ -102,8 +102,6 @@ class MHExportAnalyzer(ExportAnalyzer):
             }
             json.dump(export_to_some_prepending, f, indent=4, cls=SetEncoder)
 
-    # create graphs doesnt even appear to define what f is, appears to be removed
-    # considering there is a leading comma following self
     def create_graphs(
         self,
     ) -> None:

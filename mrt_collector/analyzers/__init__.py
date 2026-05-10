@@ -1,5 +1,5 @@
-from .bgp_export_analyzer import BGPExportAnalyzer
-from .mh_export_analyzer import MHExportAnalyzer
+from .old.bgp_export_analyzer import BGPExportAnalyzer
+from .old.mh_export_analyzer import MHExportAnalyzer
 from .communities_export_analyzer import CommunitiesExportAnalyzer
 from .export_analyzer import ExportAnalyzer
 from .otc_export_analyzer import OTCExportAnalyzer

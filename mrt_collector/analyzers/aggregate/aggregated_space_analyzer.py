@@ -29,11 +29,17 @@ class AggregatedSpaceAnalyzer(ExportAnalyzer, analyzer_id="agg_space"):
         # default to max
         self.lowest_v4_subnet = 32
 
+        self.v4_anns_checked = 0
+        self.v4_anns_aggregated = 0
+
         self.v6_trie = IPv6CIDRTrie(AggregateCIDRNode)
         self.agg_v6_space = 0
 
         # default to max
         self.lowest_v6_subnet = 128
+
+        self.v6_anns_checked = 0
+        self.v6_anns_aggregated = 0
 
     def analyze(
         self,
@@ -45,9 +51,17 @@ class AggregatedSpaceAnalyzer(ExportAnalyzer, analyzer_id="agg_space"):
         prefix = ipaddress.ip_network(row["prefix"], strict=False)
 
         if isinstance(prefix, ipaddress.IPv4Network):
+            self.v4_anns_checked +=1
+            if(atomic_aggregate):
+                self.v4_anns_aggregated +=1
             self.v4_trie.insert(prefix, atomic_aggregate)
-        else:
+        elif isinstance(prefix, ipaddress.IPv6Network):
+            self.v6_anns_checked +=1
+            if(atomic_aggregate):
+                self.v6_anns_aggregated +=1
             self.v6_trie.insert(prefix, atomic_aggregate)
+        else:
+            raise ValueError(f"{prefix} not considered valid v4 or v6")
 
     def post_process(self)->None:
         """Calculates percentages aggregated network space (for v4 and v6)"""
@@ -108,12 +122,14 @@ class AggregatedSpaceAnalyzer(ExportAnalyzer, analyzer_id="agg_space"):
         filepath.parent.mkdir(parents=True, exist_ok=True)
 
         serializable = {
-            "Percent aggregated total v4 space": f"{100*self.per_agg_total_v4_space:.10f}",
-            "Percent aggregated announced v4 space": f"{100*self.per_agg_ann_v4_space:.10f}",
+            "Percent aggregated total v4 space": f"{100*self.per_agg_total_v4_space:.10f}%",
+            "Percent aggregated announced v4 space": f"{100*self.per_agg_ann_v4_space:.10f}%",
             "Lowest value v4 subnet mask": self.lowest_v4_subnet,
-            "Percent aggregated total v6 space": f"{100*self.per_agg_total_v6_space:.10f}",
-            "Percent aggregated announced v6 space": f"{100*self.per_agg_ann_v6_space:.10f}",
-            "Lowest value v6 subnet mask": self.lowest_v6_subnet
+            "Percent of v4 announcements aggregated": f"{100*self.v4_anns_aggregated/self.v4_anns_checked}%",
+            "Percent aggregated total v6 space": f"{100*self.per_agg_total_v6_space:.10f}%",
+            "Percent aggregated announced v6 space": f"{100*self.per_agg_ann_v6_space:.10f}%",
+            "Lowest value v6 subnet mask": self.lowest_v6_subnet,
+            "Percent of v6 announcements aggregated": f"{100*self.v6_anns_aggregated/self.v6_anns_checked}%"
         }
 
         with open(filepath, "w") as f:
