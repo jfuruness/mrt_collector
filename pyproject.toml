@@ -67,7 +67,8 @@ dependencies = [
     "tqdm==4.67.1",
     "yamlable==1.1.1",
     "bgpy_pkg~=13.0",
-    "urllib3~=2.6.3"
+    "urllib3~=2.6.3",
+    "lib_cidr_trie~=1.2.11"
 ]
 
 [project.urls]
